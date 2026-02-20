@@ -66,6 +66,8 @@
 		"svelte"
 	],
 	"dependencies": {
-		"@sveltejs/adapter-node": "^5.5.3"
+		"@sveltejs/adapter-node": "^5.5.3",
+		"lucide-svelte": "^0.575.0",
+		"mqtt": "^5.15.0"
 	}
 }
