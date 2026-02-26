@@ -146,6 +146,7 @@ const char* modeText(const SystemState& state) {
 void initMqttLink() {
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
   mqttClient.setCallback(mqttCallback);
+  WiFi.disconnect();  // force clean slate on boot
   connectWifi();
   ensureMqttConnected();
 }
