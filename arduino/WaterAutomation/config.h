@@ -17,12 +17,10 @@ constexpr uint8_t PIN_BOREWELL_FLOW_OK = 6;
 constexpr uint8_t PIN_SUMP_FLOW_OK = 7;
 
 // Overhead tank level switches (LOW = switch active)
-constexpr uint8_t PIN_OH_CRITICAL = 8;
 constexpr uint8_t PIN_OH_LOW = 9;
 constexpr uint8_t PIN_OH_MED = 10;
 constexpr uint8_t PIN_OH_HIGH = 11;
 
 // Sump tank level switches (LOW = switch active)
-constexpr uint8_t PIN_SUMP_CRITICAL = 12;
 constexpr uint8_t PIN_SUMP_LOW = 13;
 constexpr uint8_t PIN_SUMP_HIGH = A0;

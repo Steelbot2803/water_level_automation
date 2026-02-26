@@ -31,10 +31,6 @@ void publishStatus(SystemState& state) {
   Serial.println(toText(state.sumpTransfer.status));
 
   if (state.sumpLevel == SumpLevel::CRITICAL || state.sumpCriticalWarningLatched) {
-    Serial.println(F("warning: sump at CRITICAL - verify source water."));
-  }
-
-  if (state.sumpLevel == SumpLevel::BELOW_CRITICAL) {
-    Serial.println(F("warning: sump BELOW CRITICAL - pump protection active."));
+    Serial.println(F("warning: sump at/below LOW (CRITICAL) - pump protection active."));
   }
 }
