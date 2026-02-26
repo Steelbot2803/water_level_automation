@@ -23,5 +23,5 @@ constexpr uint8_t PIN_OH_MED = 10;
 constexpr uint8_t PIN_OH_HIGH = 11;
 
 // Sump tank level switches (LOW = switch active)
-constexpr uint8_t PIN_SUMP_LOW = 13;
-constexpr uint8_t PIN_SUMP_HIGH = A0;
+constexpr uint8_t PIN_SUMP_LOW = 12;
+constexpr uint8_t PIN_SUMP_HIGH = 13;

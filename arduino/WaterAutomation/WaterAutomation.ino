@@ -19,8 +19,8 @@ void setup() {
 
   initState(state);
   setSystemStateRef(&state);
-  initMqttLink();
   printBanner();
+  initMqttLink();
 }
 
 void loop() {

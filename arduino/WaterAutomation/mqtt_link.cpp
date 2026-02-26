@@ -13,6 +13,8 @@ namespace {
 WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
 unsigned long lastMqttPublishMs = 0;
+unsigned long lastWifiAttemptMs = 0;
+unsigned long lastMqttAttemptMs = 0;
 
 const char* overheadText(OverheadLevel l) {
   switch (l) {
@@ -47,11 +49,11 @@ const char* motorText(MotorType m) {
 void connectWifi() {
   if (WiFi.status() == WL_CONNECTED) return;
 
+  const unsigned long nowMs = millis();
+  if (lastWifiAttemptMs != 0 && nowMs - lastWifiAttemptMs < 10000) return;
+
+  lastWifiAttemptMs = nowMs;
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  unsigned long startMs = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - startMs < 15000) {
-    delay(250);
-  }
 }
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
@@ -79,12 +81,12 @@ void ensureMqttConnected() {
   if (mqttClient.connected()) return;
   if (WiFi.status() != WL_CONNECTED) return;
 
-  while (!mqttClient.connected()) {
-    if (mqttClient.connect(MQTT_CLIENT_ID, MQTT_USERNAME, MQTT_PASSWORD)) {
-      mqttClient.subscribe(MQTT_COMMAND_TOPIC);
-      return;
-    }
-    delay(1000);
+  const unsigned long nowMs = millis();
+  if (lastMqttAttemptMs != 0 && nowMs - lastMqttAttemptMs < 5000) return;
+
+  lastMqttAttemptMs = nowMs;
+  if (mqttClient.connect(MQTT_CLIENT_ID, MQTT_USERNAME, MQTT_PASSWORD)) {
+    mqttClient.subscribe(MQTT_COMMAND_TOPIC);
   }
 }
 
@@ -121,14 +123,14 @@ void publishStateToMqtt(const SystemState& state) {
 
   char payload[220];
   snprintf(
-      payload,
-      sizeof(payload),
-      "{\"mode\":\"%s\",\"override\":%s,\"overhead\":\"%s\",\"sump\":\"%s\",\"motor\":\"%s\"}",
-      modeText(state),
-      state.command.overrideFillToHigh ? "true" : "false",
-      overheadText(state.overheadLevel),
-      sumpText(state.sumpLevel),
-      motorText(state.activeMotor));
+    payload,
+    sizeof(payload),
+    "{\"mode\":\"%s\",\"override\":%s,\"overhead\":\"%s\",\"sump\":\"%s\",\"motor\":\"%s\"}",
+    modeText(state),
+    state.command.overrideFillToHigh ? "true" : "false",
+    overheadText(state.overheadLevel),
+    sumpText(state.sumpLevel),
+    motorText(state.activeMotor));
 
   mqttClient.publish(MQTT_STATUS_TOPIC, payload, true);
 }

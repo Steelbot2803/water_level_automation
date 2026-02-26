@@ -8,8 +8,7 @@ String readLine() {
   static String line;
   while (Serial.available()) {
     const char c = static_cast<char>(Serial.read());
-    if (c == '
-' || c == '') {
+    if (c == '\n' || c == '\r') {
       if (line.length() == 0) continue;
       String out = line;
       line = "";
