@@ -152,7 +152,6 @@ void runAutoControl(SystemState& state) {
     state.sumpCriticalWarningLatched = true;
     stopActiveMotor(state);
     state.sumpTransfer.status = MotorStatus::BLOCKED_BY_SAFETY;
-    if (!state.command.overrideFillToHigh) return;
   }
 
   const bool shouldFill = state.command.overrideFillToHigh || needsFill(state);
