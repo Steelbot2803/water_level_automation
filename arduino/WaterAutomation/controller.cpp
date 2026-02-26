@@ -10,15 +10,17 @@ OverheadLevel readOverheadLevel() {
   if (isPinActive(PIN_OH_HIGH)) return OverheadLevel::HIGH;
   if (isPinActive(PIN_OH_MED)) return OverheadLevel::MEDIUM;
   if (isPinActive(PIN_OH_LOW)) return OverheadLevel::LOW;
-  if (isPinActive(PIN_OH_CRITICAL)) return OverheadLevel::CRITICAL;
-  return OverheadLevel::EMPTY;
+
+  // Below LOW is treated as CRITICAL.
+  return OverheadLevel::CRITICAL;
 }
 
 SumpLevel readSumpLevel() {
   if (isPinActive(PIN_SUMP_HIGH)) return SumpLevel::HIGH;
   if (isPinActive(PIN_SUMP_LOW)) return SumpLevel::LOW;
-  if (isPinActive(PIN_SUMP_CRITICAL)) return SumpLevel::CRITICAL;
-  return SumpLevel::BELOW_CRITICAL;
+
+  // Below LOW is treated as CRITICAL.
+  return SumpLevel::CRITICAL;
 }
 
 bool needsFill(const SystemState& state) {
@@ -32,7 +34,7 @@ bool reachedStopLevel(const SystemState& state) {
 }
 
 bool sumpAllowsPumping(const SystemState& state) {
-  return state.sumpLevel != SumpLevel::BELOW_CRITICAL;
+  return state.sumpLevel != SumpLevel::CRITICAL && state.sumpLevel != SumpLevel::BELOW_CRITICAL;
 }
 
 MotorRuntimeState& runtimeFor(SystemState& state, MotorType motor) {
@@ -148,9 +150,6 @@ void runManualControl(SystemState& state) {
 void runAutoControl(SystemState& state) {
   if (state.sumpLevel == SumpLevel::CRITICAL) {
     state.sumpCriticalWarningLatched = true;
-  }
-
-  if (state.sumpLevel == SumpLevel::BELOW_CRITICAL) {
     stopActiveMotor(state);
     state.sumpTransfer.status = MotorStatus::BLOCKED_BY_SAFETY;
     if (!state.command.overrideFillToHigh) return;
@@ -184,12 +183,10 @@ void runAutoControl(SystemState& state) {
 } // namespace
 
 void initState(SystemState& state) {
-  pinMode(PIN_OH_CRITICAL, INPUT_PULLUP);
   pinMode(PIN_OH_LOW, INPUT_PULLUP);
   pinMode(PIN_OH_MED, INPUT_PULLUP);
   pinMode(PIN_OH_HIGH, INPUT_PULLUP);
 
-  pinMode(PIN_SUMP_CRITICAL, INPUT_PULLUP);
   pinMode(PIN_SUMP_LOW, INPUT_PULLUP);
   pinMode(PIN_SUMP_HIGH, INPUT_PULLUP);
 

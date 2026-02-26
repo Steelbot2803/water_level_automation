@@ -2,11 +2,14 @@
 
 namespace {
 
+SystemState* gState = nullptr;
+
 String readLine() {
   static String line;
   while (Serial.available()) {
     const char c = static_cast<char>(Serial.read());
-    if (c == '\n' || c == '\r') {
+    if (c == '
+' || c == '') {
       if (line.length() == 0) continue;
       String out = line;
       line = "";
@@ -33,18 +36,23 @@ void printHelp() {
 
 }  // namespace
 
+void setSystemStateRef(SystemState* state) {
+  gState = state;
+}
+
+SystemState* getSystemStateRef() {
+  return gState;
+}
+
 void printBanner() {
   Serial.println(F("\nWater Level Automation booted."));
   printHelp();
 }
 
-void readCommandFromSerial(SystemState& state) {
-  const String line = readLine();
-  if (line.isEmpty()) return;
-
+bool applyCommand(SystemState& state, const String& line) {
   if (line == "help") {
     printHelp();
-    return;
+    return true;
   }
 
   if (line == "auto") {
@@ -52,7 +60,7 @@ void readCommandFromSerial(SystemState& state) {
     state.command.overrideFillToHigh = false;
     state.command.forcedMotor = MotorType::NONE;
     Serial.println(F("Mode set: AUTO"));
-    return;
+    return true;
   }
 
   if (line == "manual") {
@@ -60,42 +68,51 @@ void readCommandFromSerial(SystemState& state) {
     state.command.overrideFillToHigh = false;
     state.command.forcedMotor = MotorType::NONE;
     Serial.println(F("Mode set: MANUAL"));
-    return;
+    return true;
   }
 
   if (line == "override") {
     state.command.manualMode = false;
     state.command.overrideFillToHigh = true;
     Serial.println(F("Override accepted: filling until overhead HIGH"));
-    return;
+    return true;
   }
 
   if (line == "motor borewell") {
     state.command.manualMode = true;
     state.command.forcedMotor = MotorType::BOREWELL;
     Serial.println(F("Manual motor: BOREWELL"));
-    return;
+    return true;
   }
 
   if (line == "motor sump") {
     state.command.manualMode = true;
     state.command.forcedMotor = MotorType::SUMP_TRANSFER;
     Serial.println(F("Manual motor: SUMP TRANSFER"));
-    return;
+    return true;
   }
 
   if (line == "motor stop") {
     state.command.forcedMotor = MotorType::NONE;
     state.command.overrideFillToHigh = false;
     Serial.println(F("Motor command: STOP"));
-    return;
+    return true;
   }
 
   if (line == "status") {
-    state.lastStatusPrintMs = 0; // force status print in next status cycle
-    return;
+    state.lastStatusPrintMs = 0;  // force status print in next status cycle
+    return true;
   }
 
-  Serial.print(F("Unknown command: "));
-  Serial.println(line);
+  return false;
+}
+
+void readCommandFromSerial(SystemState& state) {
+  const String line = readLine();
+  if (line.isEmpty()) return;
+
+  if (!applyCommand(state, line)) {
+    Serial.print(F("Unknown command: "));
+    Serial.println(line);
+  }
 }
