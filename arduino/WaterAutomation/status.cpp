@@ -1,3 +1,4 @@
+#include "mqtt_link.h"
 #include "status.h"
 
 void publishStatus(SystemState& state) {
@@ -30,11 +31,13 @@ void publishStatus(SystemState& state) {
   Serial.print(F("sump_transfer_status: "));
   Serial.println(toText(state.sumpTransfer.status));
 
-  if (state.sumpLevel == SumpLevel::CRITICAL || state.sumpCriticalWarningLatched) {
-    Serial.println(F("warning: sump at CRITICAL - verify source water."));
-  }
+  Serial.print(F("wifi_connected: "));
+  Serial.println(isWifiConnected() ? F("true") : F("false"));
 
-  if (state.sumpLevel == SumpLevel::BELOW_CRITICAL) {
-    Serial.println(F("warning: sump BELOW CRITICAL - pump protection active."));
+  Serial.print(F("mqtt_connected: "));
+  Serial.println(isMqttConnected() ? F("true") : F("false"));
+
+  if (state.sumpLevel == SumpLevel::CRITICAL || state.sumpCriticalWarningLatched) {
+    Serial.println(F("warning: sump at/below LOW (CRITICAL) - pump protection active."));
   }
 }

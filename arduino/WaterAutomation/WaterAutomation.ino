@@ -2,6 +2,7 @@
 #include "controller.h"
 #include "io.h"
 #include "status.h"
+#include "mqtt_link.h"
 
 SystemState state;
 
@@ -17,14 +18,18 @@ void setup() {
   stopMotor(MotorType::SUMP_TRANSFER);
 
   initState(state);
+  setSystemStateRef(&state);
   printBanner();
+  initMqttLink();
 }
 
 void loop() {
   updateLevelsFromPins(state);
   readCommandFromSerial(state);
+  runMqttLink(state);
   runAutomationLogic(state);
   writeMotorOutputs(state);
   publishStatus(state);
+  publishStateToMqtt(state);
   delay(MAIN_LOOP_DELAY_MS);
 }
