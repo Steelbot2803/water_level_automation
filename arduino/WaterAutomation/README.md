@@ -41,6 +41,8 @@ Adjust pin polarity/threshold wiring in `config.h` according to your sensor type
 
 ## HiveMQ integration
 - The sketch now publishes status to MQTT and accepts the same command strings over MQTT as serial.
+- MQTT/WiFi connection attempts are non-blocking so serial status output is not held up when network/cloud is unavailable.
+- Serial status now includes `wifi_connected` and `mqtt_connected` flags for quick diagnostics.
 - Create `arduino/WaterAutomation/secrets.h` from `secrets.example.h`.
 - Add required libraries in Arduino IDE/CLI:
   - `WiFi` (or replace with your board-specific WiFi library)
