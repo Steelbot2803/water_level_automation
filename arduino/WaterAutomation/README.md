@@ -37,3 +37,14 @@ This folder contains a multi-file Arduino implementation for:
 - In auto mode, if sump is `critical`, motor operation is blocked for pump protection.
 
 Adjust pin polarity/threshold wiring in `config.h` according to your sensor type.
+
+
+## HiveMQ integration
+- The sketch now publishes status to MQTT and accepts the same command strings over MQTT as serial.
+- Create `arduino/WaterAutomation/secrets.h` from `secrets.example.h`.
+- Add required libraries in Arduino IDE/CLI:
+  - `WiFi` (or replace with your board-specific WiFi library)
+  - `PubSubClient`
+- MQTT topics:
+  - Command subscribe: `water-system/cmd`
+  - Status publish: `water-system/status`
