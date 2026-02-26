@@ -3,6 +3,7 @@
 #include "io.h"
 #include "status.h"
 #include "mqtt_link.h"
+#include "secrets.h"
 
 SystemState state;
 

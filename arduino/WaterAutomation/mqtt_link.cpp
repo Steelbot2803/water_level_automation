@@ -15,7 +15,7 @@ PubSubClient mqttClient(wifiClient);
 unsigned long lastMqttPublishMs = 0;
 unsigned long lastWifiAttemptMs = 0;
 unsigned long lastMqttAttemptMs = 0;
-wl_status_t lastWifiStatus = WL_NO_MODULE;
+uint8_t lastWifiStatus = WL_NO_MODULE;
 bool lastMqttConnected = false;
 
 const char* overheadText(OverheadLevel l) {
@@ -48,7 +48,7 @@ const char* motorText(MotorType m) {
   return "unknown";
 }
 
-const __FlashStringHelper* wifiStatusText(wl_status_t status) {
+const __FlashStringHelper* wifiStatusText(uint8_t status) {
   switch (status) {
     case WL_CONNECTED: return F("connected");
     case WL_IDLE_STATUS: return F("connecting");
@@ -61,7 +61,7 @@ const __FlashStringHelper* wifiStatusText(wl_status_t status) {
   }
 }
 
-void reportWifiStatusChange(wl_status_t status) {
+void reportWifiStatusChange(uint8_t status) {
   if (status == lastWifiStatus) return;
 
   lastWifiStatus = status;
@@ -78,7 +78,7 @@ void reportMqttStatusChange(bool connected) {
 }
 
 void connectWifi() {
-  const wl_status_t status = WiFi.status();
+  const uint8_t status = WiFi.status();
   reportWifiStatusChange(status);
 
   if (status == WL_CONNECTED || status == WL_IDLE_STATUS) return;
