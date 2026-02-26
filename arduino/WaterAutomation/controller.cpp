@@ -70,8 +70,23 @@ void stopActiveMotor(SystemState& state) {
 bool tryStart(SystemState& state, MotorType motor, bool requireSumpCheck) {
   const unsigned long nowMs = millis();
 
-  if (isLocked(state, motor, nowMs)) return false;
-  if (requireSumpCheck && !sumpAllowsPumping(state)) return false;
+  if (isLocked(state, motor, nowMs)) {
+    if (state.activeMotor == motor) {
+      stopActiveMotor(state);
+    }
+    return false;
+  }
+
+  if (requireSumpCheck && !sumpAllowsPumping(state)) {
+    if (state.activeMotor == motor) {
+      stopActiveMotor(state);
+    }
+    return false;
+  }
+
+  if (state.activeMotor == motor) {
+    return true;
+  }
 
   stopActiveMotor(state);
 

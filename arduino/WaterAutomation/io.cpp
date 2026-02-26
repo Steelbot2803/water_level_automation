@@ -49,6 +49,7 @@ void readCommandFromSerial(SystemState& state) {
 
   if (line == "auto") {
     state.command.manualMode = false;
+    state.command.overrideFillToHigh = false;
     state.command.forcedMotor = MotorType::NONE;
     Serial.println(F("Mode set: AUTO"));
     return;
@@ -57,6 +58,7 @@ void readCommandFromSerial(SystemState& state) {
   if (line == "manual") {
     state.command.manualMode = true;
     state.command.overrideFillToHigh = false;
+    state.command.forcedMotor = MotorType::NONE;
     Serial.println(F("Mode set: MANUAL"));
     return;
   }
