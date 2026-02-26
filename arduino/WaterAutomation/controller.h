@@ -34,7 +34,7 @@ enum class SumpLevel : uint8_t {
 struct CommandState {
   bool manualMode = false;
   bool overrideFillToHigh = false;
-  MotorType forcedMotor = MotorType::NONE; // honored only in manual mode
+  MotorType forcedMotor = MotorType::NONE;  // honored only in manual mode
 };
 
 struct MotorRuntimeState {

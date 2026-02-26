@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 #include <PubSubClient.h>
-#include <WiFi.h>
+#include <WiFiS3.h>
 
 #include "config.h"
 #include "io.h"
@@ -10,7 +10,7 @@
 
 namespace {
 
-WiFiClient wifiClient;
+WiFiSSLClient wifiClient;
 PubSubClient mqttClient(wifiClient);
 unsigned long lastMqttPublishMs = 0;
 unsigned long lastWifiAttemptMs = 0;
@@ -81,7 +81,7 @@ void connectWifi() {
   const uint8_t status = WiFi.status();
   reportWifiStatusChange(status);
 
-  if (status == WL_CONNECTED || status == WL_IDLE_STATUS) return;
+  if (status == WL_CONNECTED) return;
 
   const unsigned long nowMs = millis();
   if (lastWifiAttemptMs != 0 && nowMs - lastWifiAttemptMs < 30000) return;
@@ -170,14 +170,14 @@ void publishStateToMqtt(const SystemState& state) {
 
   char payload[220];
   snprintf(
-      payload,
-      sizeof(payload),
-      "{\"mode\":\"%s\",\"override\":%s,\"overhead\":\"%s\",\"sump\":\"%s\",\"motor\":\"%s\"}",
-      modeText(state),
-      state.command.overrideFillToHigh ? "true" : "false",
-      overheadText(state.overheadLevel),
-      sumpText(state.sumpLevel),
-      motorText(state.activeMotor));
+    payload,
+    sizeof(payload),
+    "{\"mode\":\"%s\",\"override\":%s,\"overhead\":\"%s\",\"sump\":\"%s\",\"motor\":\"%s\"}",
+    modeText(state),
+    state.command.overrideFillToHigh ? "true" : "false",
+    overheadText(state.overheadLevel),
+    sumpText(state.sumpLevel),
+    motorText(state.activeMotor));
 
   mqttClient.publish(MQTT_STATUS_TOPIC, payload, true);
 }

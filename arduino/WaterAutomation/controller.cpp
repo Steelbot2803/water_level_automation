@@ -24,9 +24,7 @@ SumpLevel readSumpLevel() {
 }
 
 bool needsFill(const SystemState& state) {
-  return state.overheadLevel == OverheadLevel::LOW ||
-         state.overheadLevel == OverheadLevel::CRITICAL ||
-         state.overheadLevel == OverheadLevel::EMPTY;
+  return state.overheadLevel == OverheadLevel::LOW || state.overheadLevel == OverheadLevel::CRITICAL || state.overheadLevel == OverheadLevel::EMPTY;
 }
 
 bool reachedStopLevel(const SystemState& state) {
@@ -127,8 +125,8 @@ void selectAutoMotor(SystemState& state) {
 
   // Nothing could start.
   state.borewell.status = isLocked(state, MotorType::BOREWELL, millis())
-                              ? MotorStatus::DRY_RUN_LOCK
-                              : MotorStatus::BLOCKED_BY_SAFETY;
+                            ? MotorStatus::DRY_RUN_LOCK
+                            : MotorStatus::BLOCKED_BY_SAFETY;
   state.sumpTransfer.status = MotorStatus::BLOCKED_BY_SAFETY;
 }
 
@@ -179,7 +177,7 @@ void runAutoControl(SystemState& state) {
   }
 }
 
-} // namespace
+}  // namespace
 
 void initState(SystemState& state) {
   pinMode(PIN_OH_LOW, INPUT_PULLUP);
