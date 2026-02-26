@@ -34,6 +34,28 @@ function chooseMotor(state: WaterAutomationState) {
 	return { motor: null, blockedReason: 'No motor available due to safety constraints' };
 }
 
+function stopAllMotors(state: WaterAutomationState) {
+	state.activeMotor = null;
+	state.motors.BOREWELL.commandedOn = false;
+	state.motors.BOREWELL.status = state.motors.BOREWELL.dryRunDetected ? 'FAULT_DRY_RUN' : 'STOPPED';
+	state.motors.SUMP.commandedOn = false;
+	state.motors.SUMP.status = state.motors.SUMP.dryRunDetected ? 'FAULT_DRY_RUN' : 'STOPPED';
+}
+
+function startMotor(state: WaterAutomationState, motor: Motor) {
+	state.activeMotor = motor;
+	state.motors.BOREWELL.commandedOn = motor === 'BOREWELL';
+	state.motors.BOREWELL.status =
+		motor === 'BOREWELL'
+			? 'RUNNING'
+			: state.motors.BOREWELL.dryRunDetected
+				? 'FAULT_DRY_RUN'
+				: 'STOPPED';
+	state.motors.SUMP.commandedOn = motor === 'SUMP';
+	state.motors.SUMP.status =
+		motor === 'SUMP' ? 'RUNNING' : state.motors.SUMP.dryRunDetected ? 'FAULT_DRY_RUN' : 'STOPPED';
+}
+
 export function runAutomation(state: WaterAutomationState): WaterAutomationState {
 	const next = structuredClone(state);
 	next.cycleCount += 1;
@@ -46,7 +68,7 @@ export function runAutomation(state: WaterAutomationState): WaterAutomationState
 	next.needFill = next.mode === 'OVERRIDE_FILL' || overheadFillLevels.includes(next.overhead);
 
 	if (next.overhead === 'HIGH') {
-		next.activeMotor = null;
+		stopAllMotors(next);
 		next.lastEvent = 'Overhead tank at HIGH: stopped all motors';
 		if (next.mode === 'OVERRIDE_FILL') {
 			next.mode = 'AUTO';
@@ -61,7 +83,7 @@ export function runAutomation(state: WaterAutomationState): WaterAutomationState
 	}
 
 	if (!next.needFill) {
-		next.activeMotor = null;
+		stopAllMotors(next);
 		next.lastEvent = 'No fill demand: stopped all motors';
 		return next;
 	}
@@ -69,15 +91,12 @@ export function runAutomation(state: WaterAutomationState): WaterAutomationState
 	const { motor, blockedReason } = chooseMotor(next);
 
 	if (!motor) {
-		next.activeMotor = null;
+		stopAllMotors(next);
 		next.lastEvent = blockedReason ?? 'Motor selection failed';
 		return next;
 	}
 
-	next.activeMotor = motor;
-	next.motors.BOREWELL.commandedOn = motor === 'BOREWELL';
-	next.motors.SUMP.commandedOn = motor === 'SUMP';
-	next.motors[motor].status = 'RUNNING';
+	startMotor(next, motor);
 	next.lastEvent = `${motor} running (${next.mode})`;
 	return next;
 }
@@ -111,7 +130,7 @@ export function simulateMinute(state: WaterAutomationState): WaterAutomationStat
 	}
 
 	if (next.overhead === 'HIGH') {
-		next.activeMotor = null;
+		stopAllMotors(next);
 		next.lastEvent = 'Fill cycle complete: overhead reached HIGH';
 		next.motors.BOREWELL.commandedOn = false;
 		next.motors.SUMP.commandedOn = false;
