@@ -1,65 +1,74 @@
-# Svelte library
+# Water Automation PWA
 
-Everything you need to build a Svelte library, powered by [`sv`](https://npmjs.com/package/sv).
+This app is a browser-based MQTT control surface for the Arduino water automation controller.
 
-Read more about creating a library [in the docs](https://svelte.dev/docs/kit/packaging).
+## What it does
 
-## Creating a project
+- Connects to HiveMQ over WebSockets from the browser
+- Subscribes to the Arduino status topic
+- Publishes the exact command strings accepted by `applyCommand()`
+- Displays the widened Arduino status payload, including motor runtime states
 
-If you're seeing this, you've probably already done this step. Congrats!
+## Environment variables
 
-```sh
-# create a new project in the current directory
-npx sv create
+Copy `.env.example` to `.env`. The app auto-connects from these values on page load.
 
-# create a new project in my-app
-npx sv create my-app
+```bash
+PUBLIC_MQTT_HOST=
+PUBLIC_MQTT_PORT=8884
+PUBLIC_MQTT_PATH=/mqtt
+PUBLIC_MQTT_USE_SSL=true
+PUBLIC_MQTT_USERNAME=
+PUBLIC_MQTT_PASSWORD=
+PUBLIC_MQTT_COMMAND_TOPIC=water-system/cmd
+PUBLIC_MQTT_STATUS_TOPIC=water-system/status
+PUBLIC_MQTT_CLIENT_ID_PREFIX=water-pwa
 ```
 
-To recreate this project with the same configuration:
+Notes:
 
-```sh
-# recreate this project
-npx sv create --template library --types ts --add prettier eslint playwright tailwindcss="plugins:typography,forms" sveltekit-adapter="adapter:static" mdsvex --install npm ./
-```
+- For HiveMQ Cloud in the browser, use the secure WebSocket port `8884`.
+- Port `8883` is the raw MQTT/TLS port used by the Arduino, not the PWA.
+- If you change `.env`, restart the dev server so Vite reloads the public env values.
 
-## Developing
+## Development
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
+```bash
+npm install
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
-Everything inside `src/lib` is part of your library, everything inside `src/routes` can be used as a showcase or preview app.
+## Validation
 
-## Building
-
-To build your library:
-
-```sh
-npm pack
-```
-
-To create a production version of your showcase app:
-
-```sh
+```bash
+npm run check
 npm run build
 ```
 
-You can preview the production build with `npm run preview`.
+## Command mapping
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+The PWA publishes these literal MQTT payloads:
 
-## Publishing
+- `auto`
+- `manual`
+- `override`
+- `motor borewell`
+- `motor sump`
+- `motor stop`
+- `status`
 
-Go into the `package.json` and give your package the desired name through the `"name"` option. Also consider adding a `"license"` field and point it to a `LICENSE` file which you can create from a template (one popular option is the [MIT license](https://opensource.org/license/mit/)).
+## Expected status payload
 
-To publish your library to [npm](https://www.npmjs.com):
-
-```sh
-npm publish
+```json
+{
+  "mode": "auto",
+  "override": false,
+  "manual_target": "none",
+  "overhead": "low",
+  "sump": "high",
+  "motor": "borewell",
+  "borewell_status": "running",
+  "sump_transfer_status": "stopped",
+  "sump_warning": false
+}
 ```

@@ -1,6 +1,7 @@
 # Arduino Water Level Automation Logic
 
 This folder contains a multi-file Arduino implementation for:
+
 - 2 motors: `borewell` (priority) and `sump transfer`
 - 2 tanks: overhead tank (critical/low/medium/high) and sump tank (critical/low/high)
 - safety controls including dry-run lockout and sump-critical stop
@@ -8,6 +9,7 @@ This folder contains a multi-file Arduino implementation for:
 - status output over serial
 
 ## Files
+
 - `WaterAutomation.ino` - setup/loop wiring
 - `config.h` - pin map and timing constants
 - `controller.h/.cpp` - state model and control logic
@@ -15,6 +17,7 @@ This folder contains a multi-file Arduino implementation for:
 - `status.h/.cpp` - periodic telemetry output
 
 ## Serial commands
+
 - `auto`
 - `manual`
 - `override`
@@ -25,6 +28,7 @@ This folder contains a multi-file Arduino implementation for:
 - `help`
 
 ## Key behavior
+
 - In **auto mode**:
   - If overhead is `low/critical`, start filling.
   - Borewell motor is tried first; if unavailable/dry-run locked, fallback to sump transfer.
@@ -38,8 +42,8 @@ This folder contains a multi-file Arduino implementation for:
 
 Adjust pin polarity/threshold wiring in `config.h` according to your sensor type.
 
-
 ## HiveMQ integration
+
 - The sketch now publishes status to MQTT and accepts the same command strings over MQTT as serial.
 - MQTT/WiFi connection attempts are non-blocking so serial status output is not held up when network/cloud is unavailable.
 - Serial status now includes `wifi_connected` and `mqtt_connected` flags for quick diagnostics.
@@ -50,3 +54,23 @@ Adjust pin polarity/threshold wiring in `config.h` according to your sensor type
 - MQTT topics:
   - Command subscribe: `water-system/cmd`
   - Status publish: `water-system/status`
+- Status payload shape:
+
+```json
+{
+  "mode": "auto",
+  "override": false,
+  "manual_target": "none",
+  "overhead": "low",
+  "sump": "high",
+  "motor": "borewell",
+  "borewell_status": "running",
+  "sump_transfer_status": "stopped",
+  "sump_warning": false
+}
+```
+
+- Field notes:
+  - `manual_target` reports the requested manual motor only while the controller is in manual mode.
+  - `borewell_status` and `sump_transfer_status` mirror the controller runtime states: `stopped`, `starting`, `running`, `dry_run_lock`, `blocked_by_safety`.
+  - `sump_warning` goes true when the sump reaches critical or the critical-warning latch has been set.

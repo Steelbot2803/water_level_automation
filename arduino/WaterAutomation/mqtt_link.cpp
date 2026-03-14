@@ -48,6 +48,17 @@ const char* motorText(MotorType m) {
   return "unknown";
 }
 
+const char* motorStatusText(MotorStatus status) {
+  switch (status) {
+    case MotorStatus::STOPPED: return "stopped";
+    case MotorStatus::STARTING: return "starting";
+    case MotorStatus::RUNNING: return "running";
+    case MotorStatus::DRY_RUN_LOCK: return "dry_run_lock";
+    case MotorStatus::BLOCKED_BY_SAFETY: return "blocked_by_safety";
+  }
+  return "unknown";
+}
+
 const __FlashStringHelper* wifiStatusText(uint8_t status) {
   switch (status) {
     case WL_CONNECTED: return F("connected");
@@ -141,6 +152,11 @@ const char* modeText(const SystemState& state) {
   return state.command.manualMode ? "manual" : "auto";
 }
 
+const char* manualTargetText(const SystemState& state) {
+  if (!state.command.manualMode) return "none";
+  return motorText(state.command.forcedMotor);
+}
+
 }  // namespace
 
 void initMqttLink() {
@@ -169,16 +185,20 @@ void publishStateToMqtt(const SystemState& state) {
   }
   lastMqttPublishMs = nowMs;
 
-  char payload[220];
+  char payload[360];
   snprintf(
     payload,
     sizeof(payload),
-    "{\"mode\":\"%s\",\"override\":%s,\"overhead\":\"%s\",\"sump\":\"%s\",\"motor\":\"%s\"}",
+    "{\"mode\":\"%s\",\"override\":%s,\"manual_target\":\"%s\",\"overhead\":\"%s\",\"sump\":\"%s\",\"motor\":\"%s\",\"borewell_status\":\"%s\",\"sump_transfer_status\":\"%s\",\"sump_warning\":%s}",
     modeText(state),
     state.command.overrideFillToHigh ? "true" : "false",
+    manualTargetText(state),
     overheadText(state.overheadLevel),
     sumpText(state.sumpLevel),
-    motorText(state.activeMotor));
+    motorText(state.activeMotor),
+    motorStatusText(state.borewell.status),
+    motorStatusText(state.sumpTransfer.status),
+    (state.sumpLevel == SumpLevel::CRITICAL || state.sumpCriticalWarningLatched) ? "true" : "false");
 
   mqttClient.publish(MQTT_STATUS_TOPIC, payload, true);
 }

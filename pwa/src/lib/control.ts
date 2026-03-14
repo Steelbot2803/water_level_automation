@@ -1,147 +1,256 @@
-import type { Motor, OverheadLevel, SumpLevel, WaterAutomationState } from './types.js';
+import {
+	PUBLIC_MQTT_CLIENT_ID_PREFIX,
+	PUBLIC_MQTT_COMMAND_TOPIC,
+	PUBLIC_MQTT_HOST,
+	PUBLIC_MQTT_PASSWORD,
+	PUBLIC_MQTT_PATH,
+	PUBLIC_MQTT_PORT,
+	PUBLIC_MQTT_STATUS_TOPIC,
+	PUBLIC_MQTT_USERNAME,
+	PUBLIC_MQTT_USE_SSL
+} from '$env/static/public';
 
-const overheadFillLevels: OverheadLevel[] = ['CRITICAL', 'LOW'];
+import {
+	activeMotors,
+	type ActiveMotor,
+	type ArduinoCommand,
+	type ArduinoStatusPayload,
+	type BrokerSettings,
+	type ControlMode,
+	type DeviceTelemetry,
+	type MotorRuntimeStatus,
+	motorRuntimeStatuses,
+	mqttModes,
+	overheadLevels,
+	sumpLevels
+} from './types.js';
 
-function motorIsLocked(state: WaterAutomationState, motor: Motor, now = Date.now()) {
-	const lockout = state.motors[motor].lockoutUntil;
-	return Boolean(lockout && lockout > now);
+const refillLevels = new Set(['empty', 'critical', 'low']);
+const defaultWebSocketPorts = {
+	secure: '8884',
+	insecure: '8000'
+} as const;
+
+function isOneOf<T extends string>(value: unknown, values: readonly T[]): value is T {
+	return typeof value === 'string' && (values as readonly string[]).includes(value);
 }
 
-function motorIsBlocked(state: WaterAutomationState, motor: Motor) {
-	if (state.motors[motor].dryRunDetected) {
-		return `${motor} dry run detected`;
+function readEnum<T extends string>(value: unknown, values: readonly T[], field: string): T {
+	if (!isOneOf(value, values)) {
+		throw new Error(`Invalid "${field}" value in MQTT status payload`);
 	}
 
-	if (motorIsLocked(state, motor)) {
-		return `${motor} in lockout`;
+	return value;
+}
+
+function readBoolean(value: unknown, field: string): boolean {
+	if (typeof value !== 'boolean') {
+		throw new Error(`Invalid "${field}" value in MQTT status payload`);
 	}
 
-	if (motor === 'SUMP' && state.mode !== 'MANUAL' && state.sump === 'BELOW_CRITICAL') {
-		return 'SUMP blocked: sump tank below critical';
+	return value;
+}
+
+function normalizePath(path: string) {
+	const trimmed = path.trim();
+	if (!trimmed) return '/mqtt';
+	return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+}
+
+function fallbackMotorStatus(activeMotor: ActiveMotor, motor: 'borewell' | 'sump_transfer') {
+	return activeMotor === motor ? 'running' : 'stopped';
+}
+
+function defaultPort(useSSL: boolean) {
+	return useSSL ? defaultWebSocketPorts.secure : defaultWebSocketPorts.insecure;
+}
+
+export function createDefaultBrokerSettings(): BrokerSettings {
+	const useSSL = PUBLIC_MQTT_USE_SSL?.toLowerCase() !== 'false';
+
+	return {
+		host: PUBLIC_MQTT_HOST?.trim() ?? '',
+		port: PUBLIC_MQTT_PORT?.trim() || defaultPort(useSSL),
+		path: normalizePath(PUBLIC_MQTT_PATH ?? '/mqtt'),
+		username: PUBLIC_MQTT_USERNAME ?? '',
+		password: PUBLIC_MQTT_PASSWORD ?? '',
+		useSSL,
+		commandTopic: PUBLIC_MQTT_COMMAND_TOPIC?.trim() || 'water-system/cmd',
+		statusTopic: PUBLIC_MQTT_STATUS_TOPIC?.trim() || 'water-system/status',
+		clientIdPrefix: PUBLIC_MQTT_CLIENT_ID_PREFIX?.trim() || 'water-pwa'
+	};
+}
+
+export function sanitizeBrokerSettings(settings: BrokerSettings): BrokerSettings {
+	return {
+		host: settings.host.trim(),
+		port: settings.port.trim() || defaultPort(settings.useSSL),
+		path: normalizePath(settings.path),
+		username: settings.username.trim(),
+		password: settings.password,
+		useSSL: settings.useSSL,
+		commandTopic: settings.commandTopic.trim() || 'water-system/cmd',
+		statusTopic: settings.statusTopic.trim() || 'water-system/status',
+		clientIdPrefix: settings.clientIdPrefix.trim() || 'water-pwa'
+	};
+}
+
+export function validateBrowserBrokerSettings(settings: BrokerSettings) {
+	const normalized = sanitizeBrokerSettings(settings);
+
+	if (!normalized.host) {
+		return 'Missing `PUBLIC_MQTT_HOST` in `pwa/.env`.';
+	}
+
+	if (normalized.useSSL && normalized.port === '8883') {
+		return 'Use HiveMQ secure WebSocket port `8884` in the PWA. Port `8883` is the Arduino MQTT/TLS port.';
+	}
+
+	if (!normalized.useSSL && normalized.port === '1883') {
+		return 'Use a WebSocket listener for the PWA. Port `1883` is raw MQTT, not browser WebSockets.';
 	}
 
 	return null;
 }
 
-function chooseMotor(state: WaterAutomationState) {
-	const motorPriority: Motor[] = ['BOREWELL', 'SUMP'];
-	for (const motor of motorPriority) {
-		const blockedReason = motorIsBlocked(state, motor);
-		if (!blockedReason) {
-			return { motor, blockedReason: null };
-		}
+export function buildBrokerUrl(settings: BrokerSettings) {
+	const normalized = sanitizeBrokerSettings(settings);
+	const protocol = normalized.useSSL ? 'wss' : 'ws';
+	const port = normalized.port ? `:${normalized.port}` : '';
+	return `${protocol}://${normalized.host}${port}${normalized.path}`;
+}
+
+export function parseArduinoStatusPayload(rawPayload: string): ArduinoStatusPayload {
+	let parsed: unknown;
+
+	try {
+		parsed = JSON.parse(rawPayload);
+	} catch {
+		throw new Error('MQTT status payload is not valid JSON');
 	}
-	return { motor: null, blockedReason: 'No motor available due to safety constraints' };
-}
 
-function stopAllMotors(state: WaterAutomationState) {
-	state.activeMotor = null;
-	state.motors.BOREWELL.commandedOn = false;
-	state.motors.BOREWELL.status = state.motors.BOREWELL.dryRunDetected ? 'FAULT_DRY_RUN' : 'STOPPED';
-	state.motors.SUMP.commandedOn = false;
-	state.motors.SUMP.status = state.motors.SUMP.dryRunDetected ? 'FAULT_DRY_RUN' : 'STOPPED';
-}
+	if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+		throw new Error('MQTT status payload must be a JSON object');
+	}
 
-function startMotor(state: WaterAutomationState, motor: Motor) {
-	state.activeMotor = motor;
-	state.motors.BOREWELL.commandedOn = motor === 'BOREWELL';
-	state.motors.BOREWELL.status =
-		motor === 'BOREWELL'
-			? 'RUNNING'
-			: state.motors.BOREWELL.dryRunDetected
-				? 'FAULT_DRY_RUN'
-				: 'STOPPED';
-	state.motors.SUMP.commandedOn = motor === 'SUMP';
-	state.motors.SUMP.status =
-		motor === 'SUMP' ? 'RUNNING' : state.motors.SUMP.dryRunDetected ? 'FAULT_DRY_RUN' : 'STOPPED';
-}
-
-export function runAutomation(state: WaterAutomationState): WaterAutomationState {
-	const next = structuredClone(state);
-	next.cycleCount += 1;
-	next.alarms = {
-		overheadCritical: next.overhead === 'CRITICAL',
-		sumpCritical: next.sump === 'CRITICAL',
-		sumpBelowCritical: next.sump === 'BELOW_CRITICAL'
+	const payload = parsed as Record<string, unknown>;
+	const status: ArduinoStatusPayload = {
+		mode: readEnum(payload.mode, mqttModes, 'mode'),
+		override: readBoolean(payload.override, 'override'),
+		overhead: readEnum(payload.overhead, overheadLevels, 'overhead'),
+		sump: readEnum(payload.sump, sumpLevels, 'sump'),
+		motor: readEnum(payload.motor, activeMotors, 'motor')
 	};
 
-	next.needFill = next.mode === 'OVERRIDE_FILL' || overheadFillLevels.includes(next.overhead);
+	if (payload.manual_target !== undefined) {
+		status.manual_target = readEnum(payload.manual_target, activeMotors, 'manual_target');
+	}
 
-	if (next.overhead === 'HIGH') {
-		stopAllMotors(next);
-		next.lastEvent = 'Overhead tank at HIGH: stopped all motors';
-		if (next.mode === 'OVERRIDE_FILL') {
-			next.mode = 'AUTO';
-			next.lastEvent += '; mode switched to AUTO';
+	if (payload.borewell_status !== undefined) {
+		status.borewell_status = readEnum(
+			payload.borewell_status,
+			motorRuntimeStatuses,
+			'borewell_status'
+		);
+	}
+
+	if (payload.sump_transfer_status !== undefined) {
+		status.sump_transfer_status = readEnum(
+			payload.sump_transfer_status,
+			motorRuntimeStatuses,
+			'sump_transfer_status'
+		);
+	}
+
+	if (payload.sump_warning !== undefined) {
+		status.sump_warning = readBoolean(payload.sump_warning, 'sump_warning');
+	}
+
+	return status;
+}
+
+export function deriveControlMode(payload: ArduinoStatusPayload): ControlMode {
+	if (payload.mode === 'manual') return 'manual';
+	return payload.override ? 'override_fill' : 'auto';
+}
+
+export function toDeviceTelemetry(rawPayload: string, receivedAt = Date.now()): DeviceTelemetry {
+	const parsed = parseArduinoStatusPayload(rawPayload);
+	const controlMode = deriveControlMode(parsed);
+	const manualTarget = parsed.manual_target ?? (parsed.mode === 'manual' ? parsed.motor : 'none');
+	const borewellStatus = parsed.borewell_status ?? fallbackMotorStatus(parsed.motor, 'borewell');
+	const sumpTransferStatus =
+		parsed.sump_transfer_status ?? fallbackMotorStatus(parsed.motor, 'sump_transfer');
+	const sumpWarning =
+		parsed.sump_warning ?? (parsed.sump === 'critical' || parsed.sump === 'below_critical');
+
+	return {
+		...parsed,
+		manual_target: manualTarget,
+		borewell_status: borewellStatus,
+		sump_transfer_status: sumpTransferStatus,
+		sump_warning: sumpWarning,
+		controlMode,
+		needFill: parsed.override || refillLevels.has(parsed.overhead),
+		receivedAt,
+		rawPayload,
+		alarms: {
+			overheadCritical: parsed.overhead === 'empty' || parsed.overhead === 'critical',
+			sumpCritical: parsed.sump === 'critical',
+			sumpBelowCritical: parsed.sump === 'below_critical',
+			sumpWarning
+		},
+		motors: {
+			borewell: {
+				active: parsed.motor === 'borewell',
+				status: borewellStatus
+			},
+			sumpTransfer: {
+				active: parsed.motor === 'sump_transfer',
+				status: sumpTransferStatus
+			}
 		}
-		return next;
-	}
-
-	if (next.mode === 'MANUAL') {
-		next.lastEvent = 'Manual mode active: automatic selection skipped';
-		return next;
-	}
-
-	if (!next.needFill) {
-		stopAllMotors(next);
-		next.lastEvent = 'No fill demand: stopped all motors';
-		return next;
-	}
-
-	const { motor, blockedReason } = chooseMotor(next);
-
-	if (!motor) {
-		stopAllMotors(next);
-		next.lastEvent = blockedReason ?? 'Motor selection failed';
-		return next;
-	}
-
-	startMotor(next, motor);
-	next.lastEvent = `${motor} running (${next.mode})`;
-	return next;
-}
-
-export function simulateMinute(state: WaterAutomationState): WaterAutomationState {
-	const next = structuredClone(state);
-
-	if (!next.activeMotor) {
-		next.lastEvent = 'No active motor to simulate';
-		return next;
-	}
-
-	next.motors[next.activeMotor].runtimeSeconds += 60;
-
-	const overheadProgress: Record<OverheadLevel, OverheadLevel> = {
-		CRITICAL: 'LOW',
-		LOW: 'MEDIUM',
-		MEDIUM: 'HIGH',
-		HIGH: 'HIGH'
 	};
-	next.overhead = overheadProgress[next.overhead];
-
-	if (next.activeMotor === 'SUMP') {
-		const sumpDrain: Record<SumpLevel, SumpLevel> = {
-			HIGH: 'LOW',
-			LOW: 'CRITICAL',
-			CRITICAL: 'BELOW_CRITICAL',
-			BELOW_CRITICAL: 'BELOW_CRITICAL'
-		};
-		next.sump = sumpDrain[next.sump];
-	}
-
-	if (next.overhead === 'HIGH') {
-		stopAllMotors(next);
-		next.lastEvent = 'Fill cycle complete: overhead reached HIGH';
-		next.motors.BOREWELL.commandedOn = false;
-		next.motors.SUMP.commandedOn = false;
-	}
-
-	if (next.mode !== 'MANUAL' && next.activeMotor === 'SUMP' && next.sump === 'BELOW_CRITICAL') {
-		next.activeMotor = null;
-		next.motors.SUMP.commandedOn = false;
-		next.motors.SUMP.status = 'STOPPED';
-		next.lastEvent = 'SUMP stopped: sump dropped below critical';
-	}
-
-	return next;
 }
+
+export function createCommandLogId(command: ArduinoCommand, at: number) {
+	return `${at}-${command.replace(/\s+/g, '-')}`;
+}
+
+export function createClientId(prefix: string) {
+	if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+		return `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
+	}
+
+	return `${prefix}-${Date.now().toString(36)}`;
+}
+
+export const controlModeLabels: Record<ControlMode, string> = {
+	auto: 'Automatic',
+	override_fill: 'Override Fill',
+	manual: 'Manual'
+};
+
+export const motorLabels: Record<ActiveMotor, string> = {
+	none: 'None',
+	borewell: 'Borewell',
+	sump_transfer: 'Sump Transfer'
+};
+
+export const runtimeStatusLabels: Record<MotorRuntimeStatus, string> = {
+	stopped: 'Stopped',
+	starting: 'Starting',
+	running: 'Running',
+	dry_run_lock: 'Dry Run Lock',
+	blocked_by_safety: 'Blocked by Safety'
+};
+
+export const commandLabels: Record<ArduinoCommand, string> = {
+	auto: 'Set Auto',
+	manual: 'Enter Manual',
+	override: 'Override Fill',
+	'motor borewell': 'Run Borewell',
+	'motor sump': 'Run Sump Transfer',
+	'motor stop': 'Stop Motor',
+	status: 'Serial Status'
+};
