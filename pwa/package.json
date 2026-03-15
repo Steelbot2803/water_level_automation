@@ -69,6 +69,7 @@
 	"dependencies": {
 		"@iconify/svelte": "^5.2.1",
 		"@sveltejs/adapter-node": "^0.0.18",
+		"lucide-svelte": "^0.577.0",
 		"mqtt": "^5.15.0",
 		"netlify": "^13.3.5"
 	}

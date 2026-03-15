@@ -20,6 +20,8 @@ import type {
 
 const COMMAND_HISTORY_LIMIT = 8;
 const CONNECTION_TIMEOUT_MS = 15000;
+const MAX_RECONNECT_ATTEMPTS = 3;
+const RECONNECT_PERIOD_MS = 5000;
 
 function appendCommandLog(history: CommandLogEntry[], entry: CommandLogEntry) {
 	return [entry, ...history].slice(0, COMMAND_HISTORY_LIMIT);
@@ -139,17 +141,20 @@ function createWaterSystemStore() {
 				password: settings.password || undefined,
 				clientId: createClientId(settings.clientIdPrefix),
 				clean: true,
-				connectTimeout: 10000,
+				connectTimeout: CONNECTION_TIMEOUT_MS,
 				manualConnect: true,
 				protocolVersion: 4,
-				reconnectPeriod: 5000,
+				reconnectPeriod: RECONNECT_PERIOD_MS,
 				resubscribe: true
 			});
 
 			client = nextClient;
+			let reconnectAttempts = 0;
+			let retriesExhausted = false;
 
-			let connectionTimeout: ReturnType<typeof setTimeout> | null = setTimeout(() => {
-				if (client !== nextClient) return;
+			function failAndStop(detail: string, lastError?: string) {
+				if (client !== nextClient || retriesExhausted) return;
+				retriesExhausted = true;
 
 				update((state) => ({
 					...state,
@@ -157,23 +162,17 @@ function createWaterSystemStore() {
 					connection: {
 						...state.connection,
 						phase: 'error',
-						detail: 'Broker connection timed out. Check the browser console and verify WebSocket access to HiveMQ.',
-						lastError: `No MQTT event received within ${CONNECTION_TIMEOUT_MS / 1000}s`
+						detail,
+						lastError: lastError ?? state.connection.lastError
 					}
 				}));
 
-				nextClient.end(true);
-			}, CONNECTION_TIMEOUT_MS);
-
-			function clearConnectionTimeout() {
-				if (connectionTimeout === null) return;
-				clearTimeout(connectionTimeout);
-				connectionTimeout = null;
+				closeClient();
 			}
 
 			nextClient.on('connect', () => {
 				if (client !== nextClient) return;
-				clearConnectionTimeout();
+				reconnectAttempts = 0;
 
 				update((state) => ({
 					...state,
@@ -192,16 +191,10 @@ function createWaterSystemStore() {
 					if (client !== nextClient) return;
 
 					if (error) {
-						update((state) => ({
-							...state,
-							statusTopicSubscribed: false,
-							connection: {
-								...state.connection,
-								phase: 'error',
-								detail: `Connected, but subscribe failed for ${settings.statusTopic}.`,
-								lastError: error.message
-							}
-						}));
+						failAndStop(
+							'Connected, but status subscription failed. Pull to refresh to try again.',
+							error.message
+						);
 						return;
 					}
 
@@ -217,8 +210,16 @@ function createWaterSystemStore() {
 			});
 
 			nextClient.on('reconnect', () => {
-				if (client !== nextClient) return;
-				clearConnectionTimeout();
+				if (client !== nextClient || retriesExhausted) return;
+				reconnectAttempts += 1;
+
+				if (reconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
+					failAndStop(
+						`Unable to reconnect after ${MAX_RECONNECT_ATTEMPTS} attempts. Pull to refresh to try again.`,
+						`Reconnect limit exceeded after ${MAX_RECONNECT_ATTEMPTS} attempts`
+					);
+					return;
+				}
 
 				update((state) => ({
 					...state,
@@ -226,54 +227,60 @@ function createWaterSystemStore() {
 					connection: {
 						...state.connection,
 						phase: 'reconnecting',
-						detail: 'Broker connection lost. Retrying.',
+						detail: `Retrying broker connection (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}).`,
 						lastError: state.connection.lastError
 					}
 				}));
 			});
 
 			nextClient.on('offline', () => {
-				if (client !== nextClient) return;
-				clearConnectionTimeout();
+				if (client !== nextClient || retriesExhausted) return;
 
 				update((state) => ({
 					...state,
 					statusTopicSubscribed: false,
 					connection: {
 						...state.connection,
-						phase: 'offline',
-						detail: 'Broker connection is offline.',
+						phase: reconnectAttempts > 0 ? 'reconnecting' : 'offline',
+						detail:
+							reconnectAttempts > 0
+								? `Retrying broker connection (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}).`
+								: 'Broker connection is offline. Retrying automatically.',
 						lastError: state.connection.lastError
 					}
 				}));
 			});
 
 			nextClient.on('close', () => {
-				if (client !== nextClient) return;
-				clearConnectionTimeout();
+				if (client !== nextClient || retriesExhausted) return;
 
 				update((state) => ({
 					...state,
 					statusTopicSubscribed: false,
 					connection: {
 						...state.connection,
-						phase: 'offline',
-						detail: 'Broker connection closed.',
+						phase: reconnectAttempts > 0 ? 'reconnecting' : 'offline',
+						detail:
+							reconnectAttempts > 0
+								? `Retrying broker connection (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}).`
+								: 'Broker connection closed. Retrying automatically.',
 						lastError: state.connection.lastError
 					}
 				}));
 			});
 
 			nextClient.on('error', (error) => {
-				if (client !== nextClient) return;
-				clearConnectionTimeout();
+				if (client !== nextClient || retriesExhausted) return;
 
 				update((state) => ({
 					...state,
 					connection: {
 						...state.connection,
-						phase: 'error',
-						detail: error.message || 'MQTT client error',
+						phase: reconnectAttempts > 0 ? 'reconnecting' : 'connecting',
+						detail:
+							reconnectAttempts > 0
+								? `Retry ${reconnectAttempts} of ${MAX_RECONNECT_ATTEMPTS} failed. Retrying automatically.`
+								: 'Initial broker connection failed. Retrying automatically.',
 						lastError: error.message || 'MQTT client error'
 					}
 				}));
@@ -327,20 +334,6 @@ function createWaterSystemStore() {
 				}
 			}));
 		}
-	}
-
-	function disconnect() {
-		closeClient();
-		update((state) => ({
-			...state,
-			statusTopicSubscribed: false,
-			connection: {
-				...state.connection,
-				phase: 'idle',
-				detail: `Disconnected from ${state.connection.url || 'broker'}.`,
-				lastError: undefined
-			}
-		}));
 	}
 
 	function sendCommand(command: ArduinoCommand) {
@@ -426,8 +419,6 @@ function createWaterSystemStore() {
 	return {
 		subscribe,
 		initialize,
-		connect,
-		disconnect,
 		sendCommand
 	};
 }
