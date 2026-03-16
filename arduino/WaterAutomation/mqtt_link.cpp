@@ -197,7 +197,7 @@ void publishStateToMqtt(const SystemState& state) {
     sumpText(state.sumpLevel),
     motorText(state.activeMotor),
     motorStatusText(state.borewell.status),
-    motorStatusText(state.sumpTransfer.status),
+    motorStatusText(state.sump.status),
     (state.sumpLevel == SumpLevel::CRITICAL || state.sumpCriticalWarningLatched) ? "true" : "false");
 
   mqttClient.publish(MQTT_STATUS_TOPIC, payload, true);

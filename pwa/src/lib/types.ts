@@ -4,10 +4,10 @@ export type MqttMode = (typeof mqttModes)[number];
 export const controlModes = ['auto', 'override_fill', 'manual'] as const;
 export type ControlMode = (typeof controlModes)[number];
 
-export const overheadLevels = ['empty', 'critical', 'low', 'medium', 'high'] as const;
+export const overheadLevels = ['critical', 'low', 'medium', 'high'] as const;
 export type OverheadLevel = (typeof overheadLevels)[number];
 
-export const sumpLevels = ['below_critical', 'critical', 'low', 'high'] as const;
+export const sumpLevels = ['critical', 'low', 'high'] as const;
 export type SumpLevel = (typeof sumpLevels)[number];
 
 export const activeMotors = ['none', 'borewell', 'sump_transfer'] as const;
@@ -18,7 +18,6 @@ export const motorRuntimeStatuses = [
 	'starting',
 	'running',
 	'dry_run_lock',
-	'blocked_by_safety'
 ] as const;
 export type MotorRuntimeStatus = (typeof motorRuntimeStatuses)[number];
 
@@ -48,8 +47,6 @@ export interface ArduinoStatusPayload {
 export interface DeviceAlarms {
 	overheadCritical: boolean;
 	sumpCritical: boolean;
-	sumpBelowCritical: boolean;
-	sumpWarning: boolean;
 }
 
 export interface MotorTelemetry {
@@ -65,7 +62,7 @@ export interface DeviceTelemetry extends ArduinoStatusPayload {
 	alarms: DeviceAlarms;
 	motors: {
 		borewell: MotorTelemetry;
-		sumpTransfer: MotorTelemetry;
+		sump: MotorTelemetry;
 	};
 }
 

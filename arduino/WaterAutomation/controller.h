@@ -51,7 +51,7 @@ struct SystemState {
 
   MotorType activeMotor = MotorType::NONE;
   MotorRuntimeState borewell;
-  MotorRuntimeState sumpTransfer;
+  MotorRuntimeState sump;
 
   bool sumpCriticalWarningLatched = false;
   unsigned long lastStatusPrintMs = 0;

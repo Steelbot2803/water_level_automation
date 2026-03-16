@@ -25,7 +25,7 @@ import {
 	sumpLevels
 } from './types.js';
 
-const refillLevels = new Set(['empty', 'critical', 'low']);
+const refillLevels = new Set(['critical', 'low']);
 const defaultWebSocketPorts = {
 	secure: '8884',
 	insecure: '8000'
@@ -182,7 +182,7 @@ export function toDeviceTelemetry(rawPayload: string, receivedAt = Date.now()): 
 	const sumpTransferStatus =
 		parsed.sump_transfer_status ?? fallbackMotorStatus(parsed.motor, 'sump_transfer');
 	const sumpWarning =
-		parsed.sump_warning ?? (parsed.sump === 'critical' || parsed.sump === 'below_critical');
+		parsed.sump_warning ?? (parsed.sump === 'critical');
 
 	return {
 		...parsed,
@@ -195,17 +195,15 @@ export function toDeviceTelemetry(rawPayload: string, receivedAt = Date.now()): 
 		receivedAt,
 		rawPayload,
 		alarms: {
-			overheadCritical: parsed.overhead === 'empty' || parsed.overhead === 'critical',
+			overheadCritical: parsed.overhead === 'critical',
 			sumpCritical: parsed.sump === 'critical',
-			sumpBelowCritical: parsed.sump === 'below_critical',
-			sumpWarning
 		},
 		motors: {
 			borewell: {
 				active: parsed.motor === 'borewell',
 				status: borewellStatus
 			},
-			sumpTransfer: {
+			sump: {
 				active: parsed.motor === 'sump_transfer',
 				status: sumpTransferStatus
 			}
@@ -242,7 +240,6 @@ export const runtimeStatusLabels: Record<MotorRuntimeStatus, string> = {
 	starting: 'Starting',
 	running: 'Running',
 	dry_run_lock: 'Dry Run Lock',
-	blocked_by_safety: 'Blocked by Safety'
 };
 
 export const commandLabels: Record<ArduinoCommand, string> = {

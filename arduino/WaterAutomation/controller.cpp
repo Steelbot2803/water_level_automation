@@ -36,11 +36,11 @@ bool sumpAllowsPumping(const SystemState& state) {
 }
 
 MotorRuntimeState& runtimeFor(SystemState& state, MotorType motor) {
-  return (motor == MotorType::BOREWELL) ? state.borewell : state.sumpTransfer;
+  return (motor == MotorType::BOREWELL) ? state.borewell : state.sump;
 }
 
 const MotorRuntimeState& runtimeFor(const SystemState& state, MotorType motor) {
-  return (motor == MotorType::BOREWELL) ? state.borewell : state.sumpTransfer;
+  return (motor == MotorType::BOREWELL) ? state.borewell : state.sump;
 }
 
 bool flowOkay(MotorType motor) {
@@ -127,7 +127,7 @@ void selectAutoMotor(SystemState& state) {
   state.borewell.status = isLocked(state, MotorType::BOREWELL, millis())
                             ? MotorStatus::DRY_RUN_LOCK
                             : MotorStatus::BLOCKED_BY_SAFETY;
-  state.sumpTransfer.status = MotorStatus::BLOCKED_BY_SAFETY;
+  state.sump.status = MotorStatus::BLOCKED_BY_SAFETY;
 }
 
 void runManualControl(SystemState& state) {
@@ -149,7 +149,7 @@ void runAutoControl(SystemState& state) {
   if (state.sumpLevel == SumpLevel::CRITICAL) {
     state.sumpCriticalWarningLatched = true;
     stopActiveMotor(state);
-    state.sumpTransfer.status = MotorStatus::BLOCKED_BY_SAFETY;
+    state.sump.status = MotorStatus::BLOCKED_BY_SAFETY;
   }
 
   const bool shouldFill = state.command.overrideFillToHigh || needsFill(state);

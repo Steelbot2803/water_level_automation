@@ -121,41 +121,6 @@
 			}
 		}
 
-		if (!previous || previous.alarms.sumpBelowCritical !== next.alarms.sumpBelowCritical) {
-			if (next.alarms.sumpBelowCritical) {
-				alerts.push({
-					title: 'Sump tank below critical',
-					message: 'Water source is too low for safe transfer.',
-					severity: 'error',
-					tag: 'alarm-sump-below-critical',
-					cooldownMs: 120000
-				});
-			} else if (previous) {
-				alerts.push({
-					title: 'Sump source recovered',
-					message: `Sump tank is back to ${next.sump}.`,
-					severity: 'success',
-					tag: 'alarm-sump-below-critical-recovered',
-					cooldownMs: 30000
-				});
-			}
-		}
-
-		if (
-			next.alarms.sumpWarning &&
-			!next.alarms.sumpCritical &&
-			!next.alarms.sumpBelowCritical &&
-			(!previous || previous.alarms.sumpWarning !== next.alarms.sumpWarning)
-		) {
-			alerts.push({
-				title: 'Sump warning active',
-				message: 'Sump level warning is latched. Monitor source level closely.',
-				severity: 'warning',
-				tag: 'alarm-sump-warning',
-				cooldownMs: 120000
-			});
-		}
-
 		notifyMotorStatusChange(
 			'Borewell motor',
 			previous?.motors.borewell.status ?? null,
@@ -163,8 +128,8 @@
 		);
 		notifyMotorStatusChange(
 			'Sump transfer motor',
-			previous?.motors.sumpTransfer.status ?? null,
-			next.motors.sumpTransfer.status
+			previous?.motors.sump.status ?? null,
+			next.motors.sump.status
 		);
 	}
 
@@ -184,27 +149,6 @@
 				cooldownMs: 120000
 			});
 			return;
-		}
-
-		if (nextStatus === 'blocked_by_safety') {
-			alerts.push({
-				title: `${label} blocked`,
-				message: `${label} is blocked by a safety condition.`,
-				severity: 'warning',
-				tag: `${label}-blocked-by-safety`,
-				cooldownMs: 120000
-			});
-			return;
-		}
-
-		if (previousStatus === 'dry_run_lock' || previousStatus === 'blocked_by_safety') {
-			alerts.push({
-				title: `${label} recovered`,
-				message: `${label} is no longer in a protected stop state.`,
-				severity: 'success',
-				tag: `${label}-recovered`,
-				cooldownMs: 30000
-			});
 		}
 	}
 

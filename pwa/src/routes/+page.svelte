@@ -65,7 +65,6 @@
 	};
 
 	const overheadLabels: Record<OverheadLevel, string> = {
-		empty: 'Empty',
 		critical: 'Critical',
 		low: 'Low',
 		medium: 'Medium',
@@ -73,25 +72,22 @@
 	};
 
 	const sumpLabels: Record<SumpLevel, string> = {
-		below_critical: 'Below Critical',
 		critical: 'Critical',
 		low: 'Low',
 		high: 'High'
 	};
 
 	const overheadFillHeights: Record<OverheadLevel, string> = {
-		empty: '6%',
-		critical: '18%',
-		low: '38%',
-		medium: '62%',
-		high: '88%'
+		critical: '10%',
+		low: '35%',
+		medium: '65%',
+		high: '90%'
 	};
 
 	const sumpFillHeights: Record<SumpLevel, string> = {
-		below_critical: '8%',
-		critical: '20%',
-		low: '46%',
-		high: '84%'
+		critical: '10%',
+		low: '50%',
+		high: '90%'
 	};
 
 	onMount(() => {
@@ -133,30 +129,6 @@
 				return 'from-rose-400 via-rose-500 to-rose-700';
 			default:
 				return 'from-sky-400 via-cyan-500 to-cyan-700';
-		}
-	}
-
-	function overheadCaption(level: OverheadLevel) {
-		switch (level) {
-			case 'high':
-				return 'Healthy reserve';
-			case 'medium':
-				return 'Stable operating range';
-			case 'low':
-				return 'Refill likely soon';
-			case 'critical':
-				return 'Refill needed now';
-		}
-	}
-
-	function sumpCaption(level: SumpLevel) {
-		switch (level) {
-			case 'high':
-				return 'Transfer source is strong';
-			case 'low':
-				return 'Usable, but dropping';
-			case 'critical':
-				return 'Protect pump usage';
 		}
 	}
 </script>
@@ -253,9 +225,6 @@
 									<p class="mt-3 text-3xl font-semibold text-slate-950">
 										{overheadLabels[$waterSystem.device.overhead]}
 									</p>
-									<p class="mt-2 text-sm leading-6 text-slate-600">
-										{overheadCaption($waterSystem.device.overhead)}
-									</p>
 								</div>
 							</div>
 						</div>
@@ -301,9 +270,6 @@
 									</p>
 									<p class="mt-3 text-3xl font-semibold text-slate-950">
 										{sumpLabels[$waterSystem.device.sump]}
-									</p>
-									<p class="mt-2 text-sm leading-6 text-slate-600">
-										{sumpCaption($waterSystem.device.sump)}
 									</p>
 								</div>
 							</div>

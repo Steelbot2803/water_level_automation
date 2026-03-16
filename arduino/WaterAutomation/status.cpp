@@ -29,7 +29,7 @@ void publishStatus(SystemState& state) {
   Serial.println(toText(state.borewell.status));
 
   Serial.print(F("sump_transfer_status: "));
-  Serial.println(toText(state.sumpTransfer.status));
+  Serial.println(toText(state.sump.status));
 
   Serial.print(F("wifi_connected: "));
   Serial.println(isWifiConnected() ? F("true") : F("false"));
