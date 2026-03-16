@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { pumpPreference } from '../lib/stores/pump.js';
 	import { waterSystem } from '../lib/stores/system.js';
-	import {commandLabels} from '../lib/control.js';
+	import { commandLabels } from '../lib/control.js';
 	import type { ConnectionPhase, OverheadLevel, SumpLevel } from '../lib/types.js';
 
 	let overrideActive = false;
@@ -240,6 +240,31 @@
 								</div>
 							</div>
 						</div>
+						{#if $waterSystem.device?.motors.borewell.status === 'dry_run_lock'}
+							<div class="col-span-2 sm:col-span-1">
+								<button
+									class="min-h-28 w-full rounded-[1.5rem] border border-rose-700/10 bg-rose-600 px-4 py-4 text-left text-white shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-500"
+									disabled={$waterSystem.connection.phase !== 'connected'}
+									onclick={() => waterSystem.sendCommand('unlock borewell')}
+								>
+									<p class="text-sm font-semibold">{commandLabels['unlock borewell']}</p>
+									<p class="mt-1 text-xs opacity-75">Borewell dry-run protection active</p>
+								</button>
+							</div>
+						{/if}
+
+						{#if $waterSystem.device?.motors.sump.status === 'dry_run_lock'}
+							<div class="col-span-2 sm:col-span-1">
+								<button
+									class="min-h-28 w-full rounded-[1.5rem] border border-rose-700/10 bg-rose-600 px-4 py-4 text-left text-white shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-500"
+									disabled={$waterSystem.connection.phase !== 'connected'}
+									onclick={() => waterSystem.sendCommand('unlock sump')}
+								>
+									<p class="text-sm font-semibold">{commandLabels['unlock sump']}</p>
+									<p class="mt-1 text-xs opacity-75">Sump dry-run protection active</p>
+								</button>
+							</div>
+						{/if}
 					</div>
 				{:else}
 					<div class="mt-4 rounded-[1.5rem] bg-stone-100 p-5 text-sm leading-6 text-slate-600">
@@ -256,9 +281,6 @@
 				<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 					<div>
 						<h2 class="text-base font-semibold">Commands</h2>
-						<p class="mt-1 text-sm text-slate-600">
-							Large touch targets for the exact strings accepted by the controller.
-						</p>
 					</div>
 					<span
 						class={`rounded-full px-3 py-1 text-xs font-semibold tracking-wide uppercase ${$waterSystem.connection.phase === 'connected' ? 'bg-emerald-100 text-emerald-900' : 'bg-slate-200 text-slate-700'}`}
@@ -278,7 +300,8 @@
 									: 'border-amber-600/10 bg-amber-500 text-slate-950'
 							}`}
 							disabled={$waterSystem.connection.phase !== 'connected'}
-							onclick={() => waterSystem.sendCommand($waterSystem.mode === 'auto' ? 'manual' : 'auto')}
+							onclick={() =>
+								waterSystem.sendCommand($waterSystem.mode === 'auto' ? 'manual' : 'auto')}
 						>
 							<p class="text-sm font-semibold">
 								{$waterSystem.mode === 'auto' ? commandLabels['auto'] : commandLabels['manual']}
@@ -289,7 +312,7 @@
 						<button
 							class={`min-h-28 rounded-[1.5rem] border px-4 py-4 text-left shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-500 ${
 								overrideActive
-									? 'border-sky-700/10 bg-sky-700 text-white animate-pulse'
+									? 'animate-pulse border-sky-700/10 bg-sky-700 text-white'
 									: 'border-sky-700/10 bg-sky-700 text-white'
 							}`}
 							disabled={$waterSystem.connection.phase !== 'connected'}

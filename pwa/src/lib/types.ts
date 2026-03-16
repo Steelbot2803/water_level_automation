@@ -28,7 +28,10 @@ export const arduinoCommands = [
 	'override',
 	'force borewell',
 	'force sump',
+	'unlock borewell',
+	'unlock sump'
 ] as const;
+
 export type ArduinoCommand = (typeof arduinoCommands)[number];
 
 export interface ArduinoStatusPayload {

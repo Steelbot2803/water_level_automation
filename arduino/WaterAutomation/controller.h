@@ -41,6 +41,7 @@ struct MotorRuntimeState {
   MotorStatus status = MotorStatus::STOPPED;
   unsigned long startedAtMs = 0;
   unsigned long lockUntilMs = 0;
+  bool dryRunLatched = false;
 };
 
 struct SystemState {
@@ -64,6 +65,8 @@ void writeMotorOutputs(const SystemState& state);
 
 void startMotor(SystemState& state, MotorType motor);
 void stopMotor(MotorType motor);
+
+void clearDryRunLatch(SystemState& state, MotorType motor);
 
 const __FlashStringHelper* toText(MotorType m);
 const __FlashStringHelper* toText(MotorStatus s);

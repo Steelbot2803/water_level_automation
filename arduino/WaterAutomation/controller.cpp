@@ -51,13 +51,17 @@ bool flowOkay(MotorType motor) {
 }
 
 bool isLocked(const SystemState& state, MotorType motor, unsigned long nowMs) {
-  return runtimeFor(state, motor).lockUntilMs > nowMs;
+  const auto& rt = runtimeFor(state, motor);
+  if (rt.dryRunLatched) return true;  // ← permanent latch wins
+  return rt.lockUntilMs > nowMs;      // ← legacy timer path (now unreachable for dry-run)
 }
 
 void lockDryRun(SystemState& state, MotorType motor, unsigned long nowMs) {
   auto& rt = runtimeFor(state, motor);
   rt.status = MotorStatus::DRY_RUN_LOCK;
-  rt.lockUntilMs = nowMs + START_RETRY_LOCK_MS;
+  rt.dryRunLatched = true;  // ← permanent until manually cleared
+  rt.lockUntilMs = 0;       // ← timer disabled
+  (void)nowMs;              // nowMs no longer needed here, suppress unused warning
 }
 
 void stopActiveMotor(SystemState& state) {
@@ -250,6 +254,13 @@ void stopMotor(MotorType motor) {
   } else if (motor == MotorType::SUMP) {
     digitalWrite(PIN_SUMP_RELAY, LOW);
   }
+}
+
+void clearDryRunLatch(SystemState& state, MotorType motor) {
+  auto& rt = runtimeFor(state, motor);
+  rt.dryRunLatched = false;
+  rt.lockUntilMs = 0;
+  rt.status = MotorStatus::STOPPED;
 }
 
 const __FlashStringHelper* toText(MotorType m) {

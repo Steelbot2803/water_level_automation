@@ -150,11 +150,7 @@ export function parseArduinoStatusPayload(rawPayload: string): ArduinoStatusPayl
 	}
 
 	if (payload.sump_status !== undefined) {
-		status.sump_status = readEnum(
-			payload.sump_status,
-			motorRuntimeStatuses,
-			'sump_status'
-		);
+		status.sump_status = readEnum(payload.sump_status, motorRuntimeStatuses, 'sump_status');
 	}
 
 	if (payload.sump_warning !== undefined) {
@@ -182,8 +178,7 @@ export function toDeviceTelemetry(rawPayload: string, receivedAt = Date.now()): 
 	const controlMode = deriveControlMode(parsed);
 	const manualTarget = parsed.manual_target ?? (parsed.mode === 'manual' ? parsed.motor : 'none');
 	const borewellStatus = parsed.borewell_status ?? fallbackMotorStatus(parsed.motor, 'borewell');
-	const sumpTransferStatus =
-		parsed.sump_status ?? fallbackMotorStatus(parsed.motor, 'sump');
+	const sumpTransferStatus = parsed.sump_status ?? fallbackMotorStatus(parsed.motor, 'sump');
 	const sumpWarning = parsed.sump_warning ?? parsed.sump === 'critical';
 
 	return {
@@ -251,5 +246,7 @@ export const commandLabels: Record<ArduinoCommand, string> = {
 	manual: 'Manual Mode',
 	override: 'Override Fill',
 	'force borewell': 'Prefer Borewell',
-	'force sump': 'Prefer Sump'
+	'force sump': 'Prefer Sump',
+	'unlock borewell': 'Unlock Borewell',
+	'unlock sump': 'Unlock Sump'
 };

@@ -135,6 +135,18 @@ bool applyCommand(SystemState& state, const String& line) {
     return true;
   }
 
+  if (line == "unlock borewell") {
+    clearDryRunLatch(state, MotorType::BOREWELL);
+    Serial.println(F("Borewell dry-run latch cleared"));
+    return true;
+  }
+
+  if (line == "unlock sump") {
+    clearDryRunLatch(state, MotorType::SUMP);
+    Serial.println(F("Sump dry-run latch cleared"));
+    return true;
+  }
+
   return false;
 }
 
