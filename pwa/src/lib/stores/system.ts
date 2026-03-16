@@ -63,7 +63,8 @@ function createInitialState(): WaterAutomationState {
 			lastError: configurationError ?? undefined
 		},
 		device: null,
-		recentCommands: []
+		recentCommands: [],
+		mode: 'auto'
 	};
 }
 

@@ -1,54 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { commandLabels } from '../lib/control.js';
+	import { pumpPreference } from '../lib/stores/pump.js';
 	import { waterSystem } from '../lib/stores/system.js';
-	import type { ArduinoCommand, ConnectionPhase, OverheadLevel, SumpLevel } from '../lib/types.js';
+	import {commandLabels} from '../lib/control.js';
+	import type { ConnectionPhase, OverheadLevel, SumpLevel } from '../lib/types.js';
 
-	const commandButtons: Array<{
-		command: ArduinoCommand;
-		className: string;
-	}> = [
-		{
-			command: 'auto',
-			className: 'border-cyan-700/10 bg-cyan-700 text-white'
-		},
-		{
-			command: 'manual',
-			className: 'border-amber-600/10 bg-amber-500 text-slate-950'
-		},
-		{
-			command: 'override',
-			className: 'border-sky-700/10 bg-sky-700 text-white'
-		},
-		{
-			command: 'force borewell',
-			className: 'border-emerald-700/10 bg-emerald-700 text-white'
-		},
-		{
-			command: 'force sump',
-			className: 'border-lime-700/10 bg-lime-600 text-slate-950'
-		},
-		{
-			command: 'motor borewell',
-			className: 'border-emerald-800/10 bg-emerald-800 text-white'
-		},
-		{
-			command: 'motor sump',
-			className: 'border-lime-800/10 bg-lime-700 text-slate-950'
-		},
-		{
-			command: 'motor stop',
-			className: 'border-rose-700/10 bg-rose-700 text-white'
-		},
-		{
-			command: 'estop',
-			className: 'border-red-900/10 bg-red-900 text-white'
-		},
-		{
-			command: 'status',
-			className: 'border-slate-700/10 bg-slate-800 text-white'
-		}
-	];
+	let overrideActive = false;
 
 	const connectionBadges: Record<ConnectionPhase, string> = {
 		idle: 'bg-slate-200 text-slate-700',
@@ -135,10 +92,18 @@
 				return 'from-sky-400 via-cyan-500 to-cyan-700';
 		}
 	}
+
+	function handleOverride() {
+		overrideActive = true;
+		waterSystem.sendCommand('override');
+		setTimeout(() => {
+			overrideActive = false;
+		}, 500);
+	}
 </script>
 
 <svelte:head>
-	<title>Neptune</title>
+	<title>NEPTUNE</title>
 	<meta
 		name="description"
 		content="Mobile control dashboard for the Neptune water level automation system."
@@ -164,7 +129,7 @@
 						{$waterSystem.connection.phase}
 					</span>
 				</div>
-				<h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">Neptune</h1>
+				<h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">NEPTUNE</h1>
 			</div>
 		</header>
 
@@ -172,10 +137,7 @@
 			<section class="rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm">
 				<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 					<div>
-						<h2 class="text-base font-semibold">Tank Snapshot</h2>
-						<p class="mt-1 text-sm text-slate-600">
-							Only the current water-level view is shown here.
-						</p>
+						<h2 class="text-base font-semibold">Tank Levels</h2>
 					</div>
 
 					{#if $waterSystem.device}
@@ -308,15 +270,51 @@
 				</div>
 
 				<div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-					{#each commandButtons as button (button.command)}
+					<div class="col-span-2 sm:col-span-1">
 						<button
-							class={`min-h-28 rounded-[1.5rem] border px-4 py-4 text-left shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-500 ${button.className}`}
+							class={`min-h-28 rounded-[1.5rem] border px-4 py-4 text-left shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-500 ${
+								$waterSystem.mode === 'auto'
+									? 'border-cyan-700/10 bg-cyan-700 text-white'
+									: 'border-amber-600/10 bg-amber-500 text-slate-950'
+							}`}
 							disabled={$waterSystem.connection.phase !== 'connected'}
-							onclick={() => waterSystem.sendCommand(button.command)}
+							onclick={() => waterSystem.sendCommand($waterSystem.mode === 'auto' ? 'manual' : 'auto')}
 						>
-							<p class="text-sm font-semibold">{commandLabels[button.command]}</p>
+							<p class="text-sm font-semibold">
+								{$waterSystem.mode === 'auto' ? commandLabels['auto'] : commandLabels['manual']}
+							</p>
 						</button>
-					{/each}
+					</div>
+					<div class="col-span-2 sm:col-span-1">
+						<button
+							class={`min-h-28 rounded-[1.5rem] border px-4 py-4 text-left shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-500 ${
+								overrideActive
+									? 'border-sky-700/10 bg-sky-700 text-white animate-pulse'
+									: 'border-sky-700/10 bg-sky-700 text-white'
+							}`}
+							disabled={$waterSystem.connection.phase !== 'connected'}
+							onclick={handleOverride}
+						>
+							<p class="text-sm font-semibold">{commandLabels['override']}</p>
+						</button>
+					</div>
+					<div class="col-span-2 sm:col-span-1">
+						<button
+							class={`min-h-28 rounded-[1.5rem] border px-4 py-4 text-left shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-500 ${
+								$pumpPreference === 'sump'
+									? 'border-lime-700/10 bg-lime-600 text-slate-950'
+									: 'border-emerald-700/10 bg-emerald-700 text-white'
+							}`}
+							disabled={$waterSystem.connection.phase !== 'connected'}
+							onclick={() => pumpPreference.toggle()}
+						>
+							<p class="text-sm font-semibold">
+								{$pumpPreference === 'sump'
+									? commandLabels['force sump']
+									: commandLabels['force borewell']}
+							</p>
+						</button>
+					</div>
 				</div>
 			</section>
 		</main>

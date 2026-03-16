@@ -250,11 +250,6 @@ export const commandLabels: Record<ArduinoCommand, string> = {
 	auto: 'Auto Mode',
 	manual: 'Manual Mode',
 	override: 'Override Fill',
-	'motor borewell': 'Run Borewell',
-	'motor sump': 'Run Sump',
-	'motor stop': 'Stop Motor',
 	'force borewell': 'Prefer Borewell',
-	'force sump': 'Prefer Sump',
-	estop: 'Emergency Stop',
-	status: 'Serial Status'
+	'force sump': 'Prefer Sump'
 };

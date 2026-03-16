@@ -26,13 +26,8 @@ export const arduinoCommands = [
 	'auto',
 	'manual',
 	'override',
-	'motor borewell',
-	'motor sump',
-	'motor stop',
 	'force borewell',
 	'force sump',
-	'estop',
-	'status'
 ] as const;
 export type ArduinoCommand = (typeof arduinoCommands)[number];
 
@@ -117,4 +112,5 @@ export interface WaterAutomationState {
 	connection: BrokerConnectionState;
 	device: DeviceTelemetry | null;
 	recentCommands: CommandLogEntry[];
+	mode: ControlMode;
 }
