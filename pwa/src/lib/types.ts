@@ -10,7 +10,7 @@ export type OverheadLevel = (typeof overheadLevels)[number];
 export const sumpLevels = ['critical', 'low', 'high'] as const;
 export type SumpLevel = (typeof sumpLevels)[number];
 
-export const activeMotors = ['none', 'borewell', 'sump_transfer'] as const;
+export const activeMotors = ['none', 'borewell', 'sump'] as const;
 export type ActiveMotor = (typeof activeMotors)[number];
 
 export const motorRuntimeStatuses = [
@@ -44,7 +44,7 @@ export interface ArduinoStatusPayload {
 	motor: ActiveMotor;
 	manual_target?: ActiveMotor;
 	borewell_status?: MotorRuntimeStatus;
-	sump_transfer_status?: MotorRuntimeStatus;
+	sump_status?: MotorRuntimeStatus;
 	sump_warning?: boolean;
 	emergency_stop?: boolean;
 	auto_prefer_sump?: boolean;

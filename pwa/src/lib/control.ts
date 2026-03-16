@@ -57,7 +57,7 @@ function normalizePath(path: string) {
 	return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
 }
 
-function fallbackMotorStatus(activeMotor: ActiveMotor, motor: 'borewell' | 'sump_transfer') {
+function fallbackMotorStatus(activeMotor: ActiveMotor, motor: 'borewell' | 'sump') {
 	return activeMotor === motor ? 'running' : 'stopped';
 }
 
@@ -149,11 +149,11 @@ export function parseArduinoStatusPayload(rawPayload: string): ArduinoStatusPayl
 		);
 	}
 
-	if (payload.sump_transfer_status !== undefined) {
-		status.sump_transfer_status = readEnum(
-			payload.sump_transfer_status,
+	if (payload.sump_status !== undefined) {
+		status.sump_status = readEnum(
+			payload.sump_status,
 			motorRuntimeStatuses,
-			'sump_transfer_status'
+			'sump_status'
 		);
 	}
 
@@ -183,14 +183,14 @@ export function toDeviceTelemetry(rawPayload: string, receivedAt = Date.now()): 
 	const manualTarget = parsed.manual_target ?? (parsed.mode === 'manual' ? parsed.motor : 'none');
 	const borewellStatus = parsed.borewell_status ?? fallbackMotorStatus(parsed.motor, 'borewell');
 	const sumpTransferStatus =
-		parsed.sump_transfer_status ?? fallbackMotorStatus(parsed.motor, 'sump_transfer');
+		parsed.sump_status ?? fallbackMotorStatus(parsed.motor, 'sump');
 	const sumpWarning = parsed.sump_warning ?? parsed.sump === 'critical';
 
 	return {
 		...parsed,
 		manual_target: manualTarget,
 		borewell_status: borewellStatus,
-		sump_transfer_status: sumpTransferStatus,
+		sump_status: sumpTransferStatus,
 		sump_warning: sumpWarning,
 		controlMode,
 		needFill: parsed.override || refillLevels.has(parsed.overhead),
@@ -207,7 +207,7 @@ export function toDeviceTelemetry(rawPayload: string, receivedAt = Date.now()): 
 				status: borewellStatus
 			},
 			sump: {
-				active: parsed.motor === 'sump_transfer',
+				active: parsed.motor === 'sump',
 				status: sumpTransferStatus
 			}
 		}
@@ -235,7 +235,7 @@ export const controlModeLabels: Record<ControlMode, string> = {
 export const motorLabels: Record<ActiveMotor, string> = {
 	none: 'None',
 	borewell: 'Borewell',
-	sump_transfer: 'Sump Transfer'
+	sump: 'Sump Transfer'
 };
 
 export const runtimeStatusLabels: Record<MotorRuntimeStatus, string> = {

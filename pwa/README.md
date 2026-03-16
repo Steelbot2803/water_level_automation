@@ -68,7 +68,7 @@ The PWA publishes these literal MQTT payloads:
   "sump": "high",
   "motor": "borewell",
   "borewell_status": "running",
-  "sump_transfer_status": "stopped",
+  "sump_status": "stopped",
   "sump_warning": false
 }
 ```
