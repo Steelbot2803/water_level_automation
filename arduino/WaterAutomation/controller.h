@@ -5,7 +5,7 @@
 enum class MotorType : uint8_t {
   NONE,
   BOREWELL,
-  SUMP_TRANSFER
+  SUMP
 };
 
 enum class MotorStatus : uint8_t {
@@ -13,11 +13,10 @@ enum class MotorStatus : uint8_t {
   STARTING,
   RUNNING,
   DRY_RUN_LOCK,
-  BLOCKED_BY_SAFETY
+  SUMP_CRITICAL  // sump motor specifically stopped because sump is critical
 };
 
 enum class OverheadLevel : uint8_t {
-  EMPTY,
   CRITICAL,
   LOW,
   MEDIUM,
@@ -25,7 +24,6 @@ enum class OverheadLevel : uint8_t {
 };
 
 enum class SumpLevel : uint8_t {
-  BELOW_CRITICAL,
   CRITICAL,
   LOW,
   HIGH
@@ -34,6 +32,8 @@ enum class SumpLevel : uint8_t {
 struct CommandState {
   bool manualMode = false;
   bool overrideFillToHigh = false;
+  bool emergencyStop = false;               // stops everything, any mode
+  bool autoPreferSump = false;              // force switch: in auto, try sump before borewell
   MotorType forcedMotor = MotorType::NONE;  // honored only in manual mode
 };
 
@@ -44,7 +44,7 @@ struct MotorRuntimeState {
 };
 
 struct SystemState {
-  OverheadLevel overheadLevel = OverheadLevel::EMPTY;
+  OverheadLevel overheadLevel = OverheadLevel::LOW;
   SumpLevel sumpLevel = SumpLevel::LOW;
 
   CommandState command;

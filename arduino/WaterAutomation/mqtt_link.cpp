@@ -20,7 +20,6 @@ bool lastMqttConnected = false;
 
 const char* overheadText(OverheadLevel l) {
   switch (l) {
-    case OverheadLevel::EMPTY: return "empty";
     case OverheadLevel::CRITICAL: return "critical";
     case OverheadLevel::LOW: return "low";
     case OverheadLevel::MEDIUM: return "medium";
@@ -31,7 +30,6 @@ const char* overheadText(OverheadLevel l) {
 
 const char* sumpText(SumpLevel l) {
   switch (l) {
-    case SumpLevel::BELOW_CRITICAL: return "below_critical";
     case SumpLevel::CRITICAL: return "critical";
     case SumpLevel::LOW: return "low";
     case SumpLevel::HIGH: return "high";
@@ -43,7 +41,7 @@ const char* motorText(MotorType m) {
   switch (m) {
     case MotorType::NONE: return "none";
     case MotorType::BOREWELL: return "borewell";
-    case MotorType::SUMP_TRANSFER: return "sump_transfer";
+    case MotorType::SUMP: return "sump";
   }
   return "unknown";
 }
@@ -54,7 +52,7 @@ const char* motorStatusText(MotorStatus status) {
     case MotorStatus::STARTING: return "starting";
     case MotorStatus::RUNNING: return "running";
     case MotorStatus::DRY_RUN_LOCK: return "dry_run_lock";
-    case MotorStatus::BLOCKED_BY_SAFETY: return "blocked_by_safety";
+    case MotorStatus::SUMP_CRITICAL: return "sump_critical";
   }
   return "unknown";
 }
@@ -185,11 +183,15 @@ void publishStateToMqtt(const SystemState& state) {
   }
   lastMqttPublishMs = nowMs;
 
-  char payload[360];
+  // Payload includes emergency_stop and auto_prefer_sump for the PWA to reflect state.
+  char payload[420];
   snprintf(
     payload,
     sizeof(payload),
-    "{\"mode\":\"%s\",\"override\":%s,\"manual_target\":\"%s\",\"overhead\":\"%s\",\"sump\":\"%s\",\"motor\":\"%s\",\"borewell_status\":\"%s\",\"sump_transfer_status\":\"%s\",\"sump_warning\":%s}",
+    "{\"mode\":\"%s\",\"override\":%s,\"manual_target\":\"%s\","
+    "\"overhead\":\"%s\",\"sump\":\"%s\",\"motor\":\"%s\","
+    "\"borewell_status\":\"%s\",\"sump_status\":\"%s\","
+    "\"sump_warning\":%s,\"emergency_stop\":%s,\"auto_prefer_sump\":%s}",
     modeText(state),
     state.command.overrideFillToHigh ? "true" : "false",
     manualTargetText(state),
@@ -198,7 +200,9 @@ void publishStateToMqtt(const SystemState& state) {
     motorText(state.activeMotor),
     motorStatusText(state.borewell.status),
     motorStatusText(state.sump.status),
-    (state.sumpLevel == SumpLevel::CRITICAL || state.sumpCriticalWarningLatched) ? "true" : "false");
+    (state.sumpLevel == SumpLevel::CRITICAL || state.sumpCriticalWarningLatched) ? "true" : "false",
+    state.command.emergencyStop ? "true" : "false",
+    state.command.autoPreferSump ? "true" : "false");
 
   mqttClient.publish(MQTT_STATUS_TOPIC, payload, true);
 }

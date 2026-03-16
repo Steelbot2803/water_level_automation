@@ -6,42 +6,46 @@
 
 	const commandButtons: Array<{
 		command: ArduinoCommand;
-		description: string;
 		className: string;
 	}> = [
 		{
 			command: 'auto',
-			description: 'Return the controller to automatic mode.',
 			className: 'border-cyan-700/10 bg-cyan-700 text-white'
 		},
 		{
-			command: 'override',
-			description: 'Fill to HIGH regardless of current overhead level.',
-			className: 'border-sky-700/10 bg-sky-700 text-white'
-		},
-		{
 			command: 'manual',
-			description: 'Enter manual mode without starting a motor.',
 			className: 'border-amber-600/10 bg-amber-500 text-slate-950'
 		},
 		{
-			command: 'motor borewell',
-			description: 'Manual command: run the borewell motor.',
+			command: 'override',
+			className: 'border-sky-700/10 bg-sky-700 text-white'
+		},
+		{
+			command: 'force borewell',
 			className: 'border-emerald-700/10 bg-emerald-700 text-white'
 		},
 		{
-			command: 'motor sump',
-			description: 'Manual command: run the sump transfer motor.',
+			command: 'force sump',
 			className: 'border-lime-700/10 bg-lime-600 text-slate-950'
 		},
 		{
+			command: 'motor borewell',
+			className: 'border-emerald-800/10 bg-emerald-800 text-white'
+		},
+		{
+			command: 'motor sump',
+			className: 'border-lime-800/10 bg-lime-700 text-slate-950'
+		},
+		{
 			command: 'motor stop',
-			description: 'Stop any commanded motor output.',
 			className: 'border-rose-700/10 bg-rose-700 text-white'
 		},
 		{
+			command: 'estop',
+			className: 'border-red-900/10 bg-red-900 text-white'
+		},
+		{
 			command: 'status',
-			description: 'Trigger the Arduino serial status printout.',
 			className: 'border-slate-700/10 bg-slate-800 text-white'
 		}
 	];
@@ -311,7 +315,6 @@
 							onclick={() => waterSystem.sendCommand(button.command)}
 						>
 							<p class="text-sm font-semibold">{commandLabels[button.command]}</p>
-							<p class="mt-2 text-xs/5 opacity-90">{button.description}</p>
 						</button>
 					{/each}
 				</div>

@@ -16,7 +16,7 @@ void setup() {
   pinMode(PIN_SUMP_FLOW_OK, INPUT_PULLUP);
 
   stopMotor(MotorType::BOREWELL);
-  stopMotor(MotorType::SUMP_TRANSFER);
+  stopMotor(MotorType::SUMP);
 
   initState(state);
   setSystemStateRef(&state);

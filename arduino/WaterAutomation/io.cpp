@@ -25,10 +25,13 @@ void printHelp() {
   Serial.println(F("Commands:"));
   Serial.println(F("  auto                  -> automatic mode"));
   Serial.println(F("  manual                -> manual mode"));
-  Serial.println(F("  override              -> fill till high regardless of OH level"));
-  Serial.println(F("  motor borewell        -> manual: run borewell"));
-  Serial.println(F("  motor sump            -> manual: run sump transfer"));
-  Serial.println(F("  motor stop            -> stop motors"));
+  Serial.println(F("  override              -> fill to HIGH regardless of overhead level"));
+  Serial.println(F("  motor borewell        -> manual: run borewell motor"));
+  Serial.println(F("  motor sump            -> manual: run sump transfer motor"));
+  Serial.println(F("  motor stop            -> stop active motor (any mode)"));
+  Serial.println(F("  force borewell        -> auto: prefer borewell (default)"));
+  Serial.println(F("  force sump            -> auto: prefer sump over borewell"));
+  Serial.println(F("  estop                 -> emergency stop all motors"));
   Serial.println(F("  status                -> print current status"));
   Serial.println(F("  help                  -> show commands"));
 }
@@ -58,6 +61,7 @@ bool applyCommand(SystemState& state, const String& line) {
     state.command.manualMode = false;
     state.command.overrideFillToHigh = false;
     state.command.forcedMotor = MotorType::NONE;
+    state.command.emergencyStop = false;
     Serial.println(F("Mode set: AUTO"));
     return true;
   }
@@ -66,6 +70,7 @@ bool applyCommand(SystemState& state, const String& line) {
     state.command.manualMode = true;
     state.command.overrideFillToHigh = false;
     state.command.forcedMotor = MotorType::NONE;
+    state.command.emergencyStop = false;
     Serial.println(F("Mode set: MANUAL"));
     return true;
   }
@@ -73,6 +78,7 @@ bool applyCommand(SystemState& state, const String& line) {
   if (line == "override") {
     state.command.manualMode = false;
     state.command.overrideFillToHigh = true;
+    state.command.emergencyStop = false;
     Serial.println(F("Override accepted: filling until overhead HIGH"));
     return true;
   }
@@ -80,26 +86,52 @@ bool applyCommand(SystemState& state, const String& line) {
   if (line == "motor borewell") {
     state.command.manualMode = true;
     state.command.forcedMotor = MotorType::BOREWELL;
+    state.command.emergencyStop = false;
     Serial.println(F("Manual motor: BOREWELL"));
     return true;
   }
 
   if (line == "motor sump") {
     state.command.manualMode = true;
-    state.command.forcedMotor = MotorType::SUMP_TRANSFER;
+    state.command.forcedMotor = MotorType::SUMP;
+    state.command.emergencyStop = false;
     Serial.println(F("Manual motor: SUMP TRANSFER"));
     return true;
   }
 
+  // Motor stop: works in any mode — clears forced motor and override,
+  // but does NOT change mode so the user stays where they are.
   if (line == "motor stop") {
     state.command.forcedMotor = MotorType::NONE;
     state.command.overrideFillToHigh = false;
-    Serial.println(F("Motor command: STOP"));
+    Serial.println(F("Motor stop commanded"));
+    return true;
+  }
+
+  // Force switch: sets preferred motor for auto selection without leaving auto mode.
+  if (line == "force borewell") {
+    state.command.autoPreferSump = false;
+    Serial.println(F("Auto preference: BOREWELL (default)"));
+    return true;
+  }
+
+  if (line == "force sump") {
+    state.command.autoPreferSump = true;
+    Serial.println(F("Auto preference: SUMP TRANSFER"));
+    return true;
+  }
+
+  // Emergency stop: stops everything immediately, any mode.
+  if (line == "estop") {
+    state.command.emergencyStop = true;
+    state.command.forcedMotor = MotorType::NONE;
+    state.command.overrideFillToHigh = false;
+    Serial.println(F("EMERGENCY STOP"));
     return true;
   }
 
   if (line == "status") {
-    state.lastStatusPrintMs = 0;  // force status print in next status cycle
+    state.lastStatusPrintMs = 0;  // force status print in next cycle
     return true;
   }
 

@@ -18,6 +18,7 @@ export const motorRuntimeStatuses = [
 	'starting',
 	'running',
 	'dry_run_lock',
+	'sump_critical' // sump transfer motor specifically blocked because sump tank is critical
 ] as const;
 export type MotorRuntimeStatus = (typeof motorRuntimeStatuses)[number];
 
@@ -28,6 +29,9 @@ export const arduinoCommands = [
 	'motor borewell',
 	'motor sump',
 	'motor stop',
+	'force borewell',
+	'force sump',
+	'estop',
 	'status'
 ] as const;
 export type ArduinoCommand = (typeof arduinoCommands)[number];
@@ -42,11 +46,14 @@ export interface ArduinoStatusPayload {
 	borewell_status?: MotorRuntimeStatus;
 	sump_transfer_status?: MotorRuntimeStatus;
 	sump_warning?: boolean;
+	emergency_stop?: boolean;
+	auto_prefer_sump?: boolean;
 }
 
 export interface DeviceAlarms {
 	overheadCritical: boolean;
 	sumpCritical: boolean;
+	emergencyStop: boolean;
 }
 
 export interface MotorTelemetry {

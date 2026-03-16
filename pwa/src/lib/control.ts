@@ -75,31 +75,26 @@ export function createDefaultBrokerSettings(): BrokerSettings {
 		username: PUBLIC_MQTT_USERNAME ?? '',
 		password: PUBLIC_MQTT_PASSWORD ?? '',
 		useSSL,
-		commandTopic: PUBLIC_MQTT_COMMAND_TOPIC?.trim() || 'water-system/cmd',
-		statusTopic: PUBLIC_MQTT_STATUS_TOPIC?.trim() || 'water-system/status',
-		clientIdPrefix: PUBLIC_MQTT_CLIENT_ID_PREFIX?.trim() || 'water-pwa'
+		commandTopic: PUBLIC_MQTT_COMMAND_TOPIC ?? 'water-system/cmd',
+		statusTopic: PUBLIC_MQTT_STATUS_TOPIC ?? 'water-system/status',
+		clientIdPrefix: PUBLIC_MQTT_CLIENT_ID_PREFIX ?? 'water-pwa'
 	};
 }
 
 export function sanitizeBrokerSettings(settings: BrokerSettings): BrokerSettings {
 	return {
+		...settings,
 		host: settings.host.trim(),
-		port: settings.port.trim() || defaultPort(settings.useSSL),
-		path: normalizePath(settings.path),
-		username: settings.username.trim(),
-		password: settings.password,
-		useSSL: settings.useSSL,
-		commandTopic: settings.commandTopic.trim() || 'water-system/cmd',
-		statusTopic: settings.statusTopic.trim() || 'water-system/status',
-		clientIdPrefix: settings.clientIdPrefix.trim() || 'water-pwa'
+		port: settings.port.trim(),
+		path: normalizePath(settings.path)
 	};
 }
 
-export function validateBrowserBrokerSettings(settings: BrokerSettings) {
+export function validateBrowserBrokerSettings(settings: BrokerSettings): string | null {
 	const normalized = sanitizeBrokerSettings(settings);
 
 	if (!normalized.host) {
-		return 'Missing `PUBLIC_MQTT_HOST` in `pwa/.env`.';
+		return 'Broker host is required.';
 	}
 
 	if (normalized.useSSL && normalized.port === '8883') {
@@ -166,6 +161,14 @@ export function parseArduinoStatusPayload(rawPayload: string): ArduinoStatusPayl
 		status.sump_warning = readBoolean(payload.sump_warning, 'sump_warning');
 	}
 
+	if (payload.emergency_stop !== undefined) {
+		status.emergency_stop = readBoolean(payload.emergency_stop, 'emergency_stop');
+	}
+
+	if (payload.auto_prefer_sump !== undefined) {
+		status.auto_prefer_sump = readBoolean(payload.auto_prefer_sump, 'auto_prefer_sump');
+	}
+
 	return status;
 }
 
@@ -181,8 +184,7 @@ export function toDeviceTelemetry(rawPayload: string, receivedAt = Date.now()): 
 	const borewellStatus = parsed.borewell_status ?? fallbackMotorStatus(parsed.motor, 'borewell');
 	const sumpTransferStatus =
 		parsed.sump_transfer_status ?? fallbackMotorStatus(parsed.motor, 'sump_transfer');
-	const sumpWarning =
-		parsed.sump_warning ?? (parsed.sump === 'critical');
+	const sumpWarning = parsed.sump_warning ?? parsed.sump === 'critical';
 
 	return {
 		...parsed,
@@ -197,6 +199,7 @@ export function toDeviceTelemetry(rawPayload: string, receivedAt = Date.now()): 
 		alarms: {
 			overheadCritical: parsed.overhead === 'critical',
 			sumpCritical: parsed.sump === 'critical',
+			emergencyStop: parsed.emergency_stop ?? false
 		},
 		motors: {
 			borewell: {
@@ -240,14 +243,18 @@ export const runtimeStatusLabels: Record<MotorRuntimeStatus, string> = {
 	starting: 'Starting',
 	running: 'Running',
 	dry_run_lock: 'Dry Run Lock',
+	sump_critical: 'Sump Critical'
 };
 
 export const commandLabels: Record<ArduinoCommand, string> = {
-	auto: 'Set Auto',
-	manual: 'Enter Manual',
+	auto: 'Auto Mode',
+	manual: 'Manual Mode',
 	override: 'Override Fill',
 	'motor borewell': 'Run Borewell',
-	'motor sump': 'Run Sump Transfer',
+	'motor sump': 'Run Sump',
 	'motor stop': 'Stop Motor',
+	'force borewell': 'Prefer Borewell',
+	'force sump': 'Prefer Sump',
+	estop: 'Emergency Stop',
 	status: 'Serial Status'
 };

@@ -2,7 +2,7 @@
 
 This folder contains a multi-file Arduino implementation for:
 
-- 2 motors: `borewell` (priority) and `sump transfer`
+- 2 motors: `borewell` (priority) and `sump`
 - 2 tanks: overhead tank (critical/low/medium/high) and sump tank (critical/low/high)
 - safety controls including dry-run lockout and sump-critical stop
 - commands for automatic, override fill, and manual motor selection
@@ -31,7 +31,7 @@ This folder contains a multi-file Arduino implementation for:
 
 - In **auto mode**:
   - If overhead is `low/critical`, start filling.
-  - Borewell motor is tried first; if unavailable/dry-run locked, fallback to sump transfer.
+  - Borewell motor is tried first; if unavailable/dry-run locked, fallback to sump.
   - Stop when overhead reaches `high`.
 - **Override** acts like auto fill-to-high regardless of current overhead level.
 - In **manual mode**:
@@ -65,12 +65,12 @@ Adjust pin polarity/threshold wiring in `config.h` according to your sensor type
   "sump": "high",
   "motor": "borewell",
   "borewell_status": "running",
-  "sump_transfer_status": "stopped",
+  "sump_status": "stopped",
   "sump_warning": false
 }
 ```
 
 - Field notes:
   - `manual_target` reports the requested manual motor only while the controller is in manual mode.
-  - `borewell_status` and `sump_transfer_status` mirror the controller runtime states: `stopped`, `starting`, `running`, `dry_run_lock`, `blocked_by_safety`.
+  - `borewell_status` and `sump_status` mirror the controller runtime states: `stopped`, `starting`, `running`, `dry_run_lock`, `blocked_by_safety`.
   - `sump_warning` goes true when the sump reaches critical or the critical-warning latch has been set.

@@ -16,6 +16,12 @@ void publishStatus(SystemState& state) {
   Serial.print(F("override_fill_to_high: "));
   Serial.println(state.command.overrideFillToHigh ? F("true") : F("false"));
 
+  Serial.print(F("emergency_stop: "));
+  Serial.println(state.command.emergencyStop ? F("true") : F("false"));
+
+  Serial.print(F("auto_prefer_sump: "));
+  Serial.println(state.command.autoPreferSump ? F("true") : F("false"));
+
   Serial.print(F("overhead_level: "));
   Serial.println(toText(state.overheadLevel));
 
@@ -28,7 +34,7 @@ void publishStatus(SystemState& state) {
   Serial.print(F("borewell_status: "));
   Serial.println(toText(state.borewell.status));
 
-  Serial.print(F("sump_transfer_status: "));
+  Serial.print(F("sump_status: "));
   Serial.println(toText(state.sump.status));
 
   Serial.print(F("wifi_connected: "));
@@ -38,6 +44,6 @@ void publishStatus(SystemState& state) {
   Serial.println(isMqttConnected() ? F("true") : F("false"));
 
   if (state.sumpLevel == SumpLevel::CRITICAL || state.sumpCriticalWarningLatched) {
-    Serial.println(F("warning: sump at/below LOW (CRITICAL) - pump protection active."));
+    Serial.println(F("warning: sump is CRITICAL - sump transfer motor blocked."));
   }
 }
