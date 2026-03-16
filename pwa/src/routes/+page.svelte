@@ -1,11 +1,18 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { pumpPreference } from '../lib/stores/pump.js';
+	import { mode } from '../lib/stores/mode.js';
 	import { waterSystem } from '../lib/stores/system.js';
 	import { commandLabels } from '../lib/control.js';
 	import type { ConnectionPhase, OverheadLevel, SumpLevel } from '../lib/types.js';
 
-	let overrideActive = false;
+	let overrideSending = false;
+
+	waterSystem.subscribe((state) => {
+		if (state.device) mode.seedFromDevice(state.device.mode);
+	});
+
+	$: isConnected = $waterSystem.connection.phase === 'connected';
 
 	const connectionBadges: Record<ConnectionPhase, string> = {
 		idle: 'bg-slate-200 text-slate-700',
@@ -94,11 +101,11 @@
 	}
 
 	function handleOverride() {
-		overrideActive = true;
+		overrideSending = true;
 		waterSystem.sendCommand('override');
 		setTimeout(() => {
-			overrideActive = false;
-		}, 500);
+			overrideSending = false;
+		}, 800);
 	}
 </script>
 
@@ -292,49 +299,93 @@
 				</div>
 
 				<div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-					<div class="col-span-2 sm:col-span-1">
-						<button
-							class={`min-h-28 rounded-[1.5rem] border px-4 py-4 text-left shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-500 ${
-								$waterSystem.mode === 'auto'
-									? 'border-cyan-700/10 bg-cyan-700 text-white'
-									: 'border-amber-600/10 bg-amber-500 text-slate-950'
-							}`}
-							disabled={$waterSystem.connection.phase !== 'connected'}
-							onclick={() =>
-								waterSystem.sendCommand($waterSystem.mode === 'auto' ? 'manual' : 'auto')}
-						>
-							<p class="text-sm font-semibold">
-								{$waterSystem.mode === 'auto' ? commandLabels['auto'] : commandLabels['manual']}
-							</p>
-						</button>
+					<div
+						class="col-span-2 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 shadow-sm sm:col-span-1"
+					>
+						<p class="mb-3 text-xs font-semibold tracking-[0.15em] text-slate-500 uppercase">
+							Mode
+						</p>
+						<div class="relative flex h-11 overflow-hidden rounded-2xl bg-slate-200 p-1">
+							<div
+								class={`absolute top-1 bottom-1 rounded-xl shadow-sm transition-all duration-200 ${
+									$mode !== 'manual'
+										? 'right-[calc(50%+2px)] left-1 bg-cyan-700'
+										: 'right-1 left-[calc(50%+2px)] bg-amber-500'
+								}`}
+							></div>
+							<button
+								class={`relative z-10 flex-1 rounded-xl text-sm font-semibold transition-colors duration-200 disabled:opacity-40 ${$mode !== 'manual' ? 'text-white' : 'text-slate-500'}`}
+								disabled={!isConnected}
+								onclick={() => {
+									mode.set('auto');
+									waterSystem.sendCommand('auto');
+								}}>Auto</button
+							>
+							<button
+								class={`relative z-10 flex-1 rounded-xl text-sm font-semibold transition-colors duration-200 disabled:opacity-40 ${$mode === 'manual' ? 'text-slate-950' : 'text-slate-500'}`}
+								disabled={!isConnected}
+								onclick={() => {
+									mode.set('manual');
+									waterSystem.sendCommand('manual');
+								}}>Manual</button
+							>
+						</div>
 					</div>
+
+					<div
+						class="col-span-2 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 shadow-sm sm:col-span-1"
+					>
+						<p class="mb-3 text-xs font-semibold tracking-[0.15em] text-slate-500 uppercase">
+							Pump
+						</p>
+						<div class="relative flex h-11 overflow-hidden rounded-2xl bg-slate-200 p-1">
+							<div
+								class={`absolute top-1 bottom-1 rounded-xl shadow-sm transition-all duration-200 ${
+									$pumpPreference === 'borewell'
+										? 'right-[calc(50%+2px)] left-1 bg-emerald-700'
+										: 'right-1 left-[calc(50%+2px)] bg-lime-600'
+								}`}
+							></div>
+							<button
+								class={`relative z-10 flex-1 rounded-xl text-sm font-semibold transition-colors duration-200 disabled:opacity-40 ${$pumpPreference === 'borewell' ? 'text-white' : 'text-slate-500'}`}
+								disabled={!isConnected}
+								onclick={() => {
+									pumpPreference.set('borewell');
+									waterSystem.sendCommand('force borewell');
+								}}>Borewell</button
+							>
+							<button
+								class={`relative z-10 flex-1 rounded-xl text-sm font-semibold transition-colors duration-200 disabled:opacity-40 ${$pumpPreference === 'sump' ? 'text-slate-950' : 'text-slate-500'}`}
+								disabled={!isConnected}
+								onclick={() => {
+									pumpPreference.set('sump');
+									waterSystem.sendCommand('force sump');
+								}}>Sump</button
+							>
+						</div>
+					</div>
+
 					<div class="col-span-2 sm:col-span-1">
 						<button
-							class={`min-h-28 rounded-[1.5rem] border px-4 py-4 text-left shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-500 ${
-								overrideActive
-									? 'animate-pulse border-sky-700/10 bg-sky-700 text-white'
-									: 'border-sky-700/10 bg-sky-700 text-white'
+							class={`min-h-28 w-full rounded-[1.5rem] border px-4 py-4 text-left shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-500 ${
+								($waterSystem.device?.override ?? false)
+									? 'border-orange-600/20 bg-orange-500 text-white'
+									: overrideSending
+										? 'animate-pulse border-sky-500/20 bg-sky-500 text-white'
+										: 'border-sky-700/10 bg-sky-700 text-white'
 							}`}
-							disabled={$waterSystem.connection.phase !== 'connected'}
+							disabled={!isConnected || ($waterSystem.device?.override ?? false)}
 							onclick={handleOverride}
 						>
-							<p class="text-sm font-semibold">{commandLabels['override']}</p>
-						</button>
-					</div>
-					<div class="col-span-2 sm:col-span-1">
-						<button
-							class={`min-h-28 rounded-[1.5rem] border px-4 py-4 text-left shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-500 ${
-								$pumpPreference === 'sump'
-									? 'border-lime-700/10 bg-lime-600 text-slate-950'
-									: 'border-emerald-700/10 bg-emerald-700 text-white'
-							}`}
-							disabled={$waterSystem.connection.phase !== 'connected'}
-							onclick={() => pumpPreference.toggle()}
-						>
 							<p class="text-sm font-semibold">
-								{$pumpPreference === 'sump'
-									? commandLabels['force sump']
-									: commandLabels['force borewell']}
+								{($waterSystem.device?.override ?? false)
+									? 'Filling to High…'
+									: commandLabels['override']}
+							</p>
+							<p class="mt-1 text-xs opacity-75">
+								{($waterSystem.device?.override ?? false)
+									? 'Resets automatically when overhead reaches High'
+									: 'Force fill regardless of current level'}
 							</p>
 						</button>
 					</div>

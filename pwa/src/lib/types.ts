@@ -115,5 +115,4 @@ export interface WaterAutomationState {
 	connection: BrokerConnectionState;
 	device: DeviceTelemetry | null;
 	recentCommands: CommandLogEntry[];
-	mode: ControlMode;
 }
