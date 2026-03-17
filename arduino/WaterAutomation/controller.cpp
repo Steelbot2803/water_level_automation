@@ -52,15 +52,15 @@ bool flowOkay(MotorType motor) {
 
 bool isLocked(const SystemState& state, MotorType motor, unsigned long nowMs) {
   const auto& rt = runtimeFor(state, motor);
-  if (rt.dryRunLatched) return true;  // ← permanent latch wins
-  return rt.lockUntilMs > nowMs;      // ← legacy timer path (now unreachable for dry-run)
+  if (rt.dryRunLatched) return true;  // permanent latch wins
+  return rt.lockUntilMs > nowMs;      // legacy timer path (now unreachable for dry-run)
 }
 
 void lockDryRun(SystemState& state, MotorType motor, unsigned long nowMs) {
   auto& rt = runtimeFor(state, motor);
   rt.status = MotorStatus::DRY_RUN_LOCK;
-  rt.dryRunLatched = true;  // ← permanent until manually cleared
-  rt.lockUntilMs = 0;       // ← timer disabled
+  rt.dryRunLatched = true;  // permanent until manually cleared
+  rt.lockUntilMs = 0;       // timer disabled
   (void)nowMs;              // nowMs no longer needed here, suppress unused warning
 }
 
@@ -99,7 +99,8 @@ bool tryStart(SystemState& state, MotorType motor, bool requireSumpCheck) {
 
   stopActiveMotor(state);
 
-  startMotor(state, motor);
+  // No startMotor() call needed — the relay is driven by writeMotorOutputs()
+  // reading state.activeMotor every loop tick.
   auto& rt = runtimeFor(state, motor);
   rt.status = MotorStatus::STARTING;
   rt.startedAtMs = nowMs;
@@ -244,10 +245,6 @@ void writeMotorOutputs(const SystemState& state) {
   digitalWrite(PIN_SUMP_RELAY, state.activeMotor == MotorType::SUMP ? HIGH : LOW);
 }
 
-void startMotor(SystemState&, MotorType) {
-  // Output applied in writeMotorOutputs()
-}
-
 void stopMotor(MotorType motor) {
   if (motor == MotorType::BOREWELL) {
     digitalWrite(PIN_BOREWELL_RELAY, LOW);
@@ -262,6 +259,8 @@ void clearDryRunLatch(SystemState& state, MotorType motor) {
   rt.lockUntilMs = 0;
   rt.status = MotorStatus::STOPPED;
 }
+
+// ── Flash-string conversions (Serial output) ─────────────────────────────────
 
 const __FlashStringHelper* toText(MotorType m) {
   switch (m) {
@@ -300,4 +299,45 @@ const __FlashStringHelper* toText(SumpLevel l) {
     case SumpLevel::HIGH: return F("high");
   }
   return F("unknown");
+}
+
+// ── Plain const char* conversions (snprintf / MQTT publish) ──────────────────
+
+const char* toStr(MotorType m) {
+  switch (m) {
+    case MotorType::NONE: return "none";
+    case MotorType::BOREWELL: return "borewell";
+    case MotorType::SUMP: return "sump";
+  }
+  return "unknown";
+}
+
+const char* toStr(MotorStatus s) {
+  switch (s) {
+    case MotorStatus::STOPPED: return "stopped";
+    case MotorStatus::STARTING: return "starting";
+    case MotorStatus::RUNNING: return "running";
+    case MotorStatus::DRY_RUN_LOCK: return "dry_run_lock";
+    case MotorStatus::SUMP_CRITICAL: return "sump_critical";
+  }
+  return "unknown";
+}
+
+const char* toStr(OverheadLevel l) {
+  switch (l) {
+    case OverheadLevel::CRITICAL: return "critical";
+    case OverheadLevel::LOW: return "low";
+    case OverheadLevel::MEDIUM: return "medium";
+    case OverheadLevel::HIGH: return "high";
+  }
+  return "unknown";
+}
+
+const char* toStr(SumpLevel l) {
+  switch (l) {
+    case SumpLevel::CRITICAL: return "critical";
+    case SumpLevel::LOW: return "low";
+    case SumpLevel::HIGH: return "high";
+  }
+  return "unknown";
 }

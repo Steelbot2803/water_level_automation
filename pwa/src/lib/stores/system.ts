@@ -307,12 +307,12 @@ function createWaterSystemStore() {
 					}));
 				} catch (error) {
 					const message = error instanceof Error ? error.message : 'Unknown payload parse failure';
+					console.warn('[system] MQTT payload parse failure:', message, rawPayload);
 					update((state) => ({
 						...state,
 						connection: {
 							...state.connection,
-							phase: 'error',
-							detail: 'Received invalid MQTT status payload.',
+							detail: `Warning: received unparseable status payload. Waiting for next message.`,
 							lastError: message
 						}
 					}));

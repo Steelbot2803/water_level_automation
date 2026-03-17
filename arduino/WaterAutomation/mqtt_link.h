@@ -3,7 +3,7 @@
 #include "controller.h"
 
 void initMqttLink();
-void runMqttLink(SystemState& state);
+void runMqttLink();
 void publishStateToMqtt(const SystemState& state);
 
 bool isWifiConnected();

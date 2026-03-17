@@ -13,7 +13,7 @@ enum class MotorStatus : uint8_t {
   STARTING,
   RUNNING,
   DRY_RUN_LOCK,
-  SUMP_CRITICAL  // sump motor specifically stopped because sump is critical
+  SUMP_CRITICAL
 };
 
 enum class OverheadLevel : uint8_t {
@@ -32,9 +32,9 @@ enum class SumpLevel : uint8_t {
 struct CommandState {
   bool manualMode = false;
   bool overrideFillToHigh = false;
-  bool emergencyStop = false;               // stops everything, any mode
-  bool autoPreferSump = false;              // force switch: in auto, try sump before borewell
-  MotorType forcedMotor = MotorType::NONE;  // honored only in manual mode
+  bool emergencyStop = false;
+  bool autoPreferSump = false;
+  MotorType forcedMotor = MotorType::NONE;
 };
 
 struct MotorRuntimeState {
@@ -63,7 +63,6 @@ void updateLevelsFromPins(SystemState& state);
 void runAutomationLogic(SystemState& state);
 void writeMotorOutputs(const SystemState& state);
 
-void startMotor(SystemState& state, MotorType motor);
 void stopMotor(MotorType motor);
 
 void clearDryRunLatch(SystemState& state, MotorType motor);
@@ -72,3 +71,8 @@ const __FlashStringHelper* toText(MotorType m);
 const __FlashStringHelper* toText(MotorStatus s);
 const __FlashStringHelper* toText(OverheadLevel l);
 const __FlashStringHelper* toText(SumpLevel l);
+
+const char* toStr(MotorType m);
+const char* toStr(MotorStatus s);
+const char* toStr(OverheadLevel l);
+const char* toStr(SumpLevel l);

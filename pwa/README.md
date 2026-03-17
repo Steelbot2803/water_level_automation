@@ -47,29 +47,64 @@ npm run build
 
 ## Command mapping
 
-The PWA publishes these literal MQTT payloads:
+The PWA publishes these literal string payloads to the command topic.
 
-- `auto`
-- `manual`
-- `override`
-- `motor borewell`
-- `motor sump`
-- `motor stop`
-- `status`
+### Mode commands
+
+| Payload    | Effect                                                                          |
+| ---------- | ------------------------------------------------------------------------------- |
+| `auto`     | Automatic mode. Also clears emergency stop.                                     |
+| `manual`   | Manual mode. Also clears emergency stop.                                        |
+| `override` | Fill overhead tank to HIGH, regardless of current level. Clears emergency stop. |
+
+### Motor commands (manual mode)
+
+| Payload          | Effect                                                 |
+| ---------------- | ------------------------------------------------------ |
+| `motor borewell` | Switch to manual mode and run the borewell motor.      |
+| `motor sump`     | Switch to manual mode and run the sump transfer motor. |
+| `motor stop`     | Stop the active motor. Does **not** change mode.       |
+
+### Auto-mode preference commands
+
+| Payload    | Effect                                                  |
+| ---------- | ------------------------------------------------------- |
+| `borewell` | In auto mode, prefer borewell motor (default).          |
+| `sump`     | In auto mode, prefer sump transfer motor over borewell. |
+
+### Safety commands
+
+| Payload           | Effect                                                              |
+| ----------------- | ------------------------------------------------------------------- |
+| `estop`           | Emergency stop — halt all motors immediately in any mode.           |
+| `resume`          | Clear the emergency stop flag (leaves mode unchanged).              |
+| `unlock borewell` | Clear the borewell dry-run latch so the motor can start again.      |
+| `unlock sump`     | Clear the sump transfer dry-run latch so the motor can start again. |
+
+### Diagnostic commands
+
+| Payload  | Effect                                                     |
+| -------- | ---------------------------------------------------------- |
+| `status` | Force the Arduino to publish a status payload immediately. |
+
+> **Note:** All of these commands are also accepted over the serial port.
+> The PWA sends them by publishing to `water-system/cmd`.
+> The Arduino receives them via its MQTT subscription and runs them through
+> the same `applyCommand()` function that handles serial input.
 
 ## Expected status payload
 
 ```json
 {
-	"mode": "auto",
-	"override": false,
-	"manual_target": "none",
-	"overhead": "low",
-	"sump": "high",
-	"motor": "borewell",
-	"borewell_status": "running",
-	"sump_status": "stopped",
-	"sump_warning": false,
-	"estop": false
+ "mode": "auto",
+ "override": false,
+ "manual_target": "none",
+ "overhead": "low",
+ "sump": "high",
+ "motor": "borewell",
+ "borewell_status": "running",
+ "sump_status": "stopped",
+ "sump_warning": false,
+ "estop": false
 }
 ```

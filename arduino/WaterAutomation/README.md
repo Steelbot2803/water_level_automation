@@ -18,14 +18,20 @@ This folder contains a multi-file Arduino implementation for:
 
 ## Serial commands
 
-- `auto`
-- `manual`
-- `override`
-- `motor borewell`
-- `motor sump`
-- `motor stop`
-- `status`
-- `help`
+- `auto`           — automatic mode; also clears emergency stop
+- `manual`         — manual mode; also clears emergency stop
+- `override`       — fill to HIGH regardless of overhead level; also clears emergency stop
+- `motor borewell` — manual mode: run borewell motor
+- `motor sump`     — manual mode: run sump transfer motor
+- `motor stop`     — stop active motor (any mode); does not change mode
+- `borewell`       — auto mode: prefer borewell motor (default)
+- `sump`           — auto mode: prefer sump transfer motor over borewell
+- `estop`          — emergency stop all motors immediately (any mode)
+- `resume`         — clear emergency stop flag
+- `unlock borewell`— clear borewell dry-run latch so it can start again
+- `unlock sump`    — clear sump dry-run latch so it can start again
+- `status`         — print current status immediately
+- `help`           — show command list
 
 ## Key behavior
 
@@ -66,11 +72,23 @@ Adjust pin polarity/threshold wiring in `config.h` according to your sensor type
   "motor": "borewell",
   "borewell_status": "running",
   "sump_status": "stopped",
-  "sump_warning": false
+  "sump_warning": false,
+  "emergency_stop": false,
+  "auto_prefer_sump": false
 }
 ```
 
 - Field notes:
   - `manual_target` reports the requested manual motor only while the controller is in manual mode.
-  - `borewell_status` and `sump_status` mirror the controller runtime states: `stopped`, `starting`, `running`, `dry_run_lock`, `blocked_by_safety`.
-  - `sump_warning` goes true when the sump reaches critical or the critical-warning latch has been set.
+  - `borewell_status` and `sump_status` mirror the controller runtime states:
+    `stopped`, `starting`, `running`, `dry_run_lock`, `sump_critical`.
+    - `dry_run_lock` — motor stopped because no flow was detected; requires manual
+      `unlock borewell` or `unlock sump` command to clear.
+    - `sump_critical` — sump transfer motor specifically stopped because the sump
+      tank is at critical level (pump protection).
+  - `sump_warning` goes `true` when the sump reaches critical or the
+    critical-warning latch has been set.
+  - `emergency_stop` goes `true` when an `estop` command has been received and
+    remains `true` until `auto`, `manual`, or `resume` is sent.
+  - `auto_prefer_sump` goes `true` when the `sump` preference command has been
+    sent; `false` (borewell preferred) is the default.

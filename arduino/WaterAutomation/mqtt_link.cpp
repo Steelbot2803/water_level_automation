@@ -18,45 +18,6 @@ unsigned long lastMqttAttemptMs = 0;
 uint8_t lastWifiStatus = WL_NO_MODULE;
 bool lastMqttConnected = false;
 
-const char* overheadText(OverheadLevel l) {
-  switch (l) {
-    case OverheadLevel::CRITICAL: return "critical";
-    case OverheadLevel::LOW: return "low";
-    case OverheadLevel::MEDIUM: return "medium";
-    case OverheadLevel::HIGH: return "high";
-  }
-  return "unknown";
-}
-
-const char* sumpText(SumpLevel l) {
-  switch (l) {
-    case SumpLevel::CRITICAL: return "critical";
-    case SumpLevel::LOW: return "low";
-    case SumpLevel::HIGH: return "high";
-  }
-  return "unknown";
-}
-
-const char* motorText(MotorType m) {
-  switch (m) {
-    case MotorType::NONE: return "none";
-    case MotorType::BOREWELL: return "borewell";
-    case MotorType::SUMP: return "sump";
-  }
-  return "unknown";
-}
-
-const char* motorStatusText(MotorStatus status) {
-  switch (status) {
-    case MotorStatus::STOPPED: return "stopped";
-    case MotorStatus::STARTING: return "starting";
-    case MotorStatus::RUNNING: return "running";
-    case MotorStatus::DRY_RUN_LOCK: return "dry_run_lock";
-    case MotorStatus::SUMP_CRITICAL: return "sump_critical";
-  }
-  return "unknown";
-}
-
 const __FlashStringHelper* wifiStatusText(uint8_t status) {
   switch (status) {
     case WL_CONNECTED: return F("connected");
@@ -72,7 +33,6 @@ const __FlashStringHelper* wifiStatusText(uint8_t status) {
 
 void reportWifiStatusChange(uint8_t status) {
   if (status == lastWifiStatus) return;
-
   lastWifiStatus = status;
   Serial.print(F("wifi_status: "));
   Serial.println(wifiStatusText(status));
@@ -80,7 +40,6 @@ void reportWifiStatusChange(uint8_t status) {
 
 void reportMqttStatusChange(bool connected) {
   if (connected == lastMqttConnected) return;
-
   lastMqttConnected = connected;
   Serial.print(F("mqtt_status: "));
   Serial.println(connected ? F("connected") : F("disconnected"));
@@ -93,7 +52,7 @@ void connectWifi() {
   if (status == WL_CONNECTED) return;
 
   const unsigned long nowMs = millis();
-  if (lastWifiAttemptMs != 0 && nowMs - lastWifiAttemptMs < 30000) return;
+  if (lastWifiAttemptMs != 0 && nowMs - lastWifiAttemptMs < WIFI_RETRY_PERIOD_MS) return;
 
   lastWifiAttemptMs = nowMs;
   Serial.println(F("wifi: attempting connection"));
@@ -133,7 +92,7 @@ void ensureMqttConnected() {
   }
 
   const unsigned long nowMs = millis();
-  if (lastMqttAttemptMs != 0 && nowMs - lastMqttAttemptMs < 5000) return;
+  if (lastMqttAttemptMs != 0 && nowMs - lastMqttAttemptMs < MQTT_RETRY_PERIOD_MS) return;
 
   lastMqttAttemptMs = nowMs;
   Serial.println(F("mqtt: attempting broker connection"));
@@ -152,21 +111,20 @@ const char* modeText(const SystemState& state) {
 
 const char* manualTargetText(const SystemState& state) {
   if (!state.command.manualMode) return "none";
-  return motorText(state.command.forcedMotor);
+  return toStr(state.command.forcedMotor);
 }
 
-}  // namespace
+}
 
 void initMqttLink() {
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
   mqttClient.setCallback(mqttCallback);
-  WiFi.disconnect();  // force clean slate on boot
+  WiFi.disconnect();
   connectWifi();
   ensureMqttConnected();
 }
 
-void runMqttLink(SystemState& state) {
-  (void)state;
+void runMqttLink() {
   connectWifi();
   ensureMqttConnected();
 
@@ -183,9 +141,8 @@ void publishStateToMqtt(const SystemState& state) {
   }
   lastMqttPublishMs = nowMs;
 
-  // Payload includes emergency_stop and auto_prefer_sump for the PWA to reflect state.
   char payload[420];
-  snprintf(
+  const int written = snprintf(
     payload,
     sizeof(payload),
     "{\"mode\":\"%s\",\"override\":%s,\"manual_target\":\"%s\","
@@ -195,14 +152,21 @@ void publishStateToMqtt(const SystemState& state) {
     modeText(state),
     state.command.overrideFillToHigh ? "true" : "false",
     manualTargetText(state),
-    overheadText(state.overheadLevel),
-    sumpText(state.sumpLevel),
-    motorText(state.activeMotor),
-    motorStatusText(state.borewell.status),
-    motorStatusText(state.sump.status),
+    toStr(state.overheadLevel),
+    toStr(state.sumpLevel),
+    toStr(state.activeMotor),
+    toStr(state.borewell.status),
+    toStr(state.sump.status),
     (state.sumpLevel == SumpLevel::CRITICAL || state.sumpCriticalWarningLatched) ? "true" : "false",
     state.command.emergencyStop ? "true" : "false",
     state.command.autoPreferSump ? "true" : "false");
+
+  if (written < 0 || written >= static_cast<int>(sizeof(payload))) {
+    Serial.print(F("mqtt: payload truncated (needed "));
+    Serial.print(written);
+    Serial.println(F(" bytes), skipping publish"));
+    return;
+  }
 
   mqttClient.publish(MQTT_STATUS_TOPIC, payload, true);
 }

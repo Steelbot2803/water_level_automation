@@ -27,7 +27,7 @@ void setup() {
 void loop() {
   updateLevelsFromPins(state);
   readCommandFromSerial(state);
-  runMqttLink(state);
+  runMqttLink();
   runAutomationLogic(state);
   writeMotorOutputs(state);
   publishStatus(state);

@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { pumpPreference } from '$lib/stores/pump.js';
-	import { mode } from '$lib/stores/mode.js';
 	import { waterSystem } from '$lib/stores/system.js';
 	import { commandLabels, runtimeStatusLabels } from '$lib/control.js';
 	import type {
@@ -19,9 +18,10 @@
 	let modeValue: 'auto' | 'manual' = 'auto';
 	let pumpValue: 'borewell' | 'sump' = 'borewell';
 	let overrideSending = false;
-	let eStopped = false;
-	const borewellStatus = $waterSystem.device?.motors?.borewell?.status;
-	const sumpStatus = $waterSystem.device?.motors?.sump?.status;
+	$: eStopped = $waterSystem.device?.alarms?.emergencyStop ?? false;
+	$: borewellStatus = $waterSystem.device?.motors?.borewell?.status;
+	$: sumpStatus = $waterSystem.device?.motors?.sump?.status;
+
 	const modeOptions: Option<'auto' | 'manual'>[] = [
 		{ label: 'Auto', value: 'auto' },
 		{ label: 'Manual', value: 'manual' }
@@ -77,15 +77,10 @@
 		high: '90%'
 	};
 
-	// ✅
 	onMount(() => {
-		const unsub = waterSystem.subscribe((state) => {
-			if (state.device) mode.seedFromDevice(state.device.mode);
-		});
 		waterSystem.initialize();
 		const cleanupTheme = theme.initialize();
 		return () => {
-			unsub();
 			cleanupTheme?.();
 		};
 	});
@@ -166,8 +161,7 @@
 		sump: 'bg-lime-600'
 	};
 
-	function handleModeChange(value: 'auto' | 'manual', index: number) {
-		mode.set(value);
+	function handleModeChange(value: 'auto' | 'manual', _index: number) {
 		waterSystem.sendCommand(value);
 		modeValue = value;
 	}
@@ -188,7 +182,6 @@
 
 	function eStop(active: boolean) {
 		waterSystem.sendCommand(active ? 'estop' : 'resume');
-		eStopped = active;
 	}
 </script>
 
@@ -250,20 +243,20 @@
 				</div>
 				<div class="mt-4 flex max-w-full items-center justify-between gap-3">
 					<h1 class="text-3xl font-semibold tracking-tight uppercase sm:text-4xl">Neptune</h1>
-					{#if $waterSystem.device && ((borewellStatus !== 'stopped' && borewellStatus) || (sumpStatus !== 'stopped' && sumpStatus))}
-						{#if eStopped === false}
-							<button
-								class="rounded-2xl bg-rose-200 px-3 py-3 text-xs font-semibold tracking-wide text-rose-900 uppercase"
-								onclick={() => eStop(true)}
-							>
-								{commandLabels['estop']}
-							</button>
-						{:else if eStopped === true}
+					{#if $waterSystem.device}
+						{#if eStopped}
 							<button
 								class="rounded-2xl bg-emerald-200 px-3 py-3 text-xs font-semibold tracking-wide text-emerald-900 uppercase"
 								onclick={() => eStop(false)}
 							>
 								{commandLabels['resume']}
+							</button>
+						{:else if (borewellStatus && borewellStatus !== 'stopped') || (sumpStatus && sumpStatus !== 'stopped')}
+							<button
+								class="rounded-2xl bg-rose-200 px-3 py-3 text-xs font-semibold tracking-wide text-rose-900 uppercase"
+								onclick={() => eStop(true)}
+							>
+								{commandLabels['estop']}
 							</button>
 						{/if}
 					{/if}
@@ -443,7 +436,7 @@
 							</div>
 						</div>
 
-						<!-- SUMP PUMP CARD — identical structure, different motor key -->
+						<!-- SUMP PUMP CARD -->
 						<div class="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 shadow-sm">
 							<div class="grid gap-4 sm:grid-cols-[7.5rem,1fr] sm:items-center">
 								<div class="relative mx-auto flex h-28 w-28 items-center justify-center">
