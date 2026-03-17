@@ -78,7 +78,7 @@ function createThemeStore() {
 export const theme = createThemeStore();
 
 export const themeIcons = [
-		{ val: 'light', icon: Sun },
-		{ val: 'system', icon: Monitor },
-		{ val: 'dark', icon: Moon }
-	];
+	{ val: 'light', icon: Sun },
+	{ val: 'system', icon: Monitor },
+	{ val: 'dark', icon: Moon }
+];

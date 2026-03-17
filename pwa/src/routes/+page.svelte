@@ -12,10 +12,12 @@
 	} from '../lib/types.js';
 	import { connectionIconsMap } from '../lib/types.js';
 	import { theme, themeIcons, type ThemePreference } from '$lib/stores/theme.js';
-	import { icons, LoaderCircle, LoaderIcon } from 'lucide-svelte';
+	import { LoaderCircle } from 'lucide-svelte';
 
 	let overrideSending = false;
 	let eStopped = false;
+	const borewellStatus = $waterSystem.device?.motors?.borewell?.status;
+	const sumpStatus = $waterSystem.device?.motors?.sump?.status;
 
 	waterSystem.subscribe((state) => {
 		if (state.device) mode.seedFromDevice(state.device.mode);
@@ -180,7 +182,9 @@
 							<svelte:component
 								this={connectionIconsMap[$waterSystem.connection.phase]}
 								size={16}
-								class={connectionIconsMap[$waterSystem.connection.phase] === LoaderCircle ? 'animate-spin': ''}
+								class={connectionIconsMap[$waterSystem.connection.phase] === LoaderCircle
+									? 'animate-spin'
+									: ''}
 							/>
 						</span>
 					</div>
@@ -208,7 +212,7 @@
 				</div>
 				<div class="mt-4 flex max-w-full items-center justify-between gap-3">
 					<h1 class="text-3xl font-semibold tracking-tight uppercase sm:text-4xl">Neptune</h1>
-					{#if $waterSystem.device?.motors.borewell.status !== 'stopped' || $waterSystem.device?.motors.sump.status !== 'stopped'}
+					{#if $waterSystem.device && ((borewellStatus !== 'stopped' && borewellStatus) || (sumpStatus !== 'stopped' && sumpStatus))}
 						{#if eStopped === false}
 							<button
 								class="rounded-2xl bg-rose-200 px-3 py-3 text-xs font-semibold tracking-wide text-rose-900 uppercase"
@@ -216,7 +220,7 @@
 							>
 								{commandLabels['estop']}
 							</button>
-						{:else}
+						{:else if eStopped === true}
 							<button
 								class="rounded-2xl bg-emerald-200 px-3 py-3 text-xs font-semibold tracking-wide text-emerald-900 uppercase"
 								onclick={() => eStop(false)}
@@ -442,6 +446,190 @@
 									<p class="mt-3 text-3xl font-semibold text-slate-950 uppercase">
 										{runtimeStatusLabels[$waterSystem.device.motors.sump.status]}
 									</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				{:else}
+					<!-- ── TANKS ── -->
+					<p class="mt-4 text-base font-semibold tracking-[0.2em] text-slate-400 uppercase">
+						Tanks
+					</p>
+					<div class="mt-2 grid gap-3 sm:grid-cols-2">
+						<div class="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 shadow-sm">
+							<div class="grid gap-4 sm:grid-cols-[7.5rem,1fr] sm:items-center">
+								<div class="relative mx-auto h-56 w-28">
+									<div class="absolute inset-x-5 top-0 h-4 rounded-full bg-slate-300/90"></div>
+									<div
+										class="absolute inset-x-0 top-3 bottom-0 rounded-[2rem] border-[6px] border-slate-300 bg-white shadow-inner"
+									>
+										<div class="absolute inset-x-3 top-5 bottom-5 flex flex-col justify-between">
+											<div class="border-t border-dashed border-slate-300/80"></div>
+											<div class="border-t border-dashed border-slate-300/80"></div>
+											<div class="border-t border-dashed border-slate-300/80"></div>
+											<div class="border-t border-dashed border-slate-300/80"></div>
+										</div>
+										<div
+											class={`absolute inset-x-0 bottom-0 overflow-hidden rounded-b-[1.6rem] bg-gradient-to-t transition-[height] duration-500`}
+											style={`height:0;`}
+										>
+											<div
+												class="absolute inset-0 [background-image:linear-gradient(135deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)] [background-size:24px_24px] opacity-40"
+											></div>
+											<div
+												class="absolute inset-x-4 top-2 h-2 rounded-full bg-white/40 blur-[1px]"
+											></div>
+										</div>
+									</div>
+									<div
+										class="absolute top-8 -right-14 flex h-44 flex-col justify-between text-[0.65rem] font-semibold tracking-[0.2em] text-slate-400 uppercase"
+									>
+										<span>High</span>
+										<span>Med</span>
+										<span>Low</span>
+										<span>Crit</span>
+									</div>
+								</div>
+
+								<div>
+									<p class="text-xs font-semibold tracking-[0.2em] text-slate-500 uppercase">
+										Overhead
+									</p>
+									<p class="mt-3 text-3xl font-semibold text-slate-950 uppercase">—</p>
+								</div>
+							</div>
+						</div>
+
+						<div class="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 shadow-sm">
+							<div class="grid gap-4 sm:grid-cols-[7.5rem,1fr] sm:items-center">
+								<div class="relative mx-auto h-56 w-28">
+									<div
+										class="absolute inset-x-4 top-0 h-6 rounded-t-[1.4rem] border-4 border-b-0 border-slate-300 bg-slate-100"
+									></div>
+									<div
+										class="absolute inset-x-0 top-5 bottom-0 rounded-[2rem] border-[6px] border-slate-300 bg-white shadow-inner"
+									>
+										<div class="absolute inset-x-3 top-5 bottom-5 flex flex-col justify-between">
+											<div class="border-t border-dashed border-slate-300/80"></div>
+											<div class="border-t border-dashed border-slate-300/80"></div>
+											<div class="border-t border-dashed border-slate-300/80"></div>
+										</div>
+										<div
+											class={`absolute inset-x-0 bottom-0 overflow-hidden rounded-b-[1.6rem] bg-gradient-to-t transition-[height] duration-500`}
+											style={`height: 0;`}
+										>
+											<div
+												class="absolute inset-0 [background-image:radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.3),transparent_30%),radial-gradient(circle_at_80%_30%,rgba(255,255,255,0.22),transparent_28%)] opacity-35"
+											></div>
+											<div
+												class="absolute inset-x-4 top-2 h-2 rounded-full bg-white/35 blur-[1px]"
+											></div>
+										</div>
+									</div>
+									<div
+										class="absolute top-10 -right-14 flex h-40 flex-col justify-between text-[0.65rem] font-semibold tracking-[0.2em] text-slate-400 uppercase"
+									>
+										<span>High</span>
+										<span>Low</span>
+										<span>Crit</span>
+									</div>
+								</div>
+
+								<div>
+									<p class="text-xs font-semibold tracking-[0.2em] text-slate-500 uppercase">
+										Sump
+									</p>
+									<p class="mt-3 text-3xl font-semibold text-slate-950 uppercase">—</p>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="mt-6 h-1 rounded-full bg-slate-200"></div>
+					<!-- ── PUMPS ── -->
+					<p class="mt-4 text-base font-semibold tracking-[0.2em] text-slate-400 uppercase">
+						Pumps
+					</p>
+					<div class="mt-2 grid gap-3 sm:grid-cols-2">
+						<!-- BOREWELL PUMP CARD -->
+						<div class="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 shadow-sm">
+							<div class="grid gap-4 sm:grid-cols-[7.5rem,1fr] sm:items-center">
+								<!-- Pump graphic -->
+								<div class="relative mx-auto flex h-28 w-28 items-center justify-center">
+									<!-- Outer ring — acts as the pump casing -->
+									<div
+										class={`absolute inset-0 rounded-full border-[6px] border-slate-300 bg-white shadow-inner transition-colors duration-500`}
+									>
+										<!-- Impeller disc — spins when running, pulses via ring when starting -->
+										<div
+											class={`absolute inset-3 rounded-full bg-slate-300 transition-colors duration-500`}
+											style="animation-duration: 1.4s"
+										>
+											<!-- Blade lines crossing through the disc center -->
+											<!-- overflow-hidden + rounded-full clips them to the circle shape -->
+											<div class="absolute inset-0 overflow-hidden rounded-full">
+												<div
+													class="absolute top-1/2 right-0 left-0 h-[3px] -translate-y-1/2 rounded-full bg-white/40"
+												></div>
+												<div
+													class="absolute top-1/2 right-0 left-0 h-[3px] -translate-y-1/2 rounded-full bg-white/40"
+													style="transform: translateY(-50%) rotate(60deg)"
+												></div>
+												<div
+													class="absolute top-1/2 right-0 left-0 h-[3px] -translate-y-1/2 rounded-full bg-white/40"
+													style="transform: translateY(-50%) rotate(-60deg)"
+												></div>
+											</div>
+										</div>
+
+										<!-- Centre hub dot — stays still even when the impeller spins -->
+										<div class="absolute inset-[38%] rounded-full bg-white shadow"></div>
+									</div>
+								</div>
+
+								<!-- Text info -->
+								<div>
+									<p class="text-xs font-semibold tracking-[0.2em] text-slate-500 uppercase">
+										Borewell
+									</p>
+									<p class="mt-3 text-3xl font-semibold text-slate-950 uppercase">—</p>
+								</div>
+							</div>
+						</div>
+
+						<!-- SUMP PUMP CARD — identical structure, different motor key -->
+						<div class="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 shadow-sm">
+							<div class="grid gap-4 sm:grid-cols-[7.5rem,1fr] sm:items-center">
+								<div class="relative mx-auto flex h-28 w-28 items-center justify-center">
+									<div
+										class={`absolute inset-0 rounded-full border-[6px] border-slate-300 bg-white shadow-inner transition-colors duration-500`}
+									>
+										<div
+											class={`absolute inset-3 rounded-full bg-slate-300 transition-colors duration-500`}
+											style="animation-duration: 1.4s"
+										>
+											<div class="absolute inset-0 overflow-hidden rounded-full">
+												<div
+													class="absolute top-1/2 right-0 left-0 h-[3px] -translate-y-1/2 rounded-full bg-white/40"
+												></div>
+												<div
+													class="absolute top-1/2 right-0 left-0 h-[3px] -translate-y-1/2 rounded-full bg-white/40"
+													style="transform: translateY(-50%) rotate(60deg)"
+												></div>
+												<div
+													class="absolute top-1/2 right-0 left-0 h-[3px] -translate-y-1/2 rounded-full bg-white/40"
+													style="transform: translateY(-50%) rotate(-60deg)"
+												></div>
+											</div>
+										</div>
+										<div class="absolute inset-[38%] rounded-full bg-white shadow"></div>
+									</div>
+								</div>
+
+								<div>
+									<p class="text-xs font-semibold tracking-[0.2em] text-slate-500 uppercase">
+										Sump
+									</p>
+									<p class="mt-3 text-3xl font-semibold text-slate-950 uppercase">—</p>
 								</div>
 							</div>
 						</div>

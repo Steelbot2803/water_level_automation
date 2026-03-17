@@ -249,6 +249,6 @@ export const commandLabels: Record<ArduinoCommand, string> = {
 	'force sump': 'Prefer Sump',
 	'unlock borewell': 'Unlock Borewell',
 	'unlock sump': 'Unlock Sump',
-	'estop': 'Emergency Stop',
-	'resume': 'Resume Operation'
+	estop: 'Emergency Stop',
+	resume: 'Resume Operation'
 };

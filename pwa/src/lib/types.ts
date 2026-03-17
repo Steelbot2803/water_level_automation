@@ -104,9 +104,11 @@ export const connectionIcons = [
 	{ val: 'error', icon: GlobeX }
 ] as const;
 
-export const connectionIconsMap: Record<ConnectionPhase, typeof connectionIcons[number]['icon']> = Object.fromEntries(
-	connectionIcons.map(({ val, icon }) => [val, icon])
-) as Record<ConnectionPhase, typeof connectionIcons[number]['icon']>;
+export const connectionIconsMap: Record<ConnectionPhase, (typeof connectionIcons)[number]['icon']> =
+	Object.fromEntries(connectionIcons.map(({ val, icon }) => [val, icon])) as Record<
+		ConnectionPhase,
+		(typeof connectionIcons)[number]['icon']
+	>;
 
 export interface BrokerConnectionState {
 	phase: ConnectionPhase;

@@ -20,7 +20,7 @@
 </script>
 
 <div
-	class="pointer-events-none fixed inset-x-4 top-[calc(1rem+env(safe-area-inset-top))] z-50 flex flex-col gap-3 md:left-auto md:right-4 md:w-full md:max-w-sm"
+	class="pointer-events-none fixed inset-x-4 top-[calc(1rem+env(safe-area-inset-top))] z-50 flex flex-col gap-3 md:right-4 md:left-auto md:w-full md:max-w-sm"
 	aria-live="polite"
 	aria-atomic="true"
 >

@@ -51,8 +51,10 @@ function startTimer(id: number) {
 	);
 }
 
-function enqueueToast(payload: Required<Pick<AlertPayload, 'title' | 'message' | 'severity' | 'duration'>>) {
-	const id = alertIdCounter += 1;
+function enqueueToast(
+	payload: Required<Pick<AlertPayload, 'title' | 'message' | 'severity' | 'duration'>>
+) {
+	const id = (alertIdCounter += 1);
 	const nextAlert: AlertToast = {
 		id,
 		title: payload.title,
@@ -104,7 +106,9 @@ function refreshEnvironmentState() {
 	notificationPermission = 'Notification' in window ? Notification.permission : 'denied';
 }
 
-async function showSystemNotification(payload: Required<Pick<AlertPayload, 'title' | 'message' | 'severity' | 'tag'>>) {
+async function showSystemNotification(
+	payload: Required<Pick<AlertPayload, 'title' | 'message' | 'severity' | 'tag'>>
+) {
 	if (!browser || !('Notification' in window) || notificationPermission !== 'granted') {
 		return false;
 	}
@@ -144,7 +148,12 @@ function shouldSuppress(tag: string, cooldownMs: number) {
 }
 
 async function requestNotificationPermission() {
-	if (!browser || !mobileLike || !('Notification' in window) || Notification.permission !== 'default') {
+	if (
+		!browser ||
+		!mobileLike ||
+		!('Notification' in window) ||
+		Notification.permission !== 'default'
+	) {
 		return;
 	}
 
