@@ -2,3 +2,80 @@
 @custom-variant dark (&:where(.dark, .dark *));
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
+
+/* ── Default: Light mode ─────────────────────────────────── */
+:root {
+	color-scheme: light;
+}
+
+/* ── Dark mode: invert the entire body ───────────────────── */
+:root.dark body {
+	filter: invert(1) hue-rotate(180deg);
+	background: #f8fafc; /* matches your light bg, so inverted it becomes a nice dark slate */
+}
+
+/* 
+  Re-invert things that should NOT be colour-flipped.
+  Images and videos would look broken inverted (photos go negative).
+  The [data-no-theme-invert] attribute lets you opt specific elements out — 
+  we'll use this on the tank/pump graphics so status colours stay meaningful.
+*/
+:root.dark img,
+:root.dark video,
+:root.dark canvas,
+:root.dark [data-no-theme-invert='true'] {
+	filter: invert(1) hue-rotate(180deg);
+}
+
+/* ── Smooth transitions when switching theme ─────────────── */
+body {
+	transition:
+		background-color 220ms ease,
+		color 220ms ease,
+		filter 220ms ease;
+}
+
+/* 
+  Transition most interactive/layout elements independently too.
+  This prevents a jarring snap when the filter changes.
+*/
+:root body,
+:root main,
+:root section,
+:root article,
+:root aside,
+:root nav,
+:root form,
+:root button,
+:root input,
+:root select,
+:root textarea,
+:root a,
+:root svg {
+	transition:
+		background-color 180ms ease,
+		border-color 180ms ease,
+		color 180ms ease,
+		box-shadow 180ms ease,
+		filter 180ms ease;
+}
+
+/* Respect reduced motion — no transitions at all for those users */
+@media (prefers-reduced-motion: reduce) {
+	body,
+	:root body,
+	:root main,
+	:root section,
+	:root article,
+	:root aside,
+	:root nav,
+	:root form,
+	:root button,
+	:root input,
+	:root select,
+	:root textarea,
+	:root a,
+	:root svg {
+		transition: none !important;
+	}
+}

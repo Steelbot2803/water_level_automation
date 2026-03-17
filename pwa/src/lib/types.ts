@@ -1,3 +1,5 @@
+import { Globe, GlobeOff, GlobeX, Hourglass, LoaderCircle } from 'lucide-svelte';
+
 export const mqttModes = ['auto', 'manual'] as const;
 export type MqttMode = (typeof mqttModes)[number];
 
@@ -18,7 +20,7 @@ export const motorRuntimeStatuses = [
 	'starting',
 	'running',
 	'dry_run_lock',
-	'sump_critical' // sump transfer motor specifically blocked because sump tank is critical
+	'sump_critical'
 ] as const;
 export type MotorRuntimeStatus = (typeof motorRuntimeStatuses)[number];
 
@@ -29,7 +31,9 @@ export const arduinoCommands = [
 	'force borewell',
 	'force sump',
 	'unlock borewell',
-	'unlock sump'
+	'unlock sump',
+	'estop',
+	'resume'
 ] as const;
 
 export type ArduinoCommand = (typeof arduinoCommands)[number];
@@ -90,6 +94,19 @@ export type ConnectionPhase =
 	| 'reconnecting'
 	| 'offline'
 	| 'error';
+
+export const connectionIcons = [
+	{ val: 'idle', icon: Hourglass },
+	{ val: 'connecting', icon: LoaderCircle },
+	{ val: 'connected', icon: Globe },
+	{ val: 'reconnecting', icon: LoaderCircle },
+	{ val: 'offline', icon: GlobeOff },
+	{ val: 'error', icon: GlobeX }
+] as const;
+
+export const connectionIconsMap: Record<ConnectionPhase, typeof connectionIcons[number]['icon']> = Object.fromEntries(
+	connectionIcons.map(({ val, icon }) => [val, icon])
+) as Record<ConnectionPhase, typeof connectionIcons[number]['icon']>;
 
 export interface BrokerConnectionState {
 	phase: ConnectionPhase;

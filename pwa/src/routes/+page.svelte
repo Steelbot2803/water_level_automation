@@ -3,10 +3,19 @@
 	import { pumpPreference } from '../lib/stores/pump.js';
 	import { mode } from '../lib/stores/mode.js';
 	import { waterSystem } from '../lib/stores/system.js';
-	import { commandLabels } from '../lib/control.js';
-	import type { ConnectionPhase, OverheadLevel, SumpLevel } from '../lib/types.js';
+	import { commandLabels, runtimeStatusLabels } from '../lib/control.js';
+	import type {
+		ConnectionPhase,
+		OverheadLevel,
+		SumpLevel,
+		MotorRuntimeStatus
+	} from '../lib/types.js';
+	import { connectionIconsMap } from '../lib/types.js';
+	import { theme, themeIcons, type ThemePreference } from '$lib/stores/theme.js';
+	import { icons, LoaderCircle, LoaderIcon } from 'lucide-svelte';
 
 	let overrideSending = false;
+	let eStopped = false;
 
 	waterSystem.subscribe((state) => {
 		if (state.device) mode.seedFromDevice(state.device.mode);
@@ -60,6 +69,7 @@
 
 	onMount(() => {
 		waterSystem.initialize();
+		return theme.initialize();
 	});
 
 	function formatTimestamp(value?: number, compact = false) {
@@ -100,6 +110,34 @@
 		}
 	}
 
+	function pumpBodyTone(status: MotorRuntimeStatus): string {
+		switch (status) {
+			case 'running':
+				return 'bg-emerald-500';
+			case 'starting':
+				return 'bg-amber-400';
+			case 'dry_run_lock':
+			case 'sump_critical':
+				return 'bg-rose-500';
+			default:
+				return 'bg-slate-300';
+		}
+	}
+
+	function pumpRingTone(status: MotorRuntimeStatus): string {
+		switch (status) {
+			case 'running':
+				return 'border-emerald-300';
+			case 'starting':
+				return 'border-amber-300';
+			case 'dry_run_lock':
+			case 'sump_critical':
+				return 'border-rose-300';
+			default:
+				return 'border-slate-300';
+		}
+	}
+
 	function handleOverride() {
 		overrideSending = true;
 		waterSystem.sendCommand('override');
@@ -107,10 +145,15 @@
 			overrideSending = false;
 		}, 800);
 	}
+
+	function eStop(active: boolean) {
+		waterSystem.sendCommand(active ? 'estop' : 'resume');
+		eStopped = active;
+	}
 </script>
 
 <svelte:head>
-	<title>NEPTUNE</title>
+	<title>Neptune</title>
 	<meta
 		name="description"
 		content="Mobile control dashboard for the Neptune water level automation system."
@@ -127,16 +170,62 @@
 		>
 			<div class="flex flex-col">
 				<div class="flex max-w-full items-center justify-between gap-3">
-					<p class="text-[0.65rem] font-semibold tracking-[0.28em] text-cyan-900 uppercase">
-						Water Level Automation
-					</p>
-					<span
-						class={`rounded-full px-3 py-1 text-xs font-semibold tracking-wide uppercase ${connectionBadges[$waterSystem.connection.phase]}`}
-					>
-						{$waterSystem.connection.phase}
-					</span>
+					<div class="flex items-center gap-2">
+						<p class="text-[0.65rem] font-semibold tracking-[0.28em] text-cyan-900 uppercase">
+							Water Level Automation
+						</p>
+						<span
+							class={`rounded-full px-1 py-1 text-xs font-semibold tracking-wide uppercase ${connectionBadges[$waterSystem.connection.phase]}`}
+						>
+							<svelte:component
+								this={connectionIconsMap[$waterSystem.connection.phase]}
+								size={16}
+								class={connectionIconsMap[$waterSystem.connection.phase] === LoaderCircle ? 'animate-spin': ''}
+							/>
+						</span>
+					</div>
+					<div class="flex items-center gap-2">
+						<!-- 3-way pill: Sun / Monitor / Moon -->
+						<div class="flex overflow-hidden rounded-full bg-black/10 p-0.5">
+							{#each themeIcons as { val, icon: Icon }}
+								<button
+									onclick={() => theme.set(val as ThemePreference)}
+									aria-label={val}
+									class={`flex items-center justify-center rounded-full p-1.5 transition-colors duration-200
+                    ${
+											$theme === val
+												? 'bg-white/90 text-slate-900 shadow-sm'
+												: 'text-white/60 hover:text-white/90'
+										}`}
+								>
+									<Icon size={16} />
+								</button>
+							{/each}
+						</div>
+
+						<!-- Existing connection badge, unchanged -->
+					</div>
 				</div>
-				<h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">NEPTUNE</h1>
+				<div class="mt-4 flex max-w-full items-center justify-between gap-3">
+					<h1 class="text-3xl font-semibold tracking-tight uppercase sm:text-4xl">Neptune</h1>
+					{#if $waterSystem.device?.motors.borewell.status !== 'stopped' || $waterSystem.device?.motors.sump.status !== 'stopped'}
+						{#if eStopped === false}
+							<button
+								class="rounded-2xl bg-rose-200 px-3 py-3 text-xs font-semibold tracking-wide text-rose-900 uppercase"
+								onclick={() => eStop(true)}
+							>
+								{commandLabels['estop']}
+							</button>
+						{:else}
+							<button
+								class="rounded-2xl bg-emerald-200 px-3 py-3 text-xs font-semibold tracking-wide text-emerald-900 uppercase"
+								onclick={() => eStop(false)}
+							>
+								{commandLabels['resume']}
+							</button>
+						{/if}
+					{/if}
+				</div>
 			</div>
 		</header>
 
@@ -144,9 +233,8 @@
 			<section class="rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm">
 				<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 					<div>
-						<h2 class="text-base font-semibold">Tank Levels</h2>
+						<h2 class="text-xl font-semibold uppercase">Overview</h2>
 					</div>
-
 					{#if $waterSystem.device}
 						<p class="text-xs text-slate-500">
 							Last update {formatTimestamp($waterSystem.device.receivedAt)}
@@ -155,7 +243,11 @@
 				</div>
 
 				{#if $waterSystem.device}
-					<div class="mt-4 grid gap-3 sm:grid-cols-2">
+					<!-- ── TANKS ── -->
+					<p class="mt-4 text-base font-semibold tracking-[0.2em] text-slate-400 uppercase">
+						Tanks
+					</p>
+					<div class="mt-2 grid gap-3 sm:grid-cols-2">
 						<div class="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 shadow-sm">
 							<div class="grid gap-4 sm:grid-cols-[7.5rem,1fr] sm:items-center">
 								<div class="relative mx-auto h-56 w-28">
@@ -193,9 +285,9 @@
 
 								<div>
 									<p class="text-xs font-semibold tracking-[0.2em] text-slate-500 uppercase">
-										Overhead Tank
+										Overhead
 									</p>
-									<p class="mt-3 text-3xl font-semibold text-slate-950">
+									<p class="mt-3 text-3xl font-semibold text-slate-950 uppercase">
 										{overheadLabels[$waterSystem.device.overhead]}
 									</p>
 								</div>
@@ -239,47 +331,120 @@
 
 								<div>
 									<p class="text-xs font-semibold tracking-[0.2em] text-slate-500 uppercase">
-										Sump Tank
+										Sump
 									</p>
-									<p class="mt-3 text-3xl font-semibold text-slate-950">
+									<p class="mt-3 text-3xl font-semibold text-slate-950 uppercase">
 										{sumpLabels[$waterSystem.device.sump]}
 									</p>
 								</div>
 							</div>
 						</div>
-						{#if $waterSystem.device?.motors.borewell.status === 'dry_run_lock'}
-							<div class="col-span-2 sm:col-span-1">
-								<button
-									class="min-h-28 w-full rounded-[1.5rem] border border-rose-700/10 bg-rose-600 px-4 py-4 text-left text-white shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-500"
-									disabled={$waterSystem.connection.phase !== 'connected'}
-									onclick={() => waterSystem.sendCommand('unlock borewell')}
-								>
-									<p class="text-sm font-semibold">{commandLabels['unlock borewell']}</p>
-									<p class="mt-1 text-xs opacity-75">Borewell dry-run protection active</p>
-								</button>
-							</div>
-						{/if}
-
-						{#if $waterSystem.device?.motors.sump.status === 'dry_run_lock'}
-							<div class="col-span-2 sm:col-span-1">
-								<button
-									class="min-h-28 w-full rounded-[1.5rem] border border-rose-700/10 bg-rose-600 px-4 py-4 text-left text-white shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-500"
-									disabled={$waterSystem.connection.phase !== 'connected'}
-									onclick={() => waterSystem.sendCommand('unlock sump')}
-								>
-									<p class="text-sm font-semibold">{commandLabels['unlock sump']}</p>
-									<p class="mt-1 text-xs opacity-75">Sump dry-run protection active</p>
-								</button>
-							</div>
-						{/if}
 					</div>
-				{:else}
-					<div class="mt-4 rounded-[1.5rem] bg-stone-100 p-5 text-sm leading-6 text-slate-600">
-						<p class="font-semibold text-slate-800">No telemetry yet.</p>
-						<p class="mt-2">
-							Once the broker connection is healthy, the controller should publish its retained
-							status and this screen will populate automatically.
-						</p>
+					<div class="mt-6 h-1 rounded-full bg-slate-200"></div>
+					<!-- ── PUMPS ── -->
+					<p class="mt-4 text-base font-semibold tracking-[0.2em] text-slate-400 uppercase">
+						Pumps
+					</p>
+					<div class="mt-2 grid gap-3 sm:grid-cols-2">
+						<!-- BOREWELL PUMP CARD -->
+						<div class="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 shadow-sm">
+							<div class="grid gap-4 sm:grid-cols-[7.5rem,1fr] sm:items-center">
+								<!-- Pump graphic -->
+								<div class="relative mx-auto flex h-28 w-28 items-center justify-center">
+									<!-- Outer ring — acts as the pump casing -->
+									<div
+										class={`absolute inset-0 rounded-full border-[6px] bg-white shadow-inner transition-colors duration-500 ${pumpRingTone($waterSystem.device.motors.borewell.status)}`}
+									>
+										<!-- Impeller disc — spins when running, pulses via ring when starting -->
+										<div
+											class={`absolute inset-3 rounded-full transition-colors duration-500 ${pumpBodyTone($waterSystem.device.motors.borewell.status)} ${$waterSystem.device.motors.borewell.status === 'running' ? 'animate-spin' : ''}`}
+											style="animation-duration: 1.4s"
+										>
+											<!-- Blade lines crossing through the disc center -->
+											<!-- overflow-hidden + rounded-full clips them to the circle shape -->
+											<div class="absolute inset-0 overflow-hidden rounded-full">
+												<div
+													class="absolute top-1/2 right-0 left-0 h-[3px] -translate-y-1/2 rounded-full bg-white/40"
+												></div>
+												<div
+													class="absolute top-1/2 right-0 left-0 h-[3px] -translate-y-1/2 rounded-full bg-white/40"
+													style="transform: translateY(-50%) rotate(60deg)"
+												></div>
+												<div
+													class="absolute top-1/2 right-0 left-0 h-[3px] -translate-y-1/2 rounded-full bg-white/40"
+													style="transform: translateY(-50%) rotate(-60deg)"
+												></div>
+											</div>
+										</div>
+
+										<!-- Centre hub dot — stays still even when the impeller spins -->
+										<div class="absolute inset-[38%] rounded-full bg-white shadow"></div>
+									</div>
+
+									<!-- Pulsing amber ring shown only while motor is 'starting' -->
+									{#if $waterSystem.device.motors.borewell.status === 'starting'}
+										<div
+											class="absolute inset-0 animate-ping rounded-full border-4 border-amber-400 opacity-60"
+										></div>
+									{/if}
+								</div>
+
+								<!-- Text info -->
+								<div>
+									<p class="text-xs font-semibold tracking-[0.2em] text-slate-500 uppercase">
+										Borewell
+									</p>
+									<p class="mt-3 text-3xl font-semibold text-slate-950 uppercase">
+										{runtimeStatusLabels[$waterSystem.device.motors.borewell.status]}
+									</p>
+								</div>
+							</div>
+						</div>
+
+						<!-- SUMP PUMP CARD — identical structure, different motor key -->
+						<div class="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 shadow-sm">
+							<div class="grid gap-4 sm:grid-cols-[7.5rem,1fr] sm:items-center">
+								<div class="relative mx-auto flex h-28 w-28 items-center justify-center">
+									<div
+										class={`absolute inset-0 rounded-full border-[6px] bg-white shadow-inner transition-colors duration-500 ${pumpRingTone($waterSystem.device.motors.sump.status)}`}
+									>
+										<div
+											class={`absolute inset-3 rounded-full transition-colors duration-500 ${pumpBodyTone($waterSystem.device.motors.sump.status)} ${$waterSystem.device.motors.sump.status === 'running' ? 'animate-spin' : ''}`}
+											style="animation-duration: 1.4s"
+										>
+											<div class="absolute inset-0 overflow-hidden rounded-full">
+												<div
+													class="absolute top-1/2 right-0 left-0 h-[3px] -translate-y-1/2 rounded-full bg-white/40"
+												></div>
+												<div
+													class="absolute top-1/2 right-0 left-0 h-[3px] -translate-y-1/2 rounded-full bg-white/40"
+													style="transform: translateY(-50%) rotate(60deg)"
+												></div>
+												<div
+													class="absolute top-1/2 right-0 left-0 h-[3px] -translate-y-1/2 rounded-full bg-white/40"
+													style="transform: translateY(-50%) rotate(-60deg)"
+												></div>
+											</div>
+										</div>
+										<div class="absolute inset-[38%] rounded-full bg-white shadow"></div>
+									</div>
+									{#if $waterSystem.device.motors.sump.status === 'starting'}
+										<div
+											class="absolute inset-0 animate-ping rounded-full border-4 border-amber-400 opacity-60"
+										></div>
+									{/if}
+								</div>
+
+								<div>
+									<p class="text-xs font-semibold tracking-[0.2em] text-slate-500 uppercase">
+										Sump
+									</p>
+									<p class="mt-3 text-3xl font-semibold text-slate-950 uppercase">
+										{runtimeStatusLabels[$waterSystem.device.motors.sump.status]}
+									</p>
+								</div>
+							</div>
+						</div>
 					</div>
 				{/if}
 			</section>
@@ -287,22 +452,15 @@
 			<section class="rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm">
 				<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 					<div>
-						<h2 class="text-base font-semibold">Commands</h2>
+						<h2 class="text-xl font-semibold uppercase">Commands</h2>
 					</div>
-					<span
-						class={`rounded-full px-3 py-1 text-xs font-semibold tracking-wide uppercase ${$waterSystem.connection.phase === 'connected' ? 'bg-emerald-100 text-emerald-900' : 'bg-slate-200 text-slate-700'}`}
-					>
-						{$waterSystem.connection.phase === 'connected'
-							? 'Publish Enabled'
-							: 'Connect to Enable'}
-					</span>
 				</div>
 
 				<div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
 					<div
 						class="col-span-2 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 shadow-sm sm:col-span-1"
 					>
-						<p class="mb-3 text-xs font-semibold tracking-[0.15em] text-slate-500 uppercase">
+						<p class="mb-3 text-base font-semibold tracking-[0.15em] text-slate-500 uppercase">
 							Mode
 						</p>
 						<div class="relative flex h-11 overflow-hidden rounded-2xl bg-slate-200 p-1">
@@ -314,7 +472,7 @@
 								}`}
 							></div>
 							<button
-								class={`relative z-10 flex-1 rounded-xl text-sm font-semibold transition-colors duration-200 disabled:opacity-40 ${$mode !== 'manual' ? 'text-white' : 'text-slate-500'}`}
+								class={`relative z-10 flex-1 rounded-xl text-sm font-semibold uppercase transition-colors duration-200 disabled:opacity-40 ${$mode !== 'manual' ? 'text-white' : 'text-slate-500'}`}
 								disabled={!isConnected}
 								onclick={() => {
 									mode.set('auto');
@@ -322,7 +480,7 @@
 								}}>Auto</button
 							>
 							<button
-								class={`relative z-10 flex-1 rounded-xl text-sm font-semibold transition-colors duration-200 disabled:opacity-40 ${$mode === 'manual' ? 'text-slate-950' : 'text-slate-500'}`}
+								class={`relative z-10 flex-1 rounded-xl text-sm font-semibold uppercase transition-colors duration-200 disabled:opacity-40 ${$mode === 'manual' ? 'text-slate-950' : 'text-slate-500'}`}
 								disabled={!isConnected}
 								onclick={() => {
 									mode.set('manual');
@@ -335,7 +493,7 @@
 					<div
 						class="col-span-2 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 shadow-sm sm:col-span-1"
 					>
-						<p class="mb-3 text-xs font-semibold tracking-[0.15em] text-slate-500 uppercase">
+						<p class="mb-3 text-base font-semibold tracking-[0.15em] text-slate-500 uppercase">
 							Pump
 						</p>
 						<div class="relative flex h-11 overflow-hidden rounded-2xl bg-slate-200 p-1">
@@ -347,7 +505,7 @@
 								}`}
 							></div>
 							<button
-								class={`relative z-10 flex-1 rounded-xl text-sm font-semibold transition-colors duration-200 disabled:opacity-40 ${$pumpPreference === 'borewell' ? 'text-white' : 'text-slate-500'}`}
+								class={`relative z-10 flex-1 rounded-xl text-sm font-semibold uppercase transition-colors duration-200 disabled:opacity-40 ${$pumpPreference === 'borewell' ? 'text-white' : 'text-slate-500'}`}
 								disabled={!isConnected}
 								onclick={() => {
 									pumpPreference.set('borewell');
@@ -355,7 +513,7 @@
 								}}>Borewell</button
 							>
 							<button
-								class={`relative z-10 flex-1 rounded-xl text-sm font-semibold transition-colors duration-200 disabled:opacity-40 ${$pumpPreference === 'sump' ? 'text-slate-950' : 'text-slate-500'}`}
+								class={`relative z-10 flex-1 rounded-xl text-sm font-semibold uppercase transition-colors duration-200 disabled:opacity-40 ${$pumpPreference === 'sump' ? 'text-slate-950' : 'text-slate-500'}`}
 								disabled={!isConnected}
 								onclick={() => {
 									pumpPreference.set('sump');
@@ -364,10 +522,15 @@
 							>
 						</div>
 					</div>
-
-					<div class="col-span-2 sm:col-span-1">
+					<div
+						class="col-span-2 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 shadow-sm sm:col-span-1"
+					>
+						<p class="mb-3 text-base font-semibold tracking-[0.15em] text-slate-500 uppercase">
+							Override
+						</p>
 						<button
-							class={`min-h-28 w-full rounded-[1.5rem] border px-4 py-4 text-left shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-500 ${
+							aria-label="Override"
+							class={`flex h-11 w-full items-center justify-center rounded-2xl border text-left font-semibold uppercase shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-500 ${
 								($waterSystem.device?.override ?? false)
 									? 'border-orange-600/20 bg-orange-500 text-white'
 									: overrideSending
@@ -377,16 +540,7 @@
 							disabled={!isConnected || ($waterSystem.device?.override ?? false)}
 							onclick={handleOverride}
 						>
-							<p class="text-sm font-semibold">
-								{($waterSystem.device?.override ?? false)
-									? 'Filling to High…'
-									: commandLabels['override']}
-							</p>
-							<p class="mt-1 text-xs opacity-75">
-								{($waterSystem.device?.override ?? false)
-									? 'Resets automatically when overhead reaches High'
-									: 'Force fill regardless of current level'}
-							</p>
+							{($waterSystem.device?.override ?? false) ? 'Override Active' : 'Activate Override'}
 						</button>
 					</div>
 				</div>

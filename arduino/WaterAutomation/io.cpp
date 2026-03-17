@@ -130,6 +130,12 @@ bool applyCommand(SystemState& state, const String& line) {
     return true;
   }
 
+  if (line == "resume") {
+    state.command.emergencyStop = false;
+    Serial.println(F("RESUME OPERATIONS"));
+    return true;
+  }
+
   if (line == "status") {
     state.lastStatusPrintMs = 0;  // force status print in next cycle
     return true;
