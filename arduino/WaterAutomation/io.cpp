@@ -29,8 +29,8 @@ void printHelp() {
   Serial.println(F("  motor borewell        -> manual: run borewell motor"));
   Serial.println(F("  motor sump            -> manual: run sump transfer motor"));
   Serial.println(F("  motor stop            -> stop active motor (any mode)"));
-  Serial.println(F("  force borewell        -> auto: prefer borewell (default)"));
-  Serial.println(F("  force sump            -> auto: prefer sump over borewell"));
+  Serial.println(F("  borewell        -> auto: prefer borewell (default)"));
+  Serial.println(F("  sump            -> auto: prefer sump over borewell"));
   Serial.println(F("  estop                 -> emergency stop all motors"));
   Serial.println(F("  status                -> print current status"));
   Serial.println(F("  help                  -> show commands"));
@@ -109,13 +109,13 @@ bool applyCommand(SystemState& state, const String& line) {
   }
 
   // Force switch: sets preferred motor for auto selection without leaving auto mode.
-  if (line == "force borewell") {
+  if (line == "borewell") {
     state.command.autoPreferSump = false;
     Serial.println(F("Auto preference: BOREWELL (default)"));
     return true;
   }
 
-  if (line == "force sump") {
+  if (line == "sump") {
     state.command.autoPreferSump = true;
     Serial.println(F("Auto preference: SUMP TRANSFER"));
     return true;

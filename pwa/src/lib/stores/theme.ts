@@ -24,23 +24,14 @@ function applyTheme(pref: ThemePreference) {
 }
 
 function createThemeStore() {
-	// On first load, check localStorage. If nothing saved, default to 'system'.
-	const stored =
-		typeof localStorage !== 'undefined'
-			? (localStorage.getItem(STORAGE_KEY) as ThemePreference | null)
-			: null;
-	const initial: ThemePreference = stored ?? 'system';
-
-	const { subscribe, set } = writable<ThemePreference>(initial);
+	// Always start with 'system' — safe for SSR.
+	const { subscribe, set } = writable<ThemePreference>('system');
 
 	return {
 		subscribe,
 
-		// Called when the user explicitly picks a theme.
 		set: (value: ThemePreference) => {
 			if (typeof localStorage !== 'undefined') {
-				// Remove the key entirely for 'system' — that way, if they clear
-				// localStorage, the app gracefully falls back to system default.
 				if (value === 'system') {
 					localStorage.removeItem(STORAGE_KEY);
 				} else {
@@ -51,26 +42,22 @@ function createThemeStore() {
 			set(value);
 		},
 
-		// Called once in onMount. Applies the initial theme and starts
-		// listening for OS-level dark/light changes (e.g. user switches
-		// between day and night mode on their phone).
 		initialize: (): (() => void) => {
-			applyTheme(initial);
+			// ✅ NOW we're in the browser — safe to read localStorage.
+			const stored = localStorage.getItem(STORAGE_KEY) as ThemePreference | null;
+			const resolved: ThemePreference = stored ?? 'system';
 
-			if (typeof window !== 'undefined') {
-				const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-				const handleSystemChange = () => {
-					// Only react if the user hasn't pinned a preference.
-					if (!localStorage.getItem(STORAGE_KEY)) {
-						applyTheme('system');
-					}
-				};
-				mediaQuery.addEventListener('change', handleSystemChange);
-				// Returns a cleanup function so Svelte can remove the listener.
-				return () => mediaQuery.removeEventListener('change', handleSystemChange);
-			}
+			applyTheme(resolved);
+			set(resolved); // ✅ Update the store with the real saved value.
 
-			return () => {};
+			const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+			const handleSystemChange = () => {
+				if (!localStorage.getItem(STORAGE_KEY)) {
+					applyTheme('system');
+				}
+			};
+			mediaQuery.addEventListener('change', handleSystemChange);
+			return () => mediaQuery.removeEventListener('change', handleSystemChange);
 		}
 	};
 }

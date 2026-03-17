@@ -20,7 +20,7 @@ import type {
 
 const COMMAND_HISTORY_LIMIT = 8;
 const CONNECTION_TIMEOUT_MS = 15000;
-const MAX_RECONNECT_ATTEMPTS = 3;
+const MAX_RECONNECT_ATTEMPTS = 10;
 const RECONNECT_PERIOD_MS = 5000;
 
 function appendCommandLog(history: CommandLogEntry[], entry: CommandLogEntry) {

@@ -1,27 +1,35 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { pumpPreference } from '../lib/stores/pump.js';
-	import { mode } from '../lib/stores/mode.js';
-	import { waterSystem } from '../lib/stores/system.js';
-	import { commandLabels, runtimeStatusLabels } from '../lib/control.js';
+	import { pumpPreference } from '$lib/stores/pump.js';
+	import { mode } from '$lib/stores/mode.js';
+	import { waterSystem } from '$lib/stores/system.js';
+	import { commandLabels, runtimeStatusLabels } from '$lib/control.js';
 	import type {
 		ConnectionPhase,
 		OverheadLevel,
 		SumpLevel,
 		MotorRuntimeStatus
-	} from '../lib/types.js';
-	import { connectionIconsMap } from '../lib/types.js';
+	} from '$lib/types.js';
+	import { connectionIconsMap } from '$lib/types.js';
 	import { theme, themeIcons, type ThemePreference } from '$lib/stores/theme.js';
 	import { LoaderCircle } from 'lucide-svelte';
+	import SwipeToggle from '$lib/components/SwipeToggle.svelte';
+	import type { Option } from '$lib/components/SwipeToggle.svelte';
 
+	let modeValue: 'auto' | 'manual' = 'auto';
+	let pumpValue: 'borewell' | 'sump' = 'borewell';
 	let overrideSending = false;
 	let eStopped = false;
 	const borewellStatus = $waterSystem.device?.motors?.borewell?.status;
 	const sumpStatus = $waterSystem.device?.motors?.sump?.status;
-
-	waterSystem.subscribe((state) => {
-		if (state.device) mode.seedFromDevice(state.device.mode);
-	});
+	const modeOptions: Option<'auto' | 'manual'>[] = [
+		{ label: 'Auto', value: 'auto' },
+		{ label: 'Manual', value: 'manual' }
+	];
+	const pumpOptions: Option<'borewell' | 'sump'>[] = [
+		{ label: 'Borewell', value: 'borewell' },
+		{ label: 'Sump', value: 'sump' }
+	];
 
 	$: isConnected = $waterSystem.connection.phase === 'connected';
 
@@ -69,9 +77,17 @@
 		high: '90%'
 	};
 
+	// ✅
 	onMount(() => {
+		const unsub = waterSystem.subscribe((state) => {
+			if (state.device) mode.seedFromDevice(state.device.mode);
+		});
 		waterSystem.initialize();
-		return theme.initialize();
+		const cleanupTheme = theme.initialize();
+		return () => {
+			unsub();
+			cleanupTheme?.();
+		};
 	});
 
 	function formatTimestamp(value?: number, compact = false) {
@@ -138,6 +154,28 @@
 			default:
 				return 'border-slate-300';
 		}
+	}
+
+	const modeColors: Record<'auto' | 'manual', string> = {
+		auto: 'bg-emerald-400',
+		manual: 'bg-red-400'
+	};
+
+	const pumpColors: Record<'borewell' | 'sump', string> = {
+		borewell: 'bg-teal-500',
+		sump: 'bg-lime-600'
+	};
+
+	function handleModeChange(value: 'auto' | 'manual', index: number) {
+		mode.set(value);
+		waterSystem.sendCommand(value);
+		modeValue = value;
+	}
+
+	function handlePumpChange(value: 'borewell' | 'sump', index: number) {
+		pumpPreference.set(value);
+		waterSystem.sendCommand(value);
+		pumpValue = value;
 	}
 
 	function handleOverride() {
@@ -651,31 +689,13 @@
 						<p class="mb-3 text-base font-semibold tracking-[0.15em] text-slate-500 uppercase">
 							Mode
 						</p>
-						<div class="relative flex h-11 overflow-hidden rounded-2xl bg-slate-200 p-1">
-							<div
-								class={`absolute top-1 bottom-1 rounded-xl shadow-sm transition-all duration-200 ${
-									$mode !== 'manual'
-										? 'right-[calc(50%+2px)] left-1 bg-cyan-700'
-										: 'right-1 left-[calc(50%+2px)] bg-amber-500'
-								}`}
-							></div>
-							<button
-								class={`relative z-10 flex-1 rounded-xl text-sm font-semibold uppercase transition-colors duration-200 disabled:opacity-40 ${$mode !== 'manual' ? 'text-white' : 'text-slate-500'}`}
-								disabled={!isConnected}
-								onclick={() => {
-									mode.set('auto');
-									waterSystem.sendCommand('auto');
-								}}>Auto</button
-							>
-							<button
-								class={`relative z-10 flex-1 rounded-xl text-sm font-semibold uppercase transition-colors duration-200 disabled:opacity-40 ${$mode === 'manual' ? 'text-slate-950' : 'text-slate-500'}`}
-								disabled={!isConnected}
-								onclick={() => {
-									mode.set('manual');
-									waterSystem.sendCommand('manual');
-								}}>Manual</button
-							>
-						</div>
+						<SwipeToggle
+							options={modeOptions}
+							value={modeValue}
+							color={modeColors[modeValue]}
+							disabled={!isConnected}
+							change={handleModeChange}
+						/>
 					</div>
 
 					<div
@@ -684,31 +704,13 @@
 						<p class="mb-3 text-base font-semibold tracking-[0.15em] text-slate-500 uppercase">
 							Pump
 						</p>
-						<div class="relative flex h-11 overflow-hidden rounded-2xl bg-slate-200 p-1">
-							<div
-								class={`absolute top-1 bottom-1 rounded-xl shadow-sm transition-all duration-200 ${
-									$pumpPreference === 'borewell'
-										? 'right-[calc(50%+2px)] left-1 bg-emerald-700'
-										: 'right-1 left-[calc(50%+2px)] bg-lime-600'
-								}`}
-							></div>
-							<button
-								class={`relative z-10 flex-1 rounded-xl text-sm font-semibold uppercase transition-colors duration-200 disabled:opacity-40 ${$pumpPreference === 'borewell' ? 'text-white' : 'text-slate-500'}`}
-								disabled={!isConnected}
-								onclick={() => {
-									pumpPreference.set('borewell');
-									waterSystem.sendCommand('force borewell');
-								}}>Borewell</button
-							>
-							<button
-								class={`relative z-10 flex-1 rounded-xl text-sm font-semibold uppercase transition-colors duration-200 disabled:opacity-40 ${$pumpPreference === 'sump' ? 'text-slate-950' : 'text-slate-500'}`}
-								disabled={!isConnected}
-								onclick={() => {
-									pumpPreference.set('sump');
-									waterSystem.sendCommand('force sump');
-								}}>Sump</button
-							>
-						</div>
+						<SwipeToggle
+							options={pumpOptions}
+							value={pumpValue}
+							color={pumpColors[pumpValue]}
+							disabled={!isConnected}
+							change={handlePumpChange}
+						/>
 					</div>
 					<div
 						class="col-span-2 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 shadow-sm sm:col-span-1"
