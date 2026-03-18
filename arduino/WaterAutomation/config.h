@@ -19,16 +19,16 @@ constexpr float AC_PROBE_FREQ_HZ = 1000.0f;
 // constexpr unsigned long START_RETRY_LOCK_MS = 10000;
 
 // Relays (active HIGH assumed)
-constexpr uint8_t PIN_BOREWELL_RELAY = 4;
-constexpr uint8_t PIN_SUMP_RELAY = 5;
+constexpr uint8_t PIN_BOREWELL_RELAY = A2;
+constexpr uint8_t PIN_SUMP_RELAY = A3;
 
 // Motor flow/feedback (Analog sensing)
 constexpr uint8_t PIN_BOREWELL_CURRENT = A0;
 constexpr uint8_t PIN_SUMP_CURRENT = A1;
 
 // AC probe transmit pins
-constexpr uint8_t PIN_OH_TX = 2;
-constexpr uint8_t PIN_SUMP_TX = 3;
+constexpr uint8_t PIN_OH_TX = 5;
+constexpr uint8_t PIN_SUMP_TX = 6;
 
 // Overhead tank level switches (HIGH = switch active)
 constexpr uint8_t PIN_OH_LOW = 7;

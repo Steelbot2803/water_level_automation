@@ -121,6 +121,7 @@ const char* manualTargetText(const SystemState& state) {
 }
 
 void initMqttLink() {
+  mqttClient.setBufferSize(512);
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
   mqttClient.setCallback(mqttCallback);
   WiFi.disconnect();
