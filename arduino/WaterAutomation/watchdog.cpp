@@ -4,27 +4,6 @@
 #include <FspTimer.h>
 #include <WDT.h>
 
-// ---------------------------------------------------------------------------
-// How this works
-// ---------------------------------------------------------------------------
-//
-// The RA4M1 hardware WDT has a maximum timeout of ~5592 ms. That is shorter
-// than this app's WiFi retry window (10 s) and a slow MQTT connect. If we
-// kicked the WDT only from loop(), a perfectly normal reconnect would trigger
-// a reset. To avoid that, we kick the WDT from a hardware timer ISR that
-// fires every second — completely independently of loop().
-//
-// The ISR also checks how long it has been since loop() last called
-// watchdogKick(). If that gap exceeds WATCHDOG_LOOP_TIMEOUT_MS the ISR calls
-// NVIC_SystemReset() directly. This catches a frozen-but-not-crashed loop.
-//
-// Safety note on relays:
-//   Both relay outputs are active-HIGH (see config.h). On reset, all GPIO
-//   pins revert to INPUT (high-impedance) in the RA4M1 bootloader before
-//   setup() runs. A high-impedance pin on an active-HIGH relay driver means
-//   the relay is OFF — the safe state. No extra circuitry is needed.
-// ---------------------------------------------------------------------------
-
 namespace {
 
 FspTimer wdtTimer;

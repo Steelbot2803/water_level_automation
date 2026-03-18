@@ -13,8 +13,6 @@ void setup() {
 
   pinMode(PIN_BOREWELL_RELAY, OUTPUT);
   pinMode(PIN_SUMP_RELAY, OUTPUT);
-  pinMode(PIN_BOREWELL_FLOW_OK, INPUT_PULLUP);
-  pinMode(PIN_SUMP_FLOW_OK, INPUT_PULLUP);
 
   stopMotor(MotorType::BOREWELL);
   stopMotor(MotorType::SUMP);
@@ -30,9 +28,7 @@ void setup() {
 }
 
 void loop() {
-
   watchdogKick();
-
   updateLevelsFromPins(state);
   readCommandFromSerial(state);
   runMqttLink();
@@ -40,5 +36,6 @@ void loop() {
   writeMotorOutputs(state);
   publishStatus(state);
   publishStateToMqtt(state);
+  checkMqttLiveness();
   delay(MAIN_LOOP_DELAY_MS);
 }

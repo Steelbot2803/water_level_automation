@@ -153,6 +153,18 @@ bool applyCommand(SystemState& state, const String& line) {
     return true;
   }
 
+  if (line == "read current") {
+  long sumB = 0, sumS = 0;
+  for (int i = 0; i < 16; i++) {
+    sumB += analogRead(PIN_BOREWELL_CURRENT);
+    sumS += analogRead(PIN_SUMP_CURRENT);
+    delay(10);
+  }
+  Serial.print(F("Borewell current ADC avg: ")); Serial.println(sumB / 16);
+  Serial.print(F("Sump current ADC avg: "));     Serial.println(sumS / 16);
+  return true;
+}
+
   return false;
 }
 

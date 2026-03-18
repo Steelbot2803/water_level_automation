@@ -15,6 +15,7 @@ PubSubClient mqttClient(wifiClient);
 unsigned long lastMqttPublishMs = 0;
 unsigned long lastWifiAttemptMs = 0;
 unsigned long lastMqttAttemptMs = 0;
+unsigned long lastSuccessfulPublishMs = 0;
 uint8_t lastWifiStatus = WL_NO_MODULE;
 bool lastMqttConnected = false;
 
@@ -56,6 +57,9 @@ void connectWifi() {
 
   lastWifiAttemptMs = nowMs;
   Serial.println(F("wifi: attempting connection"));
+  WiFi.disconnect();
+  WiFi.end();
+  delay(200);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 }
 
@@ -168,7 +172,21 @@ void publishStateToMqtt(const SystemState& state) {
     return;
   }
 
-  mqttClient.publish(MQTT_STATUS_TOPIC, payload, true);
+  if (mqttClient.publish(MQTT_STATUS_TOPIC, payload, true)) {
+    lastSuccessfulPublishMs = millis();
+  } else {
+    Serial.println(F("mqtt: publish failed"));
+  }
+}
+
+void checkMqttLiveness() {
+  if (lastSuccessfulPublishMs == 0) return;  // never published yet, still starting up
+  const unsigned long gap = millis() - lastSuccessfulPublishMs;
+  if (gap > MQTT_LIVENESS_TIMEOUT_MS) {
+    Serial.println(F("mqtt: no successful publish in 10 min — forcing reset"));
+    delay(100);  // let Serial flush
+    NVIC_SystemReset();
+  }
 }
 
 bool isWifiConnected() {

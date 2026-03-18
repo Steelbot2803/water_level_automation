@@ -1,25 +1,18 @@
 #include "controller.h"
+#include "probes.h"
 
 namespace {
 
-bool isPinActive(uint8_t pin) {
-  return digitalRead(pin) == LOW;
-}
-
 OverheadLevel readOverheadLevel() {
-  if (isPinActive(PIN_OH_HIGH)) return OverheadLevel::HIGH;
-  if (isPinActive(PIN_OH_MED)) return OverheadLevel::MEDIUM;
-  if (isPinActive(PIN_OH_LOW)) return OverheadLevel::LOW;
-
-  // Below LOW is treated as CRITICAL.
+  if (acProbeActive(PIN_OH_HIGH)) return OverheadLevel::HIGH;
+  if (acProbeActive(PIN_OH_MED)) return OverheadLevel::MEDIUM;
+  if (acProbeActive(PIN_OH_LOW)) return OverheadLevel::LOW;
   return OverheadLevel::CRITICAL;
 }
 
 SumpLevel readSumpLevel() {
-  if (isPinActive(PIN_SUMP_HIGH)) return SumpLevel::HIGH;
-  if (isPinActive(PIN_SUMP_LOW)) return SumpLevel::LOW;
-
-  // Below LOW is treated as CRITICAL.
+  if (acProbeActive(PIN_SUMP_HIGH)) return SumpLevel::HIGH;
+  if (acProbeActive(PIN_SUMP_LOW)) return SumpLevel::LOW;
   return SumpLevel::CRITICAL;
 }
 
@@ -45,62 +38,49 @@ const MotorRuntimeState& runtimeFor(const SystemState& state, MotorType motor) {
 }
 
 bool flowOkay(MotorType motor) {
-  if (motor == MotorType::BOREWELL) return isPinActive(PIN_BOREWELL_FLOW_OK);
-  if (motor == MotorType::SUMP) return isPinActive(PIN_SUMP_FLOW_OK);
+  if (motor == MotorType::BOREWELL) return digitalRead(PIN_BOREWELL_FLOW_OK) == LOW;
+  if (motor == MotorType::SUMP) return digitalRead(PIN_SUMP_FLOW_OK) == LOW;
   return false;
 }
 
 bool isLocked(const SystemState& state, MotorType motor, unsigned long nowMs) {
   const auto& rt = runtimeFor(state, motor);
-  if (rt.dryRunLatched) return true;  // permanent latch wins
-  return rt.lockUntilMs > nowMs;      // legacy timer path (now unreachable for dry-run)
+  if (rt.dryRunLatched) return true;
+  return rt.lockUntilMs > nowMs;
 }
 
 void lockDryRun(SystemState& state, MotorType motor, unsigned long nowMs) {
   auto& rt = runtimeFor(state, motor);
   rt.status = MotorStatus::DRY_RUN_LOCK;
-  rt.dryRunLatched = true;  // permanent until manually cleared
-  rt.lockUntilMs = 0;       // timer disabled
-  (void)nowMs;              // nowMs no longer needed here, suppress unused warning
+  rt.dryRunLatched = true;
+  rt.lockUntilMs = 0;
+  (void)nowMs;
 }
 
 void stopActiveMotor(SystemState& state) {
   if (state.activeMotor == MotorType::NONE) return;
-
   stopMotor(state.activeMotor);
   runtimeFor(state, state.activeMotor).status = MotorStatus::STOPPED;
   state.activeMotor = MotorType::NONE;
 }
 
-// Attempt to start a motor. requireSumpCheck gates the sump motor only.
-// Returns true if the motor is running (or was already running).
 bool tryStart(SystemState& state, MotorType motor, bool requireSumpCheck) {
   const unsigned long nowMs = millis();
 
   if (isLocked(state, motor, nowMs)) {
-    if (state.activeMotor == motor) {
-      stopActiveMotor(state);
-    }
+    if (state.activeMotor == motor) stopActiveMotor(state);
     return false;
   }
 
   if (requireSumpCheck && !sumpAllowsPumping(state)) {
-    // Sump motor specifically: stop it if running, mark why.
-    if (state.activeMotor == motor) {
-      stopActiveMotor(state);
-    }
+    if (state.activeMotor == motor) stopActiveMotor(state);
     runtimeFor(state, motor).status = MotorStatus::SUMP_CRITICAL;
     return false;
   }
 
-  if (state.activeMotor == motor) {
-    return true;
-  }
+  if (state.activeMotor == motor) return true;
 
   stopActiveMotor(state);
-
-  // No startMotor() call needed — the relay is driven by writeMotorOutputs()
-  // reading state.activeMotor every loop tick.
   auto& rt = runtimeFor(state, motor);
   rt.status = MotorStatus::STARTING;
   rt.startedAtMs = nowMs;
@@ -114,9 +94,7 @@ void evaluateDryRun(SystemState& state) {
   const unsigned long nowMs = millis();
   auto& rt = runtimeFor(state, state.activeMotor);
 
-  if (rt.status == MotorStatus::STARTING && nowMs - rt.startedAtMs < DRY_RUN_GRACE_MS) {
-    return;
-  }
+  if (rt.status == MotorStatus::STARTING && nowMs - rt.startedAtMs < DRY_RUN_GRACE_MS) return;
 
   if (flowOkay(state.activeMotor)) {
     rt.status = MotorStatus::RUNNING;
@@ -128,59 +106,38 @@ void evaluateDryRun(SystemState& state) {
   lockDryRun(state, failedMotor, nowMs);
 }
 
-// In auto/override: try borewell first (unless force-switched), fall back to sump.
-// Borewell is never blocked by sump level. Sump is blocked if sump is critical.
 void selectAutoMotor(SystemState& state) {
   if (state.command.autoPreferSump) {
-    // Force switch: try sump first, fall back to borewell.
     if (tryStart(state, MotorType::SUMP, true)) return;
     if (tryStart(state, MotorType::BOREWELL, false)) return;
   } else {
-    // Normal priority: borewell > sump.
     if (tryStart(state, MotorType::BOREWELL, false)) return;
     if (tryStart(state, MotorType::SUMP, true)) return;
   }
-
-  // Nothing could start. Borewell reports its actual reason.
-  // (DRY_RUN_LOCK if locked, otherwise STOPPED — neither motor is at fault from sump.)
   if (isLocked(state, MotorType::BOREWELL, millis())) {
     state.borewell.status = MotorStatus::DRY_RUN_LOCK;
   }
-  // Sump already has SUMP_CRITICAL set by tryStart if that was the reason.
 }
 
 void runManualControl(SystemState& state) {
-  // Emergency stop takes absolute priority.
   if (state.command.emergencyStop) {
     stopActiveMotor(state);
     return;
   }
-
   if (state.command.forcedMotor == MotorType::NONE) {
     stopActiveMotor(state);
     return;
   }
-
-  // Manual mode: sump critical does NOT block. The user explicitly chose this motor.
-  // Dry-run protection still applies.
-  if (!tryStart(state, state.command.forcedMotor, false)) {
-    // Only reason tryStart can fail now is dry-run lock.
-    // Status already set to DRY_RUN_LOCK by lockDryRun.
-    return;
-  }
-
+  if (!tryStart(state, state.command.forcedMotor, false)) return;
   evaluateDryRun(state);
 }
 
 void runAutoControl(SystemState& state) {
-  // Emergency stop takes absolute priority.
   if (state.command.emergencyStop) {
     stopActiveMotor(state);
     return;
   }
 
-  // Sump critical: only stop the sump motor if it happens to be running.
-  // Borewell is completely unaffected by sump level.
   if (state.sumpLevel == SumpLevel::CRITICAL) {
     state.sumpCriticalWarningLatched = true;
     if (state.activeMotor == MotorType::SUMP) {
@@ -190,7 +147,6 @@ void runAutoControl(SystemState& state) {
   }
 
   const bool shouldFill = state.command.overrideFillToHigh || needsFill(state);
-
   if (!shouldFill) {
     stopActiveMotor(state);
     return;
@@ -202,28 +158,17 @@ void runAutoControl(SystemState& state) {
     return;
   }
 
-  if (state.activeMotor == MotorType::NONE) {
-    selectAutoMotor(state);
-  }
-
+  if (state.activeMotor == MotorType::NONE) selectAutoMotor(state);
   evaluateDryRun(state);
-
-  if (state.activeMotor == MotorType::NONE) {
-    // Fallback: primary may have just dry-ran. Try again once.
-    selectAutoMotor(state);
-  }
+  if (state.activeMotor == MotorType::NONE) selectAutoMotor(state);
 }
 
 }  // namespace
 
+// ── Public API ────────────────────────────────────────────────────────────────
+
 void initState(SystemState& state) {
-  pinMode(PIN_OH_LOW, INPUT_PULLUP);
-  pinMode(PIN_OH_MED, INPUT_PULLUP);
-  pinMode(PIN_OH_HIGH, INPUT_PULLUP);
-
-  pinMode(PIN_SUMP_LOW, INPUT_PULLUP);
-  pinMode(PIN_SUMP_HIGH, INPUT_PULLUP);
-
+  initProbes();
   updateLevelsFromPins(state);
 }
 
@@ -233,11 +178,8 @@ void updateLevelsFromPins(SystemState& state) {
 }
 
 void runAutomationLogic(SystemState& state) {
-  if (state.command.manualMode) {
-    runManualControl(state);
-  } else {
-    runAutoControl(state);
-  }
+  if (state.command.manualMode) runManualControl(state);
+  else runAutoControl(state);
 }
 
 void writeMotorOutputs(const SystemState& state) {
@@ -246,11 +188,8 @@ void writeMotorOutputs(const SystemState& state) {
 }
 
 void stopMotor(MotorType motor) {
-  if (motor == MotorType::BOREWELL) {
-    digitalWrite(PIN_BOREWELL_RELAY, LOW);
-  } else if (motor == MotorType::SUMP) {
-    digitalWrite(PIN_SUMP_RELAY, LOW);
-  }
+  if (motor == MotorType::BOREWELL) digitalWrite(PIN_BOREWELL_RELAY, LOW);
+  else if (motor == MotorType::SUMP) digitalWrite(PIN_SUMP_RELAY, LOW);
 }
 
 void clearDryRunLatch(SystemState& state, MotorType motor) {
@@ -259,8 +198,6 @@ void clearDryRunLatch(SystemState& state, MotorType motor) {
   rt.lockUntilMs = 0;
   rt.status = MotorStatus::STOPPED;
 }
-
-// ── Flash-string conversions (Serial output) ─────────────────────────────────
 
 const __FlashStringHelper* toText(MotorType m) {
   switch (m) {
@@ -300,8 +237,6 @@ const __FlashStringHelper* toText(SumpLevel l) {
   }
   return F("unknown");
 }
-
-// ── Plain const char* conversions (snprintf / MQTT publish) ──────────────────
 
 const char* toStr(MotorType m) {
   switch (m) {
