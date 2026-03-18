@@ -34,7 +34,18 @@
 
 	$: isConnected = $waterSystem.mqttConnection.mqttPhase === 'connected';
 
-	const connectionBadges: Record<MQTTConnectionPhase, string> = {
+	const wifiConnectionBadges: Record<WifiConnectionPhase, string> = {
+		unknown: 'bg-slate-200 text-slate-700',
+		connecting: 'bg-amber-100 text-amber-900',
+		connected: 'bg-emerald-100 text-emerald-900',
+		disconnected: 'bg-rose-200 text-rose-950',
+		connection_lost: 'bg-rose-200 text-rose-950',
+		connect_failed: 'bg-rose-200 text-rose-950',
+		ssid_unavailable: 'bg-rose-200 text-rose-950',
+		no_module: 'bg-rose-200 text-rose-950'
+	};
+
+	const mqttConnectionBadges: Record<MQTTConnectionPhase, string> = {
 		idle: 'bg-slate-200 text-slate-700',
 		connecting: 'bg-amber-100 text-amber-900',
 		connected: 'bg-emerald-100 text-emerald-900',
@@ -209,7 +220,7 @@
 							Water Level Automation
 						</p>
 						<span
-							class={`rounded-full px-1 py-1 text-xs font-semibold tracking-wide uppercase ${connectionBadges[$waterSystem.wifiConnection.wifiPhase]}`}
+							class={`rounded-full px-1 py-1 text-xs font-semibold tracking-wide uppercase ${wifiConnectionBadges[$waterSystem.wifiConnection.wifiPhase]}`}
 						>
 							<svelte:component
 								this={wifiConnectionIconsMap[$waterSystem.wifiConnection.wifiPhase]}
@@ -220,7 +231,7 @@
 							/>
 						</span>
 						<span
-							class={`rounded-full px-1 py-1 text-xs font-semibold tracking-wide uppercase ${connectionBadges[$waterSystem.mqttConnection.mqttPhase]}`}
+							class={`rounded-full px-1 py-1 text-xs font-semibold tracking-wide uppercase ${mqttConnectionBadges[$waterSystem.mqttConnection.mqttPhase]}`}
 						>
 							<svelte:component
 								this={mqttConnectionIconsMap[$waterSystem.mqttConnection.mqttPhase]}
