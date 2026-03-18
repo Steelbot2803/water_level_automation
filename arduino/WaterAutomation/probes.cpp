@@ -22,11 +22,12 @@ void initProbes() {
   pinMode(PIN_SUMP_TX, OUTPUT);
   digitalWrite(PIN_SUMP_TX, LOW);
 
-  pinMode(PIN_OH_LOW, INPUT);
-  pinMode(PIN_OH_MED, INPUT);
-  pinMode(PIN_OH_HIGH, INPUT);
-  pinMode(PIN_SUMP_LOW, INPUT);
-  pinMode(PIN_SUMP_HIGH, INPUT);
+  // IMPORTANT: Switch back to INPUT once external circuit is complete.
+  pinMode(PIN_OH_LOW, INPUT_PULLUP);
+  pinMode(PIN_OH_MED, INPUT_PULLUP);
+  pinMode(PIN_OH_HIGH, INPUT_PULLUP);
+  pinMode(PIN_SUMP_LOW, INPUT_PULLUP);
+  pinMode(PIN_SUMP_HIGH, INPUT_PULLUP);
 
   uint8_t timerType = GPT_TIMER;
   int8_t timerIdx = FspTimer::get_available_timer(timerType);
