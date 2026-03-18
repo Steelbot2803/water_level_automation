@@ -96,15 +96,15 @@ The PWA publishes these literal string payloads to the command topic.
 
 ```json
 {
- "mode": "auto",
- "override": false,
- "manual_target": "none",
- "overhead": "low",
- "sump": "high",
- "motor": "borewell",
- "borewell_status": "running",
- "sump_status": "stopped",
- "sump_warning": false,
- "estop": false
+	"mode": "auto",
+	"override": false,
+	"manual_target": "none",
+	"overhead": "low",
+	"sump": "high",
+	"motor": "borewell",
+	"borewell_status": "running",
+	"sump_status": "stopped",
+	"sump_warning": false,
+	"estop": false
 }
 ```

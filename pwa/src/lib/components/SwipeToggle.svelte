@@ -11,13 +11,13 @@
 	let {
 		options = [],
 		value,
-        color,
+		color,
 		disabled = false,
 		change
 	}: {
 		options: Option<T>[];
 		value: T;
-        color?: string;
+		color?: string;
 		disabled?: boolean;
 		change?: (value: T, index: number) => void;
 	} = $props();

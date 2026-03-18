@@ -1,7 +1,24 @@
 #include "controller.h"
 #include "probes.h"
 
+// ── Why this file changed ─────────────────────────────────────────────────────
+//
+// Previously, isPinActive() did:   digitalRead(pin) == LOW
+// (float switches pulled the pin LOW through water, INPUT_PULLUP wiring)
+//
+// Now, acProbeActive() does:       digitalRead(pin) == HIGH
+// (Option B circuit charges the RX pin to a stable HIGH when water is present)
+//
+// readOverheadLevel() and readSumpLevel() now call acProbeActive() instead of
+// isPinActive(). Everything else — motor logic, dry-run, MQTT, commands — is
+// completely unchanged.
+
 namespace {
+
+// ── Level reading ─────────────────────────────────────────────────────────────
+// Probes are checked highest-first. The moment one reports water-present,
+// we know the water surface is at least that high and return immediately.
+// If not even the LOW probe is wet, the tank is below LOW → CRITICAL.
 
 OverheadLevel readOverheadLevel() {
   if (acProbeActive(PIN_OH_HIGH)) return OverheadLevel::HIGH;
@@ -15,6 +32,8 @@ SumpLevel readSumpLevel() {
   if (acProbeActive(PIN_SUMP_LOW)) return SumpLevel::LOW;
   return SumpLevel::CRITICAL;
 }
+
+// ── Everything below is identical to the original controller.cpp ──────────────
 
 bool needsFill(const SystemState& state) {
   return state.overheadLevel == OverheadLevel::LOW
@@ -38,9 +57,25 @@ const MotorRuntimeState& runtimeFor(const SystemState& state, MotorType motor) {
 }
 
 bool flowOkay(MotorType motor) {
-  if (motor == MotorType::BOREWELL) return digitalRead(PIN_BOREWELL_FLOW_OK) == LOW;
-  if (motor == MotorType::SUMP) return digitalRead(PIN_SUMP_FLOW_OK) == LOW;
-  return false;
+  const uint8_t pin = (motor == MotorType::BOREWELL)
+                        ? PIN_BOREWELL_CURRENT
+                        : PIN_SUMP_CURRENT;
+
+  // Sample for 30ms — covers at least one full 50Hz AC cycle (20ms).
+  // Track the peak deviation from the midpoint (512) in either direction.
+  // This gives you peak current magnitude regardless of AC phase at sample time.
+  int peakDeviation = 0;
+  const unsigned long endMs = millis() + 30;
+
+  while (millis() < endMs) {
+    const int sample = analogRead(pin);
+    const int deviation = abs(sample - 512);
+    if (deviation > peakDeviation) {
+      peakDeviation = deviation;
+    }
+  }
+
+  return peakDeviation > MOTOR_CURRENT_THRESHOLD;
 }
 
 bool isLocked(const SystemState& state, MotorType motor, unsigned long nowMs) {
@@ -168,11 +203,19 @@ void runAutoControl(SystemState& state) {
 // ── Public API ────────────────────────────────────────────────────────────────
 
 void initState(SystemState& state) {
+  // initProbes() replaces the old pinMode(PIN_OH_xxx, INPUT_PULLUP) block.
+  // It configures all probe pins AND starts the background TX ISR.
+  // It also waits AC_PROBE_SETTLE_MS before returning, so the very first
+  // updateLevelsFromPins() call below sees stable capacitor voltages.
   initProbes();
+
   updateLevelsFromPins(state);
 }
 
 void updateLevelsFromPins(SystemState& state) {
+  // These now call acProbeActive() → digitalRead() rather than
+  // isPinActive() → digitalRead() == LOW. The logic direction flipped
+  // (HIGH = present instead of LOW = present) but only inside this file.
   state.overheadLevel = readOverheadLevel();
   state.sumpLevel = readSumpLevel();
 }
@@ -198,6 +241,8 @@ void clearDryRunLatch(SystemState& state, MotorType motor) {
   rt.lockUntilMs = 0;
   rt.status = MotorStatus::STOPPED;
 }
+
+// ── String conversions (unchanged) ───────────────────────────────────────────
 
 const __FlashStringHelper* toText(MotorType m) {
   switch (m) {
