@@ -15,53 +15,53 @@
 		next: WaterAutomationState
 	) {
 		if (!previous) {
-			if (next.connection.phase === 'error' && next.connection.lastError) {
+			if (next.mqttConnection.mqttPhase === 'error' && next.mqttConnection.lastError) {
 				alerts.push({
 					title: 'Connection error',
-					message: next.connection.lastError,
+					message: next.mqttConnection.lastError,
 					severity: 'error',
-					tag: 'connection-error-initial',
+					tag: 'mqttConnection-error-initial',
 					cooldownMs: 15000
 				});
 			}
 			return;
 		}
 
-		if (next.connection.phase === 'reconnecting' && previous.connection.phase !== 'reconnecting') {
+		if (next.mqttConnection.mqttPhase === 'reconnecting' && previous.mqttConnection.mqttPhase !== 'reconnecting') {
 			alerts.push({
 				title: 'Connection lost',
 				message: 'Broker connection dropped. Retrying automatically.',
 				severity: 'warning',
-				tag: 'connection-reconnecting',
+				tag: 'mqttConnection-reconnecting',
 				cooldownMs: 15000
 			});
 		}
 
 		if (
-			next.connection.phase === 'connected' &&
-			(previous.connection.phase === 'reconnecting' ||
-				previous.connection.phase === 'offline' ||
-				previous.connection.phase === 'error')
+			next.mqttConnection.mqttPhase === 'connected' &&
+			(previous.mqttConnection.mqttPhase === 'reconnecting' ||
+				previous.mqttConnection.mqttPhase === 'offline' ||
+				previous.mqttConnection.mqttPhase === 'error')
 		) {
 			alerts.push({
 				title: 'Connection restored',
 				message: 'Broker connection is back and telemetry is live again.',
 				severity: 'success',
-				tag: 'connection-restored',
+				tag: 'mqttConnection-restored',
 				cooldownMs: 10000
 			});
 		}
 
 		if (
-			next.connection.phase === 'error' &&
-			(previous.connection.phase !== 'error' ||
-				previous.connection.lastError !== next.connection.lastError)
+			next.mqttConnection.mqttPhase === 'error' &&
+			(previous.mqttConnection.mqttPhase !== 'error' ||
+				previous.mqttConnection.lastError !== next.mqttConnection.lastError)
 		) {
 			alerts.push({
 				title: 'Connection error',
-				message: next.connection.lastError ?? next.connection.detail,
+				message: next.mqttConnection.lastError ?? next.mqttConnection.detail,
 				severity: 'error',
-				tag: 'connection-error',
+				tag: 'mqttConnection-error',
 				cooldownMs: 15000
 			});
 		}

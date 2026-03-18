@@ -52,8 +52,14 @@ function createInitialState(): WaterAutomationState {
 		initialized: false,
 		statusTopicSubscribed: false,
 		settings,
-		connection: {
-			phase: configurationError ? 'error' : 'idle',
+		wifiConnection: {
+			wifiPhase: 'unknown',
+			ssid: undefined,
+			lastConnectedAt: undefined,
+			lastError: undefined
+		},
+		mqttConnection: {
+			mqttPhase: configurationError ? 'error' : 'idle',
 			detail:
 				configurationError ??
 				(settings.host
@@ -94,9 +100,9 @@ function createWaterSystemStore() {
 		if (configurationError) {
 			update((state) => ({
 				...state,
-				connection: {
-					...state.connection,
-					phase: 'error',
+				mqttConnection: {
+					...state.mqttConnection,
+					mqttPhase: 'error',
 					detail: configurationError,
 					url,
 					lastError: configurationError
@@ -108,9 +114,9 @@ function createWaterSystemStore() {
 		if (client?.connected && sameSettings(activeSettings, settings)) {
 			update((state) => ({
 				...state,
-				connection: {
-					...state.connection,
-					phase: 'connected',
+				mqttConnection: {
+					...state.mqttConnection,
+					mqttPhase: 'connected',
 					detail: `Connected to ${url}.`,
 					url,
 					lastError: undefined
@@ -126,9 +132,9 @@ function createWaterSystemStore() {
 			...state,
 			settings,
 			statusTopicSubscribed: false,
-			connection: {
-				...state.connection,
-				phase: 'connecting',
+			mqttConnection: {
+				...state.mqttConnection,
+				mqttPhase: 'connecting',
 				detail: `Connecting to ${url}`,
 				url,
 				lastError: undefined
@@ -159,11 +165,11 @@ function createWaterSystemStore() {
 				update((state) => ({
 					...state,
 					statusTopicSubscribed: false,
-					connection: {
-						...state.connection,
-						phase: 'error',
+					mqttConnection: {
+						...state.mqttConnection,
+						mqttPhase: 'error',
 						detail,
-						lastError: lastError ?? state.connection.lastError
+						lastError: lastError ?? state.mqttConnection.lastError
 					}
 				}));
 
@@ -177,9 +183,9 @@ function createWaterSystemStore() {
 				update((state) => ({
 					...state,
 					statusTopicSubscribed: false,
-					connection: {
-						...state.connection,
-						phase: 'connected',
+					mqttConnection: {
+						...state.mqttConnection,
+						mqttPhase: 'connected',
 						detail: `Connected to ${url}. Subscribing to ${settings.statusTopic}.`,
 						url,
 						lastConnectedAt: Date.now(),
@@ -201,8 +207,8 @@ function createWaterSystemStore() {
 					update((state) => ({
 						...state,
 						statusTopicSubscribed: true,
-						connection: {
-							...state.connection,
+						mqttConnection: {
+							...state.mqttConnection,
 							detail: `Receiving status from ${settings.statusTopic}.`
 						}
 					}));
@@ -224,11 +230,11 @@ function createWaterSystemStore() {
 				update((state) => ({
 					...state,
 					statusTopicSubscribed: false,
-					connection: {
-						...state.connection,
-						phase: 'reconnecting',
+					mqttConnection: {
+						...state.mqttConnection,
+						mqttPhase: 'reconnecting',
 						detail: `Retrying broker connection (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}).`,
-						lastError: state.connection.lastError
+						lastError: state.mqttConnection.lastError
 					}
 				}));
 			});
@@ -239,14 +245,14 @@ function createWaterSystemStore() {
 				update((state) => ({
 					...state,
 					statusTopicSubscribed: false,
-					connection: {
-						...state.connection,
-						phase: reconnectAttempts > 0 ? 'reconnecting' : 'offline',
+					mqttConnection: {
+						...state.mqttConnection,
+						mqttPhase: reconnectAttempts > 0 ? 'reconnecting' : 'offline',
 						detail:
 							reconnectAttempts > 0
 								? `Retrying broker connection (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}).`
 								: 'Broker connection is offline. Retrying automatically.',
-						lastError: state.connection.lastError
+						lastError: state.mqttConnection.lastError
 					}
 				}));
 			});
@@ -257,14 +263,14 @@ function createWaterSystemStore() {
 				update((state) => ({
 					...state,
 					statusTopicSubscribed: false,
-					connection: {
-						...state.connection,
-						phase: reconnectAttempts > 0 ? 'reconnecting' : 'offline',
+					mqttConnection: {
+						...state.mqttConnection,
+						mqttPhase: reconnectAttempts > 0 ? 'reconnecting' : 'offline',
 						detail:
 							reconnectAttempts > 0
 								? `Retrying broker connection (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}).`
 								: 'Broker connection closed. Retrying automatically.',
-						lastError: state.connection.lastError
+						lastError: state.mqttConnection.lastError
 					}
 				}));
 			});
@@ -274,9 +280,9 @@ function createWaterSystemStore() {
 
 				update((state) => ({
 					...state,
-					connection: {
-						...state.connection,
-						phase: reconnectAttempts > 0 ? 'reconnecting' : 'connecting',
+					mqttConnection: {
+						...state.mqttConnection,
+						mqttPhase: reconnectAttempts > 0 ? 'reconnecting' : 'connecting',
 						detail:
 							reconnectAttempts > 0
 								? `Retry ${reconnectAttempts} of ${MAX_RECONNECT_ATTEMPTS} failed. Retrying automatically.`
@@ -297,9 +303,9 @@ function createWaterSystemStore() {
 					update((state) => ({
 						...state,
 						device,
-						connection: {
-							...state.connection,
-							phase: 'connected',
+						mqttConnection: {
+							...state.mqttConnection,
+							mqttPhase: 'connected',
 							detail: `Receiving status from ${settings.statusTopic}.`,
 							lastMessageAt: device.receivedAt,
 							lastError: undefined
@@ -310,8 +316,8 @@ function createWaterSystemStore() {
 					console.warn('[system] MQTT payload parse failure:', message, rawPayload);
 					update((state) => ({
 						...state,
-						connection: {
-							...state.connection,
+						mqttConnection: {
+							...state.mqttConnection,
 							detail: `Warning: received unparseable status payload. Waiting for next message.`,
 							lastError: message
 						}
@@ -326,9 +332,9 @@ function createWaterSystemStore() {
 			update((state) => ({
 				...state,
 				statusTopicSubscribed: false,
-				connection: {
-					...state.connection,
-					phase: 'error',
+				mqttConnection: {
+					...state.mqttConnection,
+					mqttPhase: 'error',
 					detail: message,
 					lastError: message
 				}
@@ -369,14 +375,14 @@ function createWaterSystemStore() {
 			update((state) => ({
 				...state,
 				recentCommands: appendCommandLog(state.recentCommands, entry),
-				connection: error
+				mqttConnection: error
 					? {
-							...state.connection,
-							phase: 'error',
+							...state.mqttConnection,
+							mqttPhase: 'error',
 							detail: `Failed to publish ${command} to ${topic}.`,
 							lastError: error.message
 						}
-					: state.connection
+					: state.mqttConnection
 			}));
 		});
 	}
@@ -398,9 +404,9 @@ function createWaterSystemStore() {
 			...state,
 			initialized: true,
 			settings,
-			connection: {
-				...state.connection,
-				phase: configurationError ? 'error' : 'idle',
+			mqttConnection: {
+				...state.mqttConnection,
+				mqttPhase: configurationError ? 'error' : 'idle',
 				detail:
 					configurationError ??
 					(settings.host

@@ -4,12 +4,13 @@
 	import { waterSystem } from '$lib/stores/system.js';
 	import { commandLabels, runtimeStatusLabels } from '$lib/control.js';
 	import type {
-		ConnectionPhase,
+		WifiConnectionPhase,
+		MQTTConnectionPhase,
 		OverheadLevel,
 		SumpLevel,
 		MotorRuntimeStatus
 	} from '$lib/types.js';
-	import { connectionIconsMap } from '$lib/types.js';
+	import { wifiConnectionIconsMap, mqttConnectionIconsMap } from '$lib/types.js';
 	import { theme, themeIcons, type ThemePreference } from '$lib/stores/theme.js';
 	import { LoaderCircle } from 'lucide-svelte';
 	import SwipeToggle from '$lib/components/SwipeToggle.svelte';
@@ -31,9 +32,9 @@
 		{ label: 'Sump', value: 'sump' }
 	];
 
-	$: isConnected = $waterSystem.connection.phase === 'connected';
+	$: isConnected = $waterSystem.mqttConnection.mqttPhase === 'connected';
 
-	const connectionBadges: Record<ConnectionPhase, string> = {
+	const connectionBadges: Record<MQTTConnectionPhase, string> = {
 		idle: 'bg-slate-200 text-slate-700',
 		connecting: 'bg-amber-100 text-amber-900',
 		connected: 'bg-emerald-100 text-emerald-900',
@@ -42,7 +43,7 @@
 		error: 'bg-rose-200 text-rose-950'
 	};
 
-	const connectionShells: Record<ConnectionPhase, string> = {
+	const connectionShells: Record<MQTTConnectionPhase, string> = {
 		idle: 'border-slate-200 bg-white/92',
 		connecting: 'border-amber-200 bg-amber-50/92',
 		connected: 'border-emerald-200 bg-emerald-50/92',
@@ -199,7 +200,7 @@
 		class="mx-auto flex max-w-5xl flex-col gap-4 px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-6"
 	>
 		<header
-			class={`overflow-hidden rounded-[2rem] border p-5 shadow-sm backdrop-blur-sm ${connectionShells[$waterSystem.connection.phase]}`}
+			class={`overflow-hidden rounded-[2rem] border p-5 shadow-sm backdrop-blur-sm ${connectionShells[$waterSystem.mqttConnection.mqttPhase]}`}
 		>
 			<div class="flex flex-col">
 				<div class="flex max-w-full items-center justify-between gap-3">
@@ -208,12 +209,23 @@
 							Water Level Automation
 						</p>
 						<span
-							class={`rounded-full px-1 py-1 text-xs font-semibold tracking-wide uppercase ${connectionBadges[$waterSystem.connection.phase]}`}
+							class={`rounded-full px-1 py-1 text-xs font-semibold tracking-wide uppercase ${connectionBadges[$waterSystem.wifiConnection.wifiPhase]}`}
 						>
 							<svelte:component
-								this={connectionIconsMap[$waterSystem.connection.phase]}
+								this={wifiConnectionIconsMap[$waterSystem.wifiConnection.wifiPhase]}
 								size={16}
-								class={connectionIconsMap[$waterSystem.connection.phase] === LoaderCircle
+								class={wifiConnectionIconsMap[$waterSystem.wifiConnection.wifiPhase] === LoaderCircle
+									? 'animate-spin'
+									: ''}
+							/>
+						</span>
+						<span
+							class={`rounded-full px-1 py-1 text-xs font-semibold tracking-wide uppercase ${connectionBadges[$waterSystem.mqttConnection.mqttPhase]}`}
+						>
+							<svelte:component
+								this={mqttConnectionIconsMap[$waterSystem.mqttConnection.mqttPhase]}
+								size={16}
+								class={mqttConnectionIconsMap[$waterSystem.mqttConnection.mqttPhase] === LoaderCircle
 									? 'animate-spin'
 									: ''}
 							/>
@@ -238,7 +250,7 @@
 							{/each}
 						</div>
 
-						<!-- Existing connection badge, unchanged -->
+						<!-- Existing mqttConnection badge, unchanged -->
 					</div>
 				</div>
 				<div class="mt-4 flex max-w-full items-center justify-between gap-3">

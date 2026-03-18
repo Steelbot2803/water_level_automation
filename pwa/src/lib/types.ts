@@ -1,4 +1,13 @@
-import { Globe, GlobeOff, GlobeX, Hourglass, LoaderCircle } from 'lucide-svelte';
+import {
+	CircleAlert,
+	Globe,
+	GlobeOff,
+	GlobeX,
+	Hourglass,
+	LoaderCircle,
+	Wifi,
+	WifiOff
+} from 'lucide-svelte';
 
 export const mqttModes = ['auto', 'manual'] as const;
 export type MqttMode = (typeof mqttModes)[number];
@@ -73,6 +82,8 @@ export interface DeviceTelemetry extends ArduinoStatusPayload {
 		borewell: MotorTelemetry;
 		sump: MotorTelemetry;
 	};
+
+
 }
 
 export interface BrokerSettings {
@@ -87,7 +98,34 @@ export interface BrokerSettings {
 	clientIdPrefix: string;
 }
 
-export type ConnectionPhase =
+export type WifiConnectionPhase =
+	| 'unknown'
+	| 'connected'
+	| 'connecting'
+	| 'disconnected'
+	| 'connection_lost'
+	| 'connect_failed'
+	| 'ssid_unavailable'
+	| 'no_module';
+
+export const wifiConnectionIcons = [
+	{ val: 'unknown', icon: Hourglass },
+	{ val: 'connected', icon: Wifi },
+	{ val: 'connecting', icon: LoaderCircle },
+	{ val: 'disconnected', icon: WifiOff },
+	{ val: 'connection_lost', icon: WifiOff },
+	{ val: 'connect_failed', icon: CircleAlert },
+	{ val: 'ssid_unavailable', icon: CircleAlert },
+	{ val: 'no_module', icon: CircleAlert }
+] as const;
+
+export const wifiConnectionIconsMap: Record<WifiConnectionPhase, (typeof wifiConnectionIcons)[number]['icon']> =
+	Object.fromEntries(wifiConnectionIcons.map(({ val, icon }) => [val, icon])) as Record<
+		WifiConnectionPhase,
+		(typeof wifiConnectionIcons)[number]['icon']
+	>;
+
+export type MQTTConnectionPhase =
 	| 'idle'
 	| 'connecting'
 	| 'connected'
@@ -95,7 +133,7 @@ export type ConnectionPhase =
 	| 'offline'
 	| 'error';
 
-export const connectionIcons = [
+export const mqttConnectionIcons = [
 	{ val: 'idle', icon: Hourglass },
 	{ val: 'connecting', icon: LoaderCircle },
 	{ val: 'connected', icon: Globe },
@@ -104,14 +142,23 @@ export const connectionIcons = [
 	{ val: 'error', icon: GlobeX }
 ] as const;
 
-export const connectionIconsMap: Record<ConnectionPhase, (typeof connectionIcons)[number]['icon']> =
-	Object.fromEntries(connectionIcons.map(({ val, icon }) => [val, icon])) as Record<
-		ConnectionPhase,
-		(typeof connectionIcons)[number]['icon']
-	>;
+export const mqttConnectionIconsMap: Record<
+	MQTTConnectionPhase,
+	(typeof mqttConnectionIcons)[number]['icon']
+> = Object.fromEntries(mqttConnectionIcons.map(({ val, icon }) => [val, icon])) as Record<
+	MQTTConnectionPhase,
+	(typeof mqttConnectionIcons)[number]['icon']
+>;
+
+export interface WifiConnectionState {
+	wifiPhase: WifiConnectionPhase;
+	ssid?: string;
+	lastConnectedAt?: number;
+	lastError?: string;
+}
 
 export interface BrokerConnectionState {
-	phase: ConnectionPhase;
+	mqttPhase: MQTTConnectionPhase;
 	detail: string;
 	url: string;
 	lastConnectedAt?: number;
@@ -131,7 +178,8 @@ export interface WaterAutomationState {
 	initialized: boolean;
 	statusTopicSubscribed: boolean;
 	settings: BrokerSettings;
-	connection: BrokerConnectionState;
+	wifiConnection: WifiConnectionState;
+	mqttConnection: BrokerConnectionState;
 	device: DeviceTelemetry | null;
 	recentCommands: CommandLogEntry[];
 }
