@@ -10,13 +10,9 @@ constexpr unsigned long MQTT_PUBLISH_PERIOD_MS = 2000;
 constexpr unsigned long MQTT_LIVENESS_TIMEOUT_MS = 10UL * 60UL * 1000UL;
 constexpr unsigned long MQTT_RETRY_PERIOD_MS = 5000;
 constexpr unsigned long WIFI_RETRY_PERIOD_MS = 10000;
-constexpr unsigned long MOTOR_CURRENT_THRESHOLD = 30;
+constexpr int MOTOR_CURRENT_THRESHOLD = 30;
 constexpr unsigned long AC_PROBE_SETTLE_MS = 60;
 constexpr float AC_PROBE_FREQ_HZ = 1000.0f;
-
-// START_RETRY_LOCK_MS is no longer used — the dry-run lockout is now permanent
-// (dryRunLatched flag) rather than time-based. Safe to delete if desired.
-// constexpr unsigned long START_RETRY_LOCK_MS = 10000;
 
 // Relays (active HIGH assumed)
 constexpr uint8_t PIN_BOREWELL_RELAY = A2;

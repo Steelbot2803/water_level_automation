@@ -152,6 +152,9 @@ void selectAutoMotor(SystemState& state) {
   if (isLocked(state, MotorType::BOREWELL, millis())) {
     state.borewell.status = MotorStatus::DRY_RUN_LOCK;
   }
+  if (isLocked(state, MotorType::SUMP, millis()) && state.sump.status != MotorStatus::SUMP_CRITICAL) {
+    state.sump.status = MotorStatus::DRY_RUN_LOCK;
+  }
 }
 
 void runManualControl(SystemState& state) {
