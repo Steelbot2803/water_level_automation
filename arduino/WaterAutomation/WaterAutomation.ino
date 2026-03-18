@@ -4,6 +4,7 @@
 #include "status.h"
 #include "mqtt_link.h"
 #include "secrets.h"
+#include "watchdog.h"
 
 SystemState state;
 
@@ -22,9 +23,16 @@ void setup() {
   setSystemStateRef(&state);
   printBanner();
   initMqttLink();
+
+  if (!watchdogBegin()) {
+    Serial.println(F("WARNING: watchdog not active"));
+  }
 }
 
 void loop() {
+
+  watchdogKick();
+
   updateLevelsFromPins(state);
   readCommandFromSerial(state);
   runMqttLink();
