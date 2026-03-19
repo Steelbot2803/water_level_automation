@@ -22,7 +22,8 @@ import {
 	motorRuntimeStatuses,
 	mqttModes,
 	overheadLevels,
-	sumpLevels
+	sumpLevels,
+	wifiConnectionPhases
 } from './types.js';
 
 const refillLevels = new Set(['critical', 'low']);
@@ -163,6 +164,18 @@ export function parseArduinoStatusPayload(rawPayload: string): ArduinoStatusPayl
 
 	if (payload.auto_prefer_sump !== undefined) {
 		status.auto_prefer_sump = readBoolean(payload.auto_prefer_sump, 'auto_prefer_sump');
+	}
+	if (payload.wifi_status !== undefined) {
+		status.wifi_status = readEnum(
+			payload.wifi_status,
+			wifiConnectionPhases, // you need to add this constant — see below
+			'wifi_status'
+		);
+	}
+	if (payload.mqtt_connected !== undefined) {
+		status.mqtt_status = readBoolean(payload.mqtt_connected, 'mqtt_connected')
+			? 'connected'
+			: 'disconnected';
 	}
 
 	return status;

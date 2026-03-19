@@ -58,6 +58,9 @@ function createInitialState(): WaterAutomationState {
 			lastConnectedAt: undefined,
 			lastError: undefined
 		},
+		arduinoMQTTConnection: {
+			mqttPhase: 'unknown'
+		},
 		mqttConnection: {
 			mqttPhase: configurationError ? 'error' : 'idle',
 			detail:
@@ -303,6 +306,12 @@ function createWaterSystemStore() {
 					update((state) => ({
 						...state,
 						device,
+						wifiConnection: device.wifi_status
+							? { ...state.wifiConnection, wifiPhase: device.wifi_status }
+							: state.wifiConnection,
+						arduinoMQTTConnection: {
+							mqttPhase: device.mqtt_status ?? 'unknown'
+						},
 						mqttConnection: {
 							...state.mqttConnection,
 							mqttPhase: 'connected',

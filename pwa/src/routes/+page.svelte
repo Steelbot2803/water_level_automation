@@ -5,14 +5,19 @@
 	import { commandLabels, runtimeStatusLabels } from '$lib/control.js';
 	import type {
 		WifiConnectionPhase,
+		ArduinoMQTTConnectionPhase,
 		MQTTConnectionPhase,
 		OverheadLevel,
 		SumpLevel,
 		MotorRuntimeStatus
 	} from '$lib/types.js';
-	import { wifiConnectionIconsMap, mqttConnectionIconsMap } from '$lib/types.js';
+	import {
+		wifiConnectionIconsMap,
+		arduinoMQTTConnectionIconsMap,
+		mqttConnectionIconsMap
+	} from '$lib/types.js';
 	import { theme, themeIcons, type ThemePreference } from '$lib/stores/theme.js';
-	import { LoaderCircle } from 'lucide-svelte';
+	import { Hourglass, LoaderCircle } from 'lucide-svelte';
 	import SwipeToggle from '$lib/components/SwipeToggle.svelte';
 	import type { Option } from '$lib/components/SwipeToggle.svelte';
 
@@ -43,6 +48,12 @@
 		connect_failed: 'bg-rose-200 text-rose-950',
 		ssid_unavailable: 'bg-rose-200 text-rose-950',
 		no_module: 'bg-rose-200 text-rose-950'
+	};
+
+	const arduinoMQTTConnectionBadges: Record<ArduinoMQTTConnectionPhase, string> = {
+		unknown: 'bg-slate-200 text-slate-700',
+		connected: 'bg-emerald-100 text-emerald-900',
+		disconnected: 'bg-rose-200 text-rose-950'
 	};
 
 	const mqttConnectionBadges: Record<MQTTConnectionPhase, string> = {
@@ -225,8 +236,24 @@
 							<svelte:component
 								this={wifiConnectionIconsMap[$waterSystem.wifiConnection.wifiPhase]}
 								size={16}
-								class={wifiConnectionIconsMap[$waterSystem.wifiConnection.wifiPhase] === LoaderCircle
+								class={wifiConnectionIconsMap[$waterSystem.wifiConnection.wifiPhase] ===
+								LoaderCircle
 									? 'animate-spin'
+									: wifiConnectionIconsMap[$waterSystem.wifiConnection.wifiPhase] === Hourglass
+										? 'animate-hourglass'
+										: ''}
+							/>
+						</span>
+						<span
+							class={`rounded-full px-1 py-1 text-xs font-semibold tracking-wide uppercase ${arduinoMQTTConnectionBadges[$waterSystem.arduinoMQTTConnection.mqttPhase]}`}
+						>
+							<svelte:component
+								this={arduinoMQTTConnectionIconsMap[$waterSystem.arduinoMQTTConnection.mqttPhase]}
+								size={16}
+								class={arduinoMQTTConnectionIconsMap[
+									$waterSystem.arduinoMQTTConnection.mqttPhase
+								] === Hourglass
+									? 'animate-hourglass'
 									: ''}
 							/>
 						</span>
@@ -236,9 +263,12 @@
 							<svelte:component
 								this={mqttConnectionIconsMap[$waterSystem.mqttConnection.mqttPhase]}
 								size={16}
-								class={mqttConnectionIconsMap[$waterSystem.mqttConnection.mqttPhase] === LoaderCircle
+								class={mqttConnectionIconsMap[$waterSystem.mqttConnection.mqttPhase] ===
+								LoaderCircle
 									? 'animate-spin'
-									: ''}
+									: mqttConnectionIconsMap[$waterSystem.mqttConnection.mqttPhase] === Hourglass
+										? 'animate-hourglass'
+										: ''}
 							/>
 						</span>
 					</div>

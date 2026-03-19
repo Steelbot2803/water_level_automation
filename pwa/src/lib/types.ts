@@ -5,6 +5,8 @@ import {
 	GlobeX,
 	Hourglass,
 	LoaderCircle,
+	Server,
+	ServerOff,
 	Wifi,
 	WifiOff
 } from 'lucide-svelte';
@@ -44,8 +46,32 @@ export const arduinoCommands = [
 	'estop',
 	'resume'
 ] as const;
-
 export type ArduinoCommand = (typeof arduinoCommands)[number];
+
+export const wifiConnectionPhases = [
+	'unknown',
+	'connected',
+	'connecting',
+	'disconnected',
+	'connection_lost',
+	'connect_failed',
+	'ssid_unavailable',
+	'no_module'
+] as const;
+export type WifiConnectionPhase = (typeof wifiConnectionPhases)[number];
+
+export const mqttConnectionPhases = [
+	'idle',
+	'connecting',
+	'connected',
+	'reconnecting',
+	'offline',
+	'error'
+] as const;
+export type MQTTConnectionPhase = (typeof mqttConnectionPhases)[number];
+
+export const arduinoMQTTConnectionPhases = ['unknown', 'connected', 'disconnected'] as const;
+export type ArduinoMQTTConnectionPhase = (typeof arduinoMQTTConnectionPhases)[number];
 
 export interface ArduinoStatusPayload {
 	mode: MqttMode;
@@ -59,6 +85,19 @@ export interface ArduinoStatusPayload {
 	sump_warning?: boolean;
 	emergency_stop?: boolean;
 	auto_prefer_sump?: boolean;
+	wifi_status?: WifiConnectionPhase;
+	mqtt_status?: ArduinoMQTTConnectionPhase;
+}
+
+export interface WifiConnectionState {
+	wifiPhase: WifiConnectionPhase;
+	ssid?: string;
+	lastConnectedAt?: number;
+	lastError?: string;
+}
+
+export interface ArduinoConnectionStatusPayload {
+	mqttPhase: ArduinoMQTTConnectionPhase;
 }
 
 export interface DeviceAlarms {
@@ -82,8 +121,6 @@ export interface DeviceTelemetry extends ArduinoStatusPayload {
 		borewell: MotorTelemetry;
 		sump: MotorTelemetry;
 	};
-
-
 }
 
 export interface BrokerSettings {
@@ -98,16 +135,6 @@ export interface BrokerSettings {
 	clientIdPrefix: string;
 }
 
-export type WifiConnectionPhase =
-	| 'unknown'
-	| 'connected'
-	| 'connecting'
-	| 'disconnected'
-	| 'connection_lost'
-	| 'connect_failed'
-	| 'ssid_unavailable'
-	| 'no_module';
-
 export const wifiConnectionIcons = [
 	{ val: 'unknown', icon: Hourglass },
 	{ val: 'connected', icon: Wifi },
@@ -119,19 +146,13 @@ export const wifiConnectionIcons = [
 	{ val: 'no_module', icon: CircleAlert }
 ] as const;
 
-export const wifiConnectionIconsMap: Record<WifiConnectionPhase, (typeof wifiConnectionIcons)[number]['icon']> =
-	Object.fromEntries(wifiConnectionIcons.map(({ val, icon }) => [val, icon])) as Record<
-		WifiConnectionPhase,
-		(typeof wifiConnectionIcons)[number]['icon']
-	>;
-
-export type MQTTConnectionPhase =
-	| 'idle'
-	| 'connecting'
-	| 'connected'
-	| 'reconnecting'
-	| 'offline'
-	| 'error';
+export const wifiConnectionIconsMap: Record<
+	WifiConnectionPhase,
+	(typeof wifiConnectionIcons)[number]['icon']
+> = Object.fromEntries(wifiConnectionIcons.map(({ val, icon }) => [val, icon])) as Record<
+	WifiConnectionPhase,
+	(typeof wifiConnectionIcons)[number]['icon']
+>;
 
 export const mqttConnectionIcons = [
 	{ val: 'idle', icon: Hourglass },
@@ -150,12 +171,19 @@ export const mqttConnectionIconsMap: Record<
 	(typeof mqttConnectionIcons)[number]['icon']
 >;
 
-export interface WifiConnectionState {
-	wifiPhase: WifiConnectionPhase;
-	ssid?: string;
-	lastConnectedAt?: number;
-	lastError?: string;
-}
+export const arduinoMQTTConnectionIcons = [
+	{ val: 'unknown', icon: Hourglass },
+	{ val: 'connected', icon: Server },
+	{ val: 'disconnected', icon: ServerOff }
+] as const;
+
+export const arduinoMQTTConnectionIconsMap: Record<
+	ArduinoMQTTConnectionPhase,
+	(typeof arduinoMQTTConnectionIcons)[number]['icon']
+> = Object.fromEntries(arduinoMQTTConnectionIcons.map(({ val, icon }) => [val, icon])) as Record<
+	ArduinoMQTTConnectionPhase,
+	(typeof arduinoMQTTConnectionIcons)[number]['icon']
+>;
 
 export interface BrokerConnectionState {
 	mqttPhase: MQTTConnectionPhase;
@@ -179,6 +207,7 @@ export interface WaterAutomationState {
 	statusTopicSubscribed: boolean;
 	settings: BrokerSettings;
 	wifiConnection: WifiConnectionState;
+	arduinoMQTTConnection: ArduinoConnectionStatusPayload;
 	mqttConnection: BrokerConnectionState;
 	device: DeviceTelemetry | null;
 	recentCommands: CommandLogEntry[];

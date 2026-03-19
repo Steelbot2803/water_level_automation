@@ -79,3 +79,21 @@ body {
 		transition: none !important;
 	}
 }
+
+@keyframes hourglass-flip {
+	0%,
+	15% {
+		transform: rotate(0deg);
+	}
+	50%,
+	65% {
+		transform: rotate(180deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+.animate-hourglass {
+	animation: hourglass-flip 1.5s ease-in-out infinite;
+}

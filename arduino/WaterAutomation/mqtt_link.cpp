@@ -31,6 +31,18 @@ const __FlashStringHelper* wifiStatusText(uint8_t status) {
     default: return F("unknown");
   }
 }
+const char* wifiStatusCStr(uint8_t status) {
+  switch (status) {
+    case WL_CONNECTED: return "connected";
+    case WL_IDLE_STATUS: return "connecting";
+    case WL_NO_SSID_AVAIL: return "ssid_unavailable";
+    case WL_CONNECT_FAILED: return "connect_failed";
+    case WL_CONNECTION_LOST: return "connection_lost";
+    case WL_DISCONNECTED: return "disconnected";
+    case WL_NO_MODULE: return "no_module";
+    default: return "unknown";
+  }
+}
 
 void reportWifiStatusChange(uint8_t status) {
   if (status == lastWifiStatus) return;
@@ -121,7 +133,7 @@ const char* manualTargetText(const SystemState& state) {
 }
 
 void initMqttLink() {
-  mqttClient.setBufferSize(512);
+  mqttClient.setBufferSize(768);
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
   mqttClient.setCallback(mqttCallback);
   WiFi.disconnect();
@@ -146,14 +158,15 @@ void publishStateToMqtt(const SystemState& state) {
   }
   lastMqttPublishMs = nowMs;
 
-  char payload[420];
+  char payload[512];
   const int written = snprintf(
     payload,
     sizeof(payload),
     "{\"mode\":\"%s\",\"override\":%s,\"manual_target\":\"%s\","
     "\"overhead\":\"%s\",\"sump\":\"%s\",\"motor\":\"%s\","
     "\"borewell_status\":\"%s\",\"sump_status\":\"%s\","
-    "\"sump_warning\":%s,\"emergency_stop\":%s,\"auto_prefer_sump\":%s}",
+    "\"sump_warning\":%s,\"emergency_stop\":%s,\"auto_prefer_sump\":%s,"
+    "\"wifi_status\":\"%s\",\"mqtt_connected\":%s}",
     modeText(state),
     state.command.overrideFillToHigh ? "true" : "false",
     manualTargetText(state),
@@ -164,7 +177,9 @@ void publishStateToMqtt(const SystemState& state) {
     toStr(state.sump.status),
     (state.sumpLevel == SumpLevel::CRITICAL || state.sumpCriticalWarningLatched) ? "true" : "false",
     state.command.emergencyStop ? "true" : "false",
-    state.command.autoPreferSump ? "true" : "false");
+    state.command.autoPreferSump ? "true" : "false",
+    wifiStatusCStr(lastWifiStatus),
+    mqttClient.connected() ? "true" : "false");
 
   if (written < 0 || written >= static_cast<int>(sizeof(payload))) {
     Serial.print(F("mqtt: payload truncated (needed "));
