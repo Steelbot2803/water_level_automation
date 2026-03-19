@@ -158,7 +158,7 @@ void publishStateToMqtt(const SystemState& state) {
   }
   lastMqttPublishMs = nowMs;
 
-  char payload[512];
+  char payload[640];
   const int written = snprintf(
     payload,
     sizeof(payload),
