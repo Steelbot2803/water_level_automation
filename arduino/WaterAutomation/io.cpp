@@ -141,6 +141,13 @@ bool applyCommand(SystemState& state, const String& line) {
     return true;
   }
 
+  if (line == "reset") {
+    Serial.println(F("Resetting by command..."));
+    delay(100);
+    NVIC_SystemReset();
+    return true;
+  }
+
   if (line == "unlock borewell") {
     clearDryRunLatch(state, MotorType::BOREWELL);
     Serial.println(F("Borewell dry-run latch cleared"));

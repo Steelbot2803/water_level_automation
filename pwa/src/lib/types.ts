@@ -39,12 +39,16 @@ export const arduinoCommands = [
 	'auto',
 	'manual',
 	'override',
+	'motor borewell',
+	'motor sump',
+	'motor stop',
 	'borewell',
 	'sump',
 	'unlock borewell',
 	'unlock sump',
 	'estop',
-	'resume'
+	'resume',
+	'reset'
 ] as const;
 export type ArduinoCommand = (typeof arduinoCommands)[number];
 

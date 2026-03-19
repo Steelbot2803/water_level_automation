@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-
+	import { get } from 'svelte/store';
 	import { alerts } from '$lib/stores/alerts.js';
+	import { notificationPrefs } from '$lib/stores/notifications.js';
 	import { waterSystem } from '$lib/stores/system.js';
 	import type {
 		CommandLogEntry,
@@ -27,14 +28,18 @@
 			return;
 		}
 
-		if (next.mqttConnection.mqttPhase === 'reconnecting' && previous.mqttConnection.mqttPhase !== 'reconnecting') {
-			alerts.push({
-				title: 'Connection lost',
-				message: 'Broker connection dropped. Retrying automatically.',
-				severity: 'warning',
-				tag: 'mqttConnection-reconnecting',
-				cooldownMs: 15000
-			});
+		if (
+			next.mqttConnection.mqttPhase === 'reconnecting' &&
+			previous.mqttConnection.mqttPhase !== 'reconnecting'
+		) {
+			if (get(notificationPrefs).connectionLost)
+				alerts.push({
+					title: 'Connection lost',
+					message: 'Broker connection dropped. Retrying automatically.',
+					severity: 'warning',
+					tag: 'mqttConnection-reconnecting',
+					cooldownMs: 15000
+				});
 		}
 
 		if (
@@ -92,34 +97,38 @@
 		if (!next) return;
 
 		// Emergency stop activated
+		// Emergency stop activated
 		if (next.alarms.emergencyStop && !previous?.alarms.emergencyStop) {
-			alerts.push({
-				title: 'Emergency stop active',
-				message: 'All motors halted. Send "auto" or "manual" to resume.',
-				severity: 'error',
-				tag: 'alarm-emergency-stop',
-				cooldownMs: 30000
-			});
+			if (get(notificationPrefs).emergencyStop)
+				alerts.push({
+					title: 'Emergency stop active',
+					message: 'All motors halted. Send "auto" or "manual" to resume.',
+					severity: 'error',
+					tag: 'alarm-emergency-stop',
+					cooldownMs: 30000
+				});
 		}
 
 		// Overhead tank critical
 		if (!previous || previous.alarms.overheadCritical !== next.alarms.overheadCritical) {
 			if (next.alarms.overheadCritical) {
-				alerts.push({
-					title: 'Overhead tank critical',
-					message: `Overhead tank is ${next.overhead}. Filling started.`,
-					severity: 'error',
-					tag: 'alarm-overhead-critical',
-					cooldownMs: 120000
-				});
+				if (get(notificationPrefs).overheadCritical)
+					alerts.push({
+						title: 'Overhead tank critical',
+						message: `Overhead tank is ${next.overhead}. Filling started.`,
+						severity: 'error',
+						tag: 'alarm-overhead-critical',
+						cooldownMs: 120000
+					});
 			} else if (previous) {
-				alerts.push({
-					title: 'Overhead tank recovered',
-					message: `Overhead tank is back to ${next.overhead}.`,
-					severity: 'success',
-					tag: 'alarm-overhead-recovered',
-					cooldownMs: 30000
-				});
+				if (get(notificationPrefs).overheadCritical)
+					alerts.push({
+						title: 'Overhead tank recovered',
+						message: `Overhead tank is back to ${next.overhead}.`,
+						severity: 'success',
+						tag: 'alarm-overhead-recovered',
+						cooldownMs: 30000
+					});
 			}
 		}
 
@@ -128,46 +137,50 @@
 			previous &&
 			previous.overhead !== next.overhead &&
 			next.overhead === 'low' &&
-			previous.overhead !== 'critical' // avoid double-firing when also critical
+			previous.overhead !== 'critical'
 		) {
-			alerts.push({
-				title: 'Overhead tank low',
-				message: 'Overhead is LOW. Auto-fill started.',
-				severity: 'warning',
-				tag: 'alarm-overhead-low',
-				cooldownMs: 120000
-			});
+			if (get(notificationPrefs).overheadLow)
+				alerts.push({
+					title: 'Overhead tank low',
+					message: 'Overhead is LOW. Auto-fill started.',
+					severity: 'warning',
+					tag: 'alarm-overhead-low',
+					cooldownMs: 120000
+				});
 		}
 
 		// Overhead reached high (fill complete)
 		if (previous && previous.overhead !== 'high' && next.overhead === 'high') {
-			alerts.push({
-				title: 'Overhead tank full',
-				message: 'Overhead tank reached HIGH. Pumping stopped.',
-				severity: 'success',
-				tag: 'alarm-overhead-high',
-				cooldownMs: 60000
-			});
+			if (get(notificationPrefs).overheadFull)
+				alerts.push({
+					title: 'Overhead tank full',
+					message: 'Overhead tank reached HIGH. Pumping stopped.',
+					severity: 'success',
+					tag: 'alarm-overhead-high',
+					cooldownMs: 60000
+				});
 		}
 
 		// Sump tank critical
 		if (!previous || previous.alarms.sumpCritical !== next.alarms.sumpCritical) {
 			if (next.alarms.sumpCritical) {
-				alerts.push({
-					title: 'Sump tank critical',
-					message: 'Sump tank is CRITICAL. Sump transfer motor is blocked.',
-					severity: 'error',
-					tag: 'alarm-sump-critical',
-					cooldownMs: 120000
-				});
+				if (get(notificationPrefs).sumpCritical)
+					alerts.push({
+						title: 'Sump tank critical',
+						message: 'Sump tank is CRITICAL. Sump transfer motor is blocked.',
+						severity: 'error',
+						tag: 'alarm-sump-critical',
+						cooldownMs: 120000
+					});
 			} else if (previous) {
-				alerts.push({
-					title: 'Sump tank recovered',
-					message: `Sump tank is back to ${next.sump}.`,
-					severity: 'success',
-					tag: 'alarm-sump-critical-recovered',
-					cooldownMs: 30000
-				});
+				if (get(notificationPrefs).sumpCritical)
+					alerts.push({
+						title: 'Sump tank recovered',
+						message: `Sump tank is back to ${next.sump}.`,
+						severity: 'success',
+						tag: 'alarm-sump-critical-recovered',
+						cooldownMs: 30000
+					});
 			}
 		}
 
@@ -199,43 +212,47 @@
 
 		if (nextStatus === 'dry_run_lock') {
 			if (motorKey === 'borewell') {
-				// If sump is available to take over, mention the fallback.
-				const sumpAvailable = telemetry.sump !== 'critical';
-				alerts.push({
-					title: 'Borewell motor: dry-run protection',
-					message: sumpAvailable
-						? 'Borewell stopped — no flow detected. Switching to sump transfer.'
-						: 'Borewell stopped — no flow detected. Sump unavailable; no motor running.',
-					severity: 'error',
-					tag: 'borewell-dry-run-lock',
-					cooldownMs: 120000
-				});
+				if (get(notificationPrefs).borewellDryRun) {
+					const sumpAvailable = telemetry.sump !== 'critical';
+					alerts.push({
+						title: 'Borewell motor: dry-run protection',
+						message: sumpAvailable
+							? 'Borewell stopped — no flow detected. Switching to sump transfer.'
+							: 'Borewell stopped — no flow detected. Sump unavailable; no motor running.',
+						severity: 'error',
+						tag: 'borewell-dry-run-lock',
+						cooldownMs: 120000
+					});
+				}
 			} else {
-				alerts.push({
-					title: 'Sump transfer motor: dry-run protection',
-					message: 'Sump motor stopped — no flow detected.',
-					severity: 'error',
-					tag: 'sump-dry-run-lock',
-					cooldownMs: 120000
-				});
+				if (get(notificationPrefs).sumpDryRun)
+					alerts.push({
+						title: 'Sump transfer motor: dry-run protection',
+						message: 'Sump motor stopped — no flow detected.',
+						severity: 'error',
+						tag: 'sump-dry-run-lock',
+						cooldownMs: 120000
+					});
 			}
 			return;
 		}
 
 		if (nextStatus === 'sump_critical') {
-			alerts.push({
-				title: 'Sump transfer motor blocked',
-				message: 'Sump motor cannot run — sump tank is critical.',
-				severity: 'warning',
-				tag: 'sump-motor-blocked-critical',
-				cooldownMs: 120000
-			});
+			if (get(notificationPrefs).sumpCritical)
+				alerts.push({
+					title: 'Sump transfer motor blocked',
+					message: 'Sump motor cannot run — sump tank is critical.',
+					severity: 'warning',
+					tag: 'sump-motor-blocked-critical',
+					cooldownMs: 120000
+				});
 			return;
 		}
 	}
 
 	onMount(() => {
 		const cleanupAlerts = alerts.initialize();
+		notificationPrefs.initialize();
 		let previousState: WaterAutomationState | null = null;
 
 		const unsubscribe = waterSystem.subscribe((state) => {
