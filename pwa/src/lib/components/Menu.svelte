@@ -82,7 +82,7 @@
 
 <!-- Drawer -->
 <div
-	class={`fixed top-0 right-0 z-50 flex h-dvh w-full max-w-xs min-h-0 flex-col overflow-hidden bg-white transition-all duration-300 ease-out ${
+	class={`fixed top-0 right-0 z-50 flex h-dvh min-h-0 w-full max-w-xs flex-col overflow-hidden bg-white transition-all duration-300 ease-out ${
 		open
 			? 'translate-x-0 opacity-100 shadow-2xl'
 			: 'pointer-events-none translate-x-[110%] opacity-0 shadow-none'
@@ -103,7 +103,9 @@
 		</button>
 	</div>
 
-	<div class="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 py-4 [touch-action:pan-y] [-webkit-overflow-scrolling:touch]">
+	<div
+		class="min-h-0 flex-1 [touch-action:pan-y] space-y-6 overflow-y-auto overscroll-contain px-5 py-4 [-webkit-overflow-scrolling:touch]"
+	>
 		<!-- Theme -->
 		<section>
 			<p class="mb-3 text-xs font-semibold tracking-[0.2em] text-slate-400 uppercase">Theme</p>

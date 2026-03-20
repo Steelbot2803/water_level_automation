@@ -2,8 +2,8 @@
 
 [![Netlify](https://img.shields.io/badge/Deploy-Netlify-00C7B7?logo=netlify&logoColor=white)](https://www.netlify.com/)
 [![Svelte](https://img.shields.io/badge/Frontend-Svelte-FF3E00?logo=svelte&logoColor=white)](https://svelte.dev/)
-[![MQTT](https://img.shields.io/badge/Protocol-MQTT-660066?logo=eclipsemosquitto&logoColor=white)](https://mqtt.org/)
-[![OpenAI Codex](https://img.shields.io/badge/Assisted%20by-Codex-412991)](https://openai.com/)
+[![HiveMQ](https://img.shields.io/badge/Protocol-HiveMQ-660066?logo=eclipsemosquitto&logoColor=white)](https://www.hivemq.com/)
+[![OpenAI Codex](https://img.shields.io/badge/Assisted%20by-Codex-412991)](https://chatgpt.com/codex)
 [![Claude](https://img.shields.io/badge/Assisted%20by-Claude-D97757)](https://www.anthropic.com/claude)
 
 Water Level Automation is a two-part system for monitoring and controlling a tank filling setup:

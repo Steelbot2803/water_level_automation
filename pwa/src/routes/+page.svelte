@@ -68,11 +68,31 @@
 		{ label: 'Sump', value: 'sump' }
 	];
 	const appBadges = [
-		{ label: 'Netlify', tone: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-		{ label: 'Svelte', tone: 'border-orange-200 bg-orange-50 text-orange-800' },
-		{ label: 'MQTT', tone: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800' },
-		{ label: 'Codex', tone: 'border-sky-200 bg-sky-50 text-sky-800' },
-		{ label: 'Claude', tone: 'border-amber-200 bg-amber-50 text-amber-800' }
+		{
+			label: 'Netlify',
+			href: 'https://www.netlify.com/',
+			tone: 'border-emerald-200 bg-emerald-50 text-emerald-800'
+		},
+		{
+			label: 'Svelte',
+			href: 'https://svelte.dev/',
+			tone: 'border-orange-200 bg-orange-50 text-orange-800'
+		},
+		{
+			label: 'HiveMQ',
+			href: 'https://www.hivemq.com/',
+			tone: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800'
+		},
+		{
+			label: 'Codex',
+			href: 'https://chatgpt.com/codex',
+			tone: 'border-sky-200 bg-sky-50 text-sky-800'
+		},
+		{
+			label: 'Claude',
+			href: 'https://www.anthropic.com/claude',
+			tone: 'border-amber-200 bg-amber-50 text-amber-800'
+		}
 	] as const;
 
 	const isConnected = $derived($waterSystem.mqttConnection.mqttPhase === 'connected');
@@ -209,10 +229,7 @@
 						<span
 							class={`rounded-full p-1 text-xs font-semibold ${arduinoMQTTConnectionBadges[$waterSystem.arduinoMQTTConnection.mqttPhase]}`}
 						>
-							<ArduinoMqttIconConfig.component
-								size={20}
-								class={ArduinoMqttIconConfig.class}
-							/>
+							<ArduinoMqttIconConfig.component size={20} class={ArduinoMqttIconConfig.class} />
 						</span>
 						<span
 							class={`rounded-full p-1 text-xs font-semibold ${mqttConnectionBadges[$waterSystem.mqttConnection.mqttPhase]}`}
@@ -340,11 +357,14 @@
 		</main>
 		<footer class="flex flex-wrap items-center justify-center gap-2 px-2 pt-1">
 			{#each appBadges as badge}
-				<span
-					class={`rounded-full border px-3 py-1 text-[0.68rem] font-semibold tracking-[0.18em] uppercase ${badge.tone}`}
+				<a
+					href={badge.href}
+					target="_blank"
+					rel="noreferrer"
+					class={`rounded-full border px-3 py-1 text-[0.68rem] font-semibold tracking-[0.18em] uppercase transition hover:-translate-y-0.5 hover:shadow-sm ${badge.tone}`}
 				>
 					{badge.label}
-				</span>
+				</a>
 			{/each}
 		</footer>
 		<MenuDrawer bind:open={menuOpen} />
