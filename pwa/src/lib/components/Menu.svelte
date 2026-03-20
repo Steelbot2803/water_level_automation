@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { X, Sun, Moon, Monitor, Bell, Activity, RotateCcw } from 'lucide-svelte';
 	import { theme, themeIcons, type ThemePreference } from '$lib/stores/theme.js';
 	import { notificationPrefs, notificationLabels } from '$lib/stores/notifications.js';
@@ -8,7 +9,6 @@
 
 	let resetConfirming = $state(false);
 	let resetTimer: ReturnType<typeof setTimeout> | null = null;
-
 	function handleReset() {
 		if (!resetConfirming) {
 			// First tap: arm the button with a 3s window
@@ -33,6 +33,33 @@
 		if (resetTimer) clearTimeout(resetTimer);
 	}
 
+	function lockPageScroll() {
+		if (typeof document === 'undefined') return;
+
+		document.documentElement.style.overflow = 'hidden';
+		document.body.style.overflow = 'hidden';
+		document.body.style.touchAction = 'none';
+	}
+
+	function unlockPageScroll() {
+		if (typeof document === 'undefined') return;
+
+		document.documentElement.style.overflow = '';
+		document.body.style.overflow = '';
+		document.body.style.touchAction = '';
+	}
+
+	$effect(() => {
+		if (open) {
+			lockPageScroll();
+			return () => unlockPageScroll();
+		}
+	});
+
+	onDestroy(() => {
+		unlockPageScroll();
+	});
+
 	const themeIconComponents: Record<string, typeof Sun> = {
 		light: Sun,
 		system: Monitor,
@@ -41,21 +68,25 @@
 </script>
 
 <!-- Backdrop -->
-{#if open}
-	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-	<div
-		role="button"
-		tabindex="0"
-		class="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
-		onclick={close}
-		onkeydown={(e) => e.key == 'Escape' && close()}
-	></div>
-{/if}
+<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+<div
+	role="button"
+	tabindex={open ? 0 : -1}
+	class={`fixed inset-0 z-40 transition-opacity duration-300 ease-out ${
+		open ? 'bg-black/30 opacity-100 backdrop-blur-sm' : 'pointer-events-none opacity-0'
+	}`}
+	class:pointer-events-none={!open}
+	onclick={close}
+	onkeydown={(e) => e.key == 'Escape' && close()}
+></div>
 
 <!-- Drawer -->
 <div
-	class="fixed top-0 right-0 z-50 flex h-full w-full max-w-xs flex-col bg-white shadow-2xl transition-transform duration-300 ease-out"
-	class:translate-x-full={!open}
+	class={`fixed top-0 right-0 z-50 flex h-dvh w-full max-w-xs min-h-0 flex-col overflow-hidden bg-white transition-all duration-300 ease-out ${
+		open
+			? 'translate-x-0 opacity-100 shadow-2xl'
+			: 'pointer-events-none translate-x-[110%] opacity-0 shadow-none'
+	}`}
 	class:translate-x-0={open}
 	role="dialog"
 	aria-modal="true"
@@ -72,7 +103,7 @@
 		</button>
 	</div>
 
-	<div class="flex-1 space-y-6 overflow-y-auto px-5 py-4">
+	<div class="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 py-4 [touch-action:pan-y] [-webkit-overflow-scrolling:touch]">
 		<!-- Theme -->
 		<section>
 			<p class="mb-3 text-xs font-semibold tracking-[0.2em] text-slate-400 uppercase">Theme</p>

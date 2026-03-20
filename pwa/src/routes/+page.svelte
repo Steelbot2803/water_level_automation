@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, type Component } from 'svelte';
+	import { onMount } from 'svelte';
 	import { pumpPreference } from '$lib/stores/pump.js';
 	import { waterSystem } from '$lib/stores/system.js';
 	import { commandLabels } from '$lib/control.js';
@@ -29,32 +29,35 @@
 	const borewellStatus = $derived($waterSystem.device?.motors?.borewell?.status);
 	const sumpStatus = $derived($waterSystem.device?.motors?.sump?.status);
 
-	const WiFiIconConfig = $derived(() => {
-		const icon = wifiConnectionIconsMap[$waterSystem.wifiConnection.wifiPhase];
+	const wifiIcon = $derived(wifiConnectionIconsMap[$waterSystem.wifiConnection.wifiPhase]);
+	const mqttIcon = $derived(mqttConnectionIconsMap[$waterSystem.mqttConnection.mqttPhase]);
+	const arduinoMqttIcon = $derived(
+		arduinoMQTTConnectionIconsMap[$waterSystem.arduinoMQTTConnection.mqttPhase]
+	);
 
-		if (icon === LoaderCircle) return { component: icon, class: 'animate-spin' };
-		if (icon === Hourglass) return { component: icon, class: 'animate-hourglass' };
+	const WifiIconConfig = $derived(
+		wifiIcon === LoaderCircle
+			? { component: wifiIcon, class: 'animate-spin' }
+			: wifiIcon === Hourglass
+				? { component: wifiIcon, class: 'animate-hourglass' }
+				: { component: wifiIcon, class: '' }
+	);
 
-		return { component: icon, class: '' };
-	});
+	const MqttIconConfig = $derived(
+		mqttIcon === LoaderCircle
+			? { component: mqttIcon, class: 'animate-spin' }
+			: mqttIcon === Hourglass
+				? { component: mqttIcon, class: 'animate-hourglass' }
+				: { component: mqttIcon, class: '' }
+	);
 
-	const MQTTIconConfig = $derived(() => {
-		const icon = mqttConnectionIconsMap[$waterSystem.mqttConnection.mqttPhase];
-
-		if (icon === LoaderCircle) return { component: icon, class: 'animate-spin' };
-		if (icon === Hourglass) return { component: icon, class: 'animate-hourglass' };
-
-		return { component: icon, class: '' };
-	});
-
-	const ArduinoMQTTIconConfig = $derived(() => {
-		const icon = arduinoMQTTConnectionIconsMap[$waterSystem.arduinoMQTTConnection.mqttPhase];
-
-		if (icon === LoaderCircle) return { component: icon, class: 'animate-spin' };
-		if (icon === Hourglass) return { component: icon, class: 'animate-hourglass' };
-
-		return { component: icon, class: '' };
-	});
+	const ArduinoMqttIconConfig = $derived(
+		arduinoMqttIcon === LoaderCircle
+			? { component: arduinoMqttIcon, class: 'animate-spin' }
+			: arduinoMqttIcon === Hourglass
+				? { component: arduinoMqttIcon, class: 'animate-hourglass' }
+				: { component: arduinoMqttIcon, class: '' }
+	);
 
 	const modeOptions: Option<'auto' | 'manual'>[] = [
 		{ label: 'Auto', value: 'auto' },
@@ -194,17 +197,20 @@
 						<span
 							class={`rounded-full p-1 text-xs font-semibold ${wifiConnectionBadges[$waterSystem.wifiConnection.wifiPhase]}`}
 						>
-							<WiFiIconConfig size={20} />
+							<WifiIconConfig.component size={20} class={WifiIconConfig.class} />
 						</span>
 						<span
 							class={`rounded-full p-1 text-xs font-semibold ${arduinoMQTTConnectionBadges[$waterSystem.arduinoMQTTConnection.mqttPhase]}`}
 						>
-							<ArduinoMQTTIconConfig size={20} />
+							<ArduinoMqttIconConfig.component
+								size={20}
+								class={ArduinoMqttIconConfig.class}
+							/>
 						</span>
 						<span
 							class={`rounded-full p-1 text-xs font-semibold ${mqttConnectionBadges[$waterSystem.mqttConnection.mqttPhase]}`}
 						>
-							<MQTTIconConfig size={20} />
+							<MqttIconConfig.component size={20} class={MqttIconConfig.class} />
 						</span>
 						<button
 							onclick={() => (menuOpen = true)}

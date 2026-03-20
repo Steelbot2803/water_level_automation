@@ -8,6 +8,11 @@
 	color-scheme: light;
 }
 
+html,
+body {
+	overflow-x: clip;
+}
+
 /* ── Dark mode: invert the entire body ───────────────────── */
 :root.dark body {
 	filter: invert(1) hue-rotate(180deg);

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import type { Component } from 'svelte';
 	import { CircleCheckBig, Lock, TriangleAlert } from 'lucide-svelte';
 	import type { MotorRuntimeStatus } from '$lib/types.js';
 	import { runtimeStatusLabels } from '$lib/control.js';
@@ -14,44 +13,33 @@
 
 	const resolvedStatus = $derived(status ?? 'stopped');
 
-	const Status = $derived(() => {
-		switch (resolvedStatus) {
-			case 'dry_run_lock':
-				return Lock;
-			case 'sump_critical':
-				return TriangleAlert;
-			default:
-				return CircleCheckBig;
-		}
-	});
+	const StatusIcon = $derived(
+		resolvedStatus === 'dry_run_lock'
+			? Lock
+			: resolvedStatus === 'sump_critical'
+				? TriangleAlert
+				: CircleCheckBig
+	);
 
-	const bodyTone = $derived((): string => {
-		switch (resolvedStatus) {
-			case 'running':
-				return 'bg-emerald-500';
-			case 'starting':
-				return 'bg-amber-400';
-			case 'dry_run_lock':
-			case 'sump_critical':
-				return 'bg-rose-500';
-			default:
-				return 'bg-slate-300';
-		}
-	});
+	const bodyTone = $derived(
+		resolvedStatus === 'running'
+			? 'bg-emerald-500'
+			: resolvedStatus === 'starting'
+				? 'bg-amber-400'
+				: resolvedStatus === 'dry_run_lock' || resolvedStatus === 'sump_critical'
+					? 'bg-rose-500'
+					: 'bg-slate-300'
+	);
 
-	const ringTone = $derived((): string => {
-		switch (resolvedStatus) {
-			case 'running':
-				return 'border-emerald-300';
-			case 'starting':
-				return 'border-amber-300';
-			case 'dry_run_lock':
-			case 'sump_critical':
-				return 'border-rose-300';
-			default:
-				return 'border-slate-300';
-		}
-	});
+	const ringTone = $derived(
+		resolvedStatus === 'running'
+			? 'border-emerald-300'
+			: resolvedStatus === 'starting'
+				? 'border-amber-300'
+				: resolvedStatus === 'dry_run_lock' || resolvedStatus === 'sump_critical'
+					? 'border-rose-300'
+					: 'border-slate-300'
+	);
 
 	const isSpinning = $derived(resolvedStatus === 'running');
 	const isPulsing = $derived(resolvedStatus === 'starting');
@@ -66,11 +54,11 @@
 		<div class="relative mx-auto flex h-28 w-28 items-center justify-center">
 			<!-- Outer ring (casing) -->
 			<div
-				class="absolute inset-0 rounded-full border-[6px] bg-white shadow-inner transition-colors duration-500 {ringTone()}"
+				class="absolute inset-0 rounded-full border-[6px] bg-white shadow-inner transition-colors duration-500 {ringTone}"
 			>
 				<!-- Impeller disc -->
 				<div
-					class="absolute inset-3 rounded-full transition-colors duration-500 {bodyTone()}"
+					class="absolute inset-3 rounded-full transition-colors duration-500 {bodyTone}"
 					class:animate-spin={isSpinning}
 					style="animation-duration: 1.4s"
 				>
@@ -98,7 +86,7 @@
 					<div
 						class="absolute inset-0 flex items-center justify-center rounded-full bg-rose-900/20"
 					>
-						<Status size={20} class="text-rose-100" />
+						<StatusIcon size={20} class="text-rose-100" />
 					</div>
 				{/if}
 			</div>
