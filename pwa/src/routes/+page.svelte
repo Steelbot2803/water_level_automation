@@ -67,6 +67,13 @@
 		{ label: 'Borewell', value: 'borewell' },
 		{ label: 'Sump', value: 'sump' }
 	];
+	const appBadges = [
+		{ label: 'Netlify', tone: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
+		{ label: 'Svelte', tone: 'border-orange-200 bg-orange-50 text-orange-800' },
+		{ label: 'MQTT', tone: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800' },
+		{ label: 'Codex', tone: 'border-sky-200 bg-sky-50 text-sky-800' },
+		{ label: 'Claude', tone: 'border-amber-200 bg-amber-50 text-amber-800' }
+	] as const;
 
 	const isConnected = $derived($waterSystem.mqttConnection.mqttPhase === 'connected');
 
@@ -331,6 +338,15 @@
 				</div>
 			</section>
 		</main>
+		<footer class="flex flex-wrap items-center justify-center gap-2 px-2 pt-1">
+			{#each appBadges as badge}
+				<span
+					class={`rounded-full border px-3 py-1 text-[0.68rem] font-semibold tracking-[0.18em] uppercase ${badge.tone}`}
+				>
+					{badge.label}
+				</span>
+			{/each}
+		</footer>
 		<MenuDrawer bind:open={menuOpen} />
 	</div>
 </div>
