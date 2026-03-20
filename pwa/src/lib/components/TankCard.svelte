@@ -147,13 +147,11 @@
 				class="mt-3 text-3xl font-semibold uppercase"
 				class:text-rose-600={level === 'critical'}
 				class:text-amber-600={level === 'low'}
-				class:text-slate-950={level !== 'critical' && level !== 'low'}
+				class:text-cyan-600={level === 'medium'}
+				class:text-emerald-600={level === 'high'}
 			>
 				{label}
 			</p>
-			{#if level === 'critical'}
-				<p class="mt-1 text-xs font-medium text-rose-500">Below sensor — check immediately</p>
-			{/if}
 		</div>
 	</div>
 </div>

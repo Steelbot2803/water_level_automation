@@ -14,7 +14,7 @@
 		mqttConnectionIconsMap
 	} from '$lib/types.js';
 	import { theme } from '$lib/stores/theme.js';
-	import { Hourglass, LoaderCircle, Menu } from 'lucide-svelte';
+	import { Hourglass, LoaderCircle, Menu, OctagonX, RotateCcw } from 'lucide-svelte';
 	import SwipeToggle from '$lib/components/SwipeToggle.svelte';
 	import type { Option } from '$lib/components/SwipeToggle.svelte';
 	import TankCard from '$lib/components/TankCard.svelte';
@@ -196,6 +196,10 @@
 	function eStop(active: boolean) {
 		waterSystem.sendCommand(active ? 'estop' : 'resume');
 	}
+
+	function unlockPump(pump: 'borewell' | 'sump') {
+		waterSystem.sendCommand(pump === 'borewell' ? 'unlock borewell' : 'unlock sump');
+	}
 </script>
 
 <svelte:head>
@@ -238,7 +242,7 @@
 						</span>
 						<button
 							onclick={() => (menuOpen = true)}
-							class="ml-1 rounded-full p-1.5 text-cyan-900/70 transition hover:bg-white/40 hover:text-cyan-900"
+							class="ml-1 flex h-11 w-11 items-center justify-center rounded-full border border-white/80 bg-white/70 text-cyan-900/70 shadow-sm transition hover:bg-white hover:text-cyan-900 active:scale-[0.98]"
 							aria-label="Open settings"
 						>
 							<Menu size={18} />
@@ -250,16 +254,18 @@
 					{#if $waterSystem.device}
 						{#if eStopped}
 							<button
-								class="rounded-2xl bg-emerald-200 px-3 py-3 text-xs font-semibold tracking-wide text-emerald-900 uppercase"
+								class="text-l inline-flex items-center justify-center gap-2 rounded-full border border-emerald-300 bg-emerald-50 px-4 py-2 font-semibold tracking-[0.14em] text-emerald-700 uppercase shadow-sm transition hover:bg-emerald-100 active:scale-[0.98]"
 								onclick={() => eStop(false)}
 							>
+								<RotateCcw size={24} />
 								{commandLabels['resume']}
 							</button>
 						{:else if (borewellStatus && borewellStatus !== 'stopped') || (sumpStatus && sumpStatus !== 'stopped')}
 							<button
-								class="rounded-2xl bg-rose-200 px-3 py-3 text-xs font-semibold tracking-wide text-rose-900 uppercase"
+								class="text-l inline-flex items-center justify-center gap-2 rounded-full border border-rose-300 bg-rose-50 px-4 py-2 font-semibold tracking-[0.14em] text-rose-700 uppercase shadow-sm transition hover:bg-rose-100 active:scale-[0.98]"
 								onclick={() => eStop(true)}
 							>
+								<OctagonX size={24} class="translate-y-0.25" />
 								{commandLabels['estop']}
 							</button>
 						{/if}
@@ -289,8 +295,18 @@
 
 				<p class="mt-4 text-base font-semibold tracking-[0.2em] text-slate-400 uppercase">Pumps</p>
 				<div class="mt-2 grid gap-3 sm:grid-cols-2">
-					<PumpCard label="Borewell" status={$waterSystem.device?.motors?.borewell?.status} />
-					<PumpCard label="Sump" status={$waterSystem.device?.motors?.sump?.status} />
+					<PumpCard
+						label="Borewell"
+						status={$waterSystem.device?.motors?.borewell?.status}
+						onUnlock={() => unlockPump('borewell')}
+						unlockDisabled={!isConnected}
+					/>
+					<PumpCard
+						label="Sump"
+						status={$waterSystem.device?.motors?.sump?.status}
+						onUnlock={() => unlockPump('sump')}
+						unlockDisabled={!isConnected}
+					/>
 				</div>
 			</section>
 
@@ -339,12 +355,12 @@
 						</p>
 						<button
 							aria-label="Override"
-							class={`flex h-11 w-full items-center justify-center rounded-2xl border text-left font-semibold uppercase shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-500 ${
+							class={`text-l flex min-h-11 w-full items-center justify-center rounded-full border p-3 text-center font-semibold tracking-[0.14em] uppercase shadow-sm transition active:scale-[0.985] disabled:pointer-events-none disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none ${
 								($waterSystem.device?.override ?? false)
-									? 'border-orange-600/20 bg-orange-500 text-white'
+									? 'border-orange-300 bg-orange-50 text-orange-700'
 									: overrideSending
-										? 'animate-pulse border-sky-500/20 bg-sky-500 text-white'
-										: 'border-sky-700/10 bg-sky-700 text-white'
+										? 'text-amber-060 animate-pulse border-amber-400 bg-amber-50'
+										: 'border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100'
 							}`}
 							disabled={!isConnected || ($waterSystem.device?.override ?? false)}
 							onclick={handleOverride}
@@ -361,7 +377,7 @@
 					href={badge.href}
 					target="_blank"
 					rel="noreferrer"
-					class={`rounded-full border px-3 py-1 text-[0.68rem] font-semibold tracking-[0.18em] uppercase transition hover:-translate-y-0.5 hover:shadow-sm ${badge.tone}`}
+					class={`flex items-center justify-center rounded-full border px-2 py-1 text-[0.68rem] font-semibold tracking-[0.18em] uppercase shadow-sm transition hover:-translate-y-0.5 hover:shadow active:scale-[0.98] ${badge.tone}`}
 				>
 					{badge.label}
 				</a>

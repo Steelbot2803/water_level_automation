@@ -102,7 +102,7 @@
 			if (get(notificationPrefs).emergencyStop)
 				alerts.push({
 					title: 'Emergency stop active',
-					message: 'All motors halted. Send "auto" or "manual" to resume.',
+					message: 'All motors are halted until the stop is cleared.',
 					severity: 'error',
 					tag: 'alarm-emergency-stop',
 					cooldownMs: 30000
@@ -217,8 +217,8 @@
 					alerts.push({
 						title: 'Borewell motor: dry-run protection',
 						message: sumpAvailable
-							? 'Borewell stopped — no flow detected. Switching to sump transfer.'
-							: 'Borewell stopped — no flow detected. Sump unavailable; no motor running.',
+							? 'Borewell stopped after no-flow detection. Sump transfer remains available.'
+							: 'Borewell stopped after no-flow detection. No alternate motor is available.',
 						severity: 'error',
 						tag: 'borewell-dry-run-lock',
 						cooldownMs: 120000
@@ -228,7 +228,7 @@
 				if (get(notificationPrefs).sumpDryRun)
 					alerts.push({
 						title: 'Sump transfer motor: dry-run protection',
-						message: 'Sump motor stopped — no flow detected.',
+						message: 'Sump transfer stopped after no-flow detection.',
 						severity: 'error',
 						tag: 'sump-dry-run-lock',
 						cooldownMs: 120000
@@ -241,7 +241,7 @@
 			if (get(notificationPrefs).sumpCritical)
 				alerts.push({
 					title: 'Sump transfer motor blocked',
-					message: 'Sump motor cannot run — sump tank is critical.',
+					message: 'Sump transfer is blocked because the sump tank is critical.',
 					severity: 'warning',
 					tag: 'sump-motor-blocked-critical',
 					cooldownMs: 120000

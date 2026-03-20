@@ -1,6 +1,7 @@
 #include "config.h"
 #include "controller.h"
 #include "io.h"
+#include "led_matrix.h"
 #include "status.h"
 #include "mqtt_link.h"
 #include "secrets.h"
@@ -20,6 +21,7 @@ void setup() {
   initState(state);
   setSystemStateRef(&state);
   printBanner();
+  initLedMatrix();
   initMqttLink();
 
   if (!watchdogBegin()) {
@@ -34,6 +36,7 @@ void loop() {
   runMqttLink();
   runAutomationLogic(state);
   writeMotorOutputs(state);
+  updateLedMatrix(state);
   publishStatus(state);
   publishStateToMqtt(state);
   checkMqttLiveness();

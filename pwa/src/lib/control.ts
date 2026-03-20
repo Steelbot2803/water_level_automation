@@ -251,7 +251,7 @@ export const runtimeStatusLabels: Record<MotorRuntimeStatus, string> = {
 	starting: 'Starting',
 	running: 'Running',
 	dry_run_lock: 'Dry Run Lock',
-	sump_critical: 'Sump Critical'
+	sump_critical: 'Sump Level Critical'
 };
 
 export const commandLabels: Record<ArduinoCommand, string> = {
@@ -265,7 +265,7 @@ export const commandLabels: Record<ArduinoCommand, string> = {
 	sump: 'Prefer Sump',
 	'unlock borewell': 'Unlock Borewell',
 	'unlock sump': 'Unlock Sump',
-	estop: 'Emergency Stop',
-	resume: 'Resume Operation',
+	estop: 'E–Stop',
+	resume: 'Resume',
 	reset: 'Reset System'
 };

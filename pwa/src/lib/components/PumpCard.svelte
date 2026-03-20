@@ -5,10 +5,14 @@
 
 	let {
 		label,
-		status
+		status,
+		onUnlock = undefined,
+		unlockDisabled = false
 	}: {
 		label: string;
 		status: MotorRuntimeStatus | undefined;
+		onUnlock?: (() => void) | undefined;
+		unlockDisabled?: boolean;
 	} = $props();
 
 	const resolvedStatus = $derived(status ?? 'stopped');
@@ -46,6 +50,9 @@
 	const isLocked = $derived(
 		resolvedStatus === 'dry_run_lock' || resolvedStatus === 'sump_critical'
 	);
+	const bladeTone = $derived(
+		resolvedStatus === 'stopped' ? 'bg-white/65' : 'bg-white/75'
+	);
 </script>
 
 <div class="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 shadow-sm">
@@ -58,35 +65,42 @@
 			>
 				<!-- Impeller disc -->
 				<div
-					class="absolute inset-3 rounded-full transition-colors duration-500 {bodyTone}"
+					class="absolute inset-[0.62rem] rounded-full border border-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] transition-colors duration-500 {bodyTone}"
 					class:animate-spin={isSpinning}
 					style="animation-duration: 1.4s"
 				>
 					<!-- Blade lines, clipped to circle -->
 					<div class="absolute inset-0 overflow-hidden rounded-full">
 						<div
-							class="absolute top-1/2 right-0 left-0 h-[3px] -translate-y-1/2 rounded-full bg-white/40"
+							class="absolute top-1/2 right-[0.45rem] left-[0.45rem] h-[4px] -translate-y-1/2 rounded-full {bladeTone}"
 						></div>
 						<div
-							class="absolute top-1/2 right-0 left-0 h-[3px] -translate-y-1/2 rounded-full bg-white/40"
+							class="absolute top-1/2 right-[0.45rem] left-[0.45rem] h-[4px] -translate-y-1/2 rounded-full {bladeTone}"
 							style="transform: translateY(-50%) rotate(60deg)"
 						></div>
 						<div
-							class="absolute top-1/2 right-0 left-0 h-[3px] -translate-y-1/2 rounded-full bg-white/40"
+							class="absolute top-1/2 right-[0.45rem] left-[0.45rem] h-[4px] -translate-y-1/2 rounded-full {bladeTone}"
 							style="transform: translateY(-50%) rotate(-60deg)"
 						></div>
 					</div>
 				</div>
 
 				<!-- Centre hub -->
-				<div class="absolute inset-[38%] rounded-full bg-white shadow"></div>
+				<div
+					class="absolute inset-[35%] rounded-full border border-white/70 bg-white shadow-[0_2px_6px_rgba(15,23,42,0.12)]"
+				></div>
 
 				<!-- Lock/warning overlay for error states -->
 				{#if isLocked}
 					<div
-						class="absolute inset-0 flex items-center justify-center rounded-full bg-rose-900/20"
+						class="absolute inset-[0.62rem] rounded-full bg-rose-950/24 backdrop-blur-[1px]"
 					>
-						<StatusIcon size={20} class="text-rose-100" />
+						<div class="absolute top-1/2 left-1/2 -translate-x-[49%] -translate-y-[55%]">
+							<StatusIcon
+								size={26}
+								class="text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.24)]"
+							/>
+						</div>
 					</div>
 				{/if}
 			</div>
@@ -102,20 +116,27 @@
 		<!-- Text info -->
 		<div>
 			<p class="text-xs font-semibold tracking-[0.2em] text-slate-500 uppercase">{label}</p>
-			<p
-				class="mt-3 text-3xl font-semibold uppercase"
-				class:text-emerald-600={resolvedStatus === 'running'}
-				class:text-amber-600={resolvedStatus === 'starting'}
-				class:text-rose-600={isLocked}
-				class:text-slate-950={resolvedStatus === 'stopped'}
-			>
-				{runtimeStatusLabels[resolvedStatus]}
-			</p>
-			{#if resolvedStatus === 'dry_run_lock'}
-				<p class="mt-1 text-xs font-medium text-rose-500">Send "unlock" to clear</p>
-			{:else if resolvedStatus === 'sump_critical'}
-				<p class="mt-1 text-xs font-medium text-rose-500">Sump level too low to run</p>
-			{/if}
+			<div class="mt-3 flex items-center justify-between gap-3">
+				<p
+					class="text-3xl font-semibold uppercase"
+					class:text-emerald-600={resolvedStatus === 'running'}
+					class:text-amber-600={resolvedStatus === 'starting'}
+					class:text-rose-600={isLocked}
+					class:text-slate-950={resolvedStatus === 'stopped'}
+				>
+					{runtimeStatusLabels[resolvedStatus]}
+				</p>
+				{#if resolvedStatus === 'dry_run_lock' && onUnlock}
+					<button
+						type="button"
+						class="text-l shrink-0 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 font-semibold tracking-[0.14em] text-rose-700 uppercase shadow-sm transition active:scale-[0.98] hover:bg-rose-100 disabled:pointer-events-none disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
+						disabled={unlockDisabled}
+						onclick={onUnlock}
+					>
+						Unlock
+					</button>
+				{/if}
+			</div>
 		</div>
 	</div>
 </div>

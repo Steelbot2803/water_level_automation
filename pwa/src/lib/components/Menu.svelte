@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import { X, Sun, Moon, Monitor, Bell, Activity, RotateCcw } from 'lucide-svelte';
+	import { X, RotateCcw } from 'lucide-svelte';
 	import { theme, themeIcons, type ThemePreference } from '$lib/stores/theme.js';
 	import { notificationPrefs, notificationLabels } from '$lib/stores/notifications.js';
 	import { waterSystem } from '$lib/stores/system.js';
@@ -60,11 +60,6 @@
 		unlockPageScroll();
 	});
 
-	const themeIconComponents: Record<string, typeof Sun> = {
-		light: Sun,
-		system: Monitor,
-		dark: Moon
-	};
 </script>
 
 <!-- Backdrop -->
@@ -96,7 +91,7 @@
 		<h2 class="text-lg font-semibold tracking-wide uppercase">Settings</h2>
 		<button
 			onclick={close}
-			class="rounded-full p-2 text-slate-500 transition hover:bg-slate-100"
+			class="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 shadow-sm transition active:scale-[0.98] hover:bg-slate-100"
 			aria-label="Close menu"
 		>
 			<X size={20} />
@@ -113,10 +108,14 @@
 				{#each themeIcons as { val, icon: Icon }}
 					<button
 						onclick={() => theme.set(val as ThemePreference)}
-						class="flex flex-1 flex-col items-center gap-1.5 rounded-2xl border px-3 py-3 text-xs font-semibold uppercase transition
-							{$theme === val
-							? 'border-cyan-500 bg-cyan-50 text-cyan-700'
-							: 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100'}"
+						class="flex min-h-14 flex-1 flex-col items-center justify-center gap-1.5 rounded-[1.4rem] border px-3 py-3 text-xs font-semibold tracking-[0.14em] uppercase shadow-sm transition active:scale-[0.985]"
+						class:border-cyan-300={$theme === val}
+						class:bg-cyan-50={$theme === val}
+						class:text-cyan-700={$theme === val}
+						class:border-slate-200={$theme !== val}
+						class:bg-slate-50={$theme !== val}
+						class:text-slate-500={$theme !== val}
+						class:hover:bg-slate-100={$theme !== val}
 					>
 						<Icon size={18} />
 						{val}
@@ -130,21 +129,25 @@
 			<p class="mb-3 text-xs font-semibold tracking-[0.2em] text-slate-400 uppercase">
 				Notifications
 			</p>
-			<div class="space-y-1 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+			<div class="space-y-2">
 				{#each Object.entries(notificationLabels) as [key, label]}
 					<button
 						onclick={() => notificationPrefs.toggle(key as keyof typeof $notificationPrefs)}
-						class="flex w-full items-center justify-between px-4 py-3 text-sm transition hover:bg-slate-100"
+						class="flex min-h-14 w-full items-center justify-between rounded-[1.4rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm shadow-sm transition active:scale-[0.985] hover:bg-slate-100"
 					>
-						<span class="text-slate-700">{label}</span>
+						<span class="pr-4 text-left font-medium text-slate-700">{label}</span>
 						<!-- Toggle pill -->
 						<div
-							class="relative h-6 w-10 rounded-full transition-colors duration-200
-								{$notificationPrefs[key as keyof typeof $notificationPrefs] ? 'bg-cyan-500' : 'bg-slate-300'}"
+							class="relative h-7 w-12 shrink-0 rounded-full border transition-colors duration-200
+								{$notificationPrefs[key as keyof typeof $notificationPrefs]
+									? 'border-cyan-300 bg-cyan-100'
+									: 'border-slate-200 bg-white'}"
 						>
 							<div
-								class="absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200
-									{$notificationPrefs[key as keyof typeof $notificationPrefs] ? 'translate-x-5' : 'translate-x-1'}"
+								class="absolute top-[3px] h-5 w-5 rounded-full shadow-sm transition-transform duration-200
+									{$notificationPrefs[key as keyof typeof $notificationPrefs]
+										? 'translate-x-6 bg-cyan-600'
+										: 'translate-x-[3px] bg-slate-400'}"
 							></div>
 						</div>
 					</button>
@@ -214,9 +217,9 @@
 			<p class="mb-3 text-xs font-semibold tracking-[0.2em] text-slate-400 uppercase">System</p>
 			<button
 				onclick={handleReset}
-				class="flex w-full items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold uppercase transition
+				class="flex min-h-14 w-full items-center justify-center gap-2 rounded-full border px-4 py-3 text-xs font-semibold tracking-[0.14em] uppercase shadow-sm transition active:scale-[0.985]
 					{resetConfirming
-					? 'animate-pulse border-rose-400 bg-rose-500 text-white'
+					? 'animate-pulse border-rose-300 bg-rose-50 text-rose-700'
 					: 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'}"
 			>
 				<RotateCcw size={16} />
