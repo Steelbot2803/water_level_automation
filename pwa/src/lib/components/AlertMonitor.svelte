@@ -269,3 +269,5 @@
 		};
 	});
 </script>
+
+<svelte:options runes={true} />

@@ -6,6 +6,8 @@
 	const { children } = $props();
 </script>
 
+<svelte:options runes={true} />
+
 <AlertMonitor />
 {@render children()}
 <Toasts />

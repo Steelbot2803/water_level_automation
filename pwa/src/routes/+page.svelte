@@ -202,6 +202,8 @@
 	}
 </script>
 
+<svelte:options runes={true} />
+
 <svelte:head>
 	<title>Neptune</title>
 	<meta

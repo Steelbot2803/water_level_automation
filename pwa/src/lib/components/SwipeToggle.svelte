@@ -98,6 +98,8 @@
 	}
 </script>
 
+<svelte:options runes={true} />
+
 <div
 	role="radiogroup"
 	tabindex="0"
