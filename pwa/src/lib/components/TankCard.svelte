@@ -54,7 +54,6 @@
 
 	const isOverhead = $derived(variant === 'overhead');
 
-	// Narrow the type so TS is happy when indexing the record
 	const fillHeight = $derived(
 		level == null
 			? '0%'
@@ -71,76 +70,94 @@
 				: sumpTones[level as SumpLevel]
 	);
 
+	const shellTone = $derived(
+		level === 'critical'
+			? 'border-rose-300'
+			: level === 'low'
+				? 'border-amber-300'
+				: level === 'medium'
+					? 'border-sky-300'
+					: level === 'high'
+						? 'border-emerald-300'
+						: 'border-slate-300'
+	);
+
 	const label = $derived(
 		level == null
-			? '—'
+			? '--'
 			: isOverhead
 				? overheadLabels[level as OverheadLevel]
 				: sumpLabels[level as SumpLevel]
 	);
 
-	// Overhead has 4 markers, sump has 3
 	const markers = $derived(isOverhead ? ['High', 'Med', 'Low', 'Crit'] : ['High', 'Low', 'Crit']);
+
+	const tankGlow = $derived(
+		level === 'critical'
+			? 'shadow-[0_18px_28px_-24px_rgba(244,63,94,0.46)]'
+			: level === 'low'
+				? 'shadow-[0_18px_28px_-24px_rgba(245,158,11,0.42)]'
+				: level === 'medium'
+					? 'shadow-[0_18px_28px_-24px_rgba(14,165,233,0.42)]'
+					: level === 'high'
+						? 'shadow-[0_18px_28px_-24px_rgba(16,185,129,0.42)]'
+						: 'shadow-[0_18px_28px_-24px_rgba(148,163,184,0.34)]'
+	);
 </script>
 
 <div class="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 shadow-sm">
 	<div class="grid gap-4 sm:grid-cols-[7.5rem,1fr] sm:items-center">
-		<!-- Tank graphic -->
-		<div class="relative mx-auto {isOverhead ? 'h-56' : 'h-56'} w-28">
-			<!-- Overhead neck cap / sump inlet hood -->
+		<div class="relative mx-auto h-56 w-28">
 			{#if isOverhead}
-				<div class="absolute inset-x-5 top-0 h-4 rounded-full bg-slate-300/90"></div>
+				<div
+					class="absolute inset-x-5 top-0 h-4 rounded-full bg-slate-300/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.62)]"
+				></div>
+				<div class="absolute inset-x-7 top-[0.18rem] h-2 rounded-full bg-white/35 blur-[1px]"></div>
 			{:else}
 				<div
-					class="absolute inset-x-4 top-0 h-6 rounded-t-[1.4rem] border-4 border-b-0 border-slate-300 bg-slate-100"
+					class="absolute inset-x-4 top-0 h-6 rounded-t-[1.4rem] border-4 border-b-0 border-slate-300 bg-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]"
 				></div>
 			{/if}
 
-			<!-- Tank body -->
 			<div
-				class="absolute inset-x-0 {isOverhead
-					? 'top-3'
-					: 'top-5'} bottom-0 overflow-hidden rounded-[2rem] border-[6px] border-slate-300 bg-white shadow-inner"
+				class="absolute inset-x-0 {isOverhead ? 'top-3' : 'top-5'} bottom-0 overflow-hidden rounded-[2rem] border-[6px] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(241,245,249,0.96))] shadow-[inset_0_1px_0_rgba(255,255,255,0.72),inset_0_-10px_18px_rgba(148,163,184,0.14)] {shellTone} {tankGlow}"
 			>
-				<!-- Level markers -->
+				<div class="absolute inset-[0.32rem] rounded-[1.55rem] border border-white/70"></div>
+				<div class="absolute inset-y-4 left-3 w-2 rounded-full bg-white/30 blur-[1px]"></div>
+				<div class="absolute inset-y-5 right-2.5 w-px bg-slate-300/45"></div>
+
 				<div
-					class="pointer-events-none absolute inset-x-3 top-5 bottom-5 flex flex-col justify-between"
+					class="pointer-events-none absolute inset-x-4 top-5 bottom-5 flex flex-col justify-between"
 				>
 					{#each markers.slice(0, -1) as _}
-						<div class="border-t border-dashed border-slate-300/80"></div>
+						<div
+							class="h-px bg-[linear-gradient(90deg,transparent,rgba(148,163,184,0.8),transparent)]"
+						></div>
 					{/each}
 				</div>
 
-				<!-- Water fill -->
 				<div
-					class="absolute inset-x-0 bottom-0 overflow-hidden rounded-b-[1.6rem] bg-gradient-to-t transition-[height] duration-700 {tone}"
+					class="absolute inset-x-[0.24rem] bottom-[0.24rem] overflow-hidden rounded-b-[1.42rem] bg-gradient-to-t transition-[height] duration-700 {tone}"
 					style="height: {fillHeight};"
 				>
-					<!-- Hatching texture -->
+					<div class="absolute inset-x-0 top-0 h-4 bg-white/12 blur-[2px]"></div>
 					<div
-						class="absolute inset-0 opacity-30"
-						style="background-image: linear-gradient(135deg, rgba(255,255,255,0.25) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.25) 75%, transparent 75%); background-size: 20px 20px;"
+						class="absolute inset-0 opacity-24"
+						style="background-image: linear-gradient(135deg, rgba(255,255,255,0.24) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.24) 50%, rgba(255,255,255,0.24) 75%, transparent 75%); background-size: 20px 20px;"
 					></div>
-					<!-- Specular highlight -->
-					<div class="absolute inset-x-4 top-2 h-2 rounded-full bg-white/35 blur-[1px]"></div>
-					<!-- Wave shimmer at the surface -->
-					<div class="wave-shimmer absolute inset-x-0 top-0 h-3 opacity-40"></div>
+					<div class="wave-shimmer absolute inset-x-0 top-0 h-2 opacity-40"></div>
 				</div>
 			</div>
 
-			<!-- Level labels -->
 			<div
-				class="absolute top-{isOverhead ? '8' : '10'} -right-14 flex {isOverhead
-					? 'h-44'
-					: 'h-40'} pointer-events-none flex-col justify-between text-[0.65rem] font-semibold tracking-[0.2em] text-slate-400 uppercase"
+				class="absolute top-{isOverhead ? '8' : '10'} -right-14 flex {isOverhead ? 'h-44' : 'h-40'} pointer-events-none flex-col justify-between text-[0.65rem] font-semibold tracking-[0.2em] text-slate-400 uppercase"
 			>
 				{#each markers as m}
-					<span>{m}</span>
+					<span class="rounded-full bg-white/80 px-2 py-0.5 text-center shadow-sm">{m}</span>
 				{/each}
 			</div>
 		</div>
 
-		<!-- Label and value -->
 		<div>
 			<p class="text-xs font-semibold tracking-[0.2em] text-slate-500 uppercase">
 				{isOverhead ? 'Overhead' : 'Sump'}

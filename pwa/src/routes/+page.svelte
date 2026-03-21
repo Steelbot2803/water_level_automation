@@ -179,12 +179,12 @@
 
 	const pumpPillColors: Record<'borewell' | 'sump', string> = {
 		borewell: 'bg-cyan-50 shadow-sm border border-cyan-200',
-		sump: 'bg-green-50 shadow-sm border border-green-200'
+		sump: 'bg-violet-50 shadow-sm border border-violet-200'
 	};
 
 	const pumpTextColors: Record<'borewell' | 'sump', string> = {
 		borewell: 'text-cyan-700',
-		sump: 'text-green-700'
+		sump: 'text-violet-700'
 	};
 
 	function handleModeChange(value: 'auto' | 'manual', _index: number) {
@@ -192,6 +192,8 @@
 		waterSystem.sendCommand(value);
 		if (value === 'manual') {
 			waterSystem.sendCommand(`motor ${pumpValue}` as 'motor borewell' | 'motor sump');
+		} else {
+			waterSystem.sendCommand(pumpValue);
 		}
 		modeValue = value;
 	}

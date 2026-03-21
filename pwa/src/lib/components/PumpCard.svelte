@@ -1,7 +1,7 @@
 <svelte:options runes={true} />
 
 <script lang="ts">
-	import { CircleCheckBig, Lock, TriangleAlert } from 'lucide-svelte';
+	import { Aperture, CircleCheckBig, Lock, TriangleAlert } from 'lucide-svelte';
 	import type { MotorRuntimeStatus } from '$lib/types.js';
 	import { runtimeStatusLabels } from '$lib/control.js';
 
@@ -52,7 +52,33 @@
 	const isLocked = $derived(
 		resolvedStatus === 'dry_run_lock' || resolvedStatus === 'sump_critical'
 	);
-	const bladeTone = $derived(resolvedStatus === 'stopped' ? 'bg-white/65' : 'bg-white/75');
+	const bladeTone = $derived(
+		resolvedStatus === 'stopped'
+			? 'text-slate-900/72'
+			: resolvedStatus === 'starting'
+				? 'text-amber-950/60'
+				: resolvedStatus === 'running'
+					? 'text-emerald-950/55'
+					: 'text-rose-950/60'
+	);
+	const hubTone = $derived(
+		resolvedStatus === 'running'
+			? 'bg-emerald-100'
+			: resolvedStatus === 'starting'
+				? 'bg-amber-100'
+				: resolvedStatus === 'dry_run_lock' || resolvedStatus === 'sump_critical'
+					? 'bg-rose-100'
+					: 'bg-white'
+	);
+	const impellerShellTone = $derived(
+		resolvedStatus === 'running'
+			? 'from-emerald-400/20 via-transparent to-slate-950/10'
+			: resolvedStatus === 'starting'
+				? 'from-amber-300/22 via-transparent to-slate-950/10'
+				: resolvedStatus === 'dry_run_lock' || resolvedStatus === 'sump_critical'
+					? 'from-rose-400/18 via-transparent to-slate-950/10'
+					: 'from-white/22 via-transparent to-slate-950/10'
+	);
 </script>
 
 <div class="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 shadow-sm">
@@ -69,25 +95,30 @@
 					class:animate-spin={isSpinning}
 					style="animation-duration: 1.4s"
 				>
-					<!-- Blade lines, clipped to circle -->
-					<div class="absolute inset-0 overflow-hidden rounded-full">
-						<div
-							class="absolute top-1/2 right-[0.45rem] left-[0.45rem] h-[4px] -translate-y-1/2 rounded-full {bladeTone}"
-						></div>
-						<div
-							class="absolute top-1/2 right-[0.45rem] left-[0.45rem] h-[4px] -translate-y-1/2 rounded-full {bladeTone}"
-							style="transform: translateY(-50%) rotate(60deg)"
-						></div>
-						<div
-							class="absolute top-1/2 right-[0.45rem] left-[0.45rem] h-[4px] -translate-y-1/2 rounded-full {bladeTone}"
-							style="transform: translateY(-50%) rotate(-60deg)"
-						></div>
-					</div>
+					<div
+						class="absolute inset-[0.3rem] rounded-full bg-[linear-gradient(145deg,var(--tw-gradient-stops))] {impellerShellTone}"
+					></div>
+					<div class="absolute inset-[0.45rem] rounded-full border border-white/12"></div>
+					<div class="absolute inset-[1.05rem] rounded-full border border-slate-950/10"></div>
+					<Aperture
+						size={80}
+						strokeWidth={2}
+						class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[14deg] {bladeTone} drop-shadow-[0_1px_1px_rgba(255,255,255,0.12)]"
+					/>
+					<div
+						class="absolute top-[1.05rem] left-[1.35rem] h-[1.1rem] w-[2.15rem] rotate-[28deg] rounded-full bg-white/10 blur-[1px]"
+					></div>
+					<div
+						class="absolute top-1/2 left-1/2 h-[2.5rem] w-[2.5rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/60 {hubTone} shadow-[0_2px_7px_rgba(15,23,42,0.18)]"
+					></div>
+					<div
+						class="absolute top-1/2 left-1/2 h-[1.5rem] w-[1.5rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-950/10 bg-slate-950"
+					></div>
 				</div>
 
 				<!-- Centre hub -->
 				<div
-					class="absolute inset-[35%] rounded-full border border-white/70 bg-white shadow-[0_2px_6px_rgba(15,23,42,0.12)]"
+					class="absolute inset-[34%] rounded-full border border-white/70 bg-white/55 shadow-[0_2px_6px_rgba(15,23,42,0.12)]"
 				></div>
 
 				<!-- Lock/warning overlay for error states -->

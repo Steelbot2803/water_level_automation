@@ -267,5 +267,6 @@ export const commandLabels: Record<ArduinoCommand, string> = {
 	'unlock sump': 'Unlock Sump',
 	estop: 'E–Stop',
 	resume: 'Resume',
-	reset: 'Reset System'
+	reset: 'Reset System',
+	'reset state': 'Reset State'
 };

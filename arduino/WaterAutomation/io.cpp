@@ -184,6 +184,17 @@ bool applyCommand(SystemState& state, const String& line) {
     return true;
   }
 
+  if (line == "reset state") {
+    state.command.manualMode = false;
+    state.command.overrideFillToHigh = false;
+    state.command.emergencyStop = false;
+    state.command.autoPreferSump = false;
+    state.command.forcedMotor = MotorType::NONE;
+    persistCommandStateIfChanged(state.command);
+    Serial.println(F("State reset to defaults"));
+    return true;
+  }
+
   return false;
 }
 

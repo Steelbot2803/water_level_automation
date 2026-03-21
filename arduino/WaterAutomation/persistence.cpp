@@ -15,8 +15,8 @@ constexpr int ADDR_PREFER_SUMP = 6;
 constexpr int ADDR_FORCED_MOTOR = 7;
 constexpr int ADDR_CHECKSUM = 8;
 
-constexpr uint8_t MAGIC_0 = 0x57; // W
-constexpr uint8_t MAGIC_1 = 0x4C; // L
+constexpr uint8_t MAGIC_0 = 0x57;  // W
+constexpr uint8_t MAGIC_1 = 0x4C;  // L
 constexpr uint8_t VERSION = 0x01;
 
 bool persistenceReady = false;
@@ -32,19 +32,17 @@ uint8_t checksumFor(
   uint8_t overrideFillToHigh,
   uint8_t emergencyStop,
   uint8_t autoPreferSump,
-  uint8_t forcedMotor
-) {
+  uint8_t forcedMotor) {
   return static_cast<uint8_t>(
-    MAGIC_0 ^ MAGIC_1 ^ VERSION ^ manualMode ^ overrideFillToHigh ^ emergencyStop ^ autoPreferSump ^ forcedMotor
-  );
+    MAGIC_0 ^ MAGIC_1 ^ VERSION ^ manualMode ^ overrideFillToHigh ^ emergencyStop ^ autoPreferSump ^ forcedMotor);
 }
 
 bool sameCommandState(const CommandState& a, const CommandState& b) {
   return a.manualMode == b.manualMode
-      && a.overrideFillToHigh == b.overrideFillToHigh
-      && a.emergencyStop == b.emergencyStop
-      && a.autoPreferSump == b.autoPreferSump
-      && a.forcedMotor == b.forcedMotor;
+         && a.overrideFillToHigh == b.overrideFillToHigh
+         && a.emergencyStop == b.emergencyStop
+         && a.autoPreferSump == b.autoPreferSump
+         && a.forcedMotor == b.forcedMotor;
 }
 
 void applyDefaults(CommandState& command) {
@@ -75,11 +73,7 @@ void loadPersistedCommandState(CommandState& command) {
   const uint8_t checksum = EEPROM.read(ADDR_CHECKSUM);
 
   const bool valid =
-    magic0 == MAGIC_0 &&
-    magic1 == MAGIC_1 &&
-    version == VERSION &&
-    forcedMotor <= static_cast<uint8_t>(MotorType::SUMP) &&
-    checksum == checksumFor(manualMode, overrideFillToHigh, emergencyStop, autoPreferSump, forcedMotor);
+    magic0 == MAGIC_0 && magic1 == MAGIC_1 && version == VERSION && forcedMotor <= static_cast<uint8_t>(MotorType::SUMP) && checksum == checksumFor(manualMode, overrideFillToHigh, emergencyStop, autoPreferSump, forcedMotor);
 
   if (!valid) {
     applyDefaults(command);
@@ -114,8 +108,7 @@ void persistCommandStateIfChanged(const CommandState& command) {
     overrideFillToHigh,
     emergencyStop,
     autoPreferSump,
-    forcedMotor
-  );
+    forcedMotor);
 
   EEPROM.update(ADDR_MAGIC_0, MAGIC_0);
   EEPROM.update(ADDR_MAGIC_1, MAGIC_1);

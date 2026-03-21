@@ -2,7 +2,7 @@
 
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import { X, RotateCw } from 'lucide-svelte';
+	import { X, RotateCw, RotateCcw } from 'lucide-svelte';
 	import { theme, themeIcons, type ThemePreference } from '$lib/stores/theme.js';
 	import { notificationPrefs, notificationLabels } from '$lib/stores/notifications.js';
 	import { waterSystem } from '$lib/stores/system.js';
@@ -10,7 +10,9 @@
 	let { open = $bindable(false) }: { open: boolean } = $props();
 
 	let resetConfirming = $state(false);
+	let stateResetConfirming = $state(false);
 	let resetTimer: ReturnType<typeof setTimeout> | null = null;
+	let stateResetTimer: ReturnType<typeof setTimeout> | null = null;
 	function handleReset() {
 		if (!resetConfirming) {
 			// First tap: arm the button with a 3s window
@@ -29,10 +31,26 @@
 		setTimeout(() => location.reload(), 4000);
 	}
 
+	function handleStateReset() {
+		if (!stateResetConfirming) {
+			stateResetConfirming = true;
+			stateResetTimer = setTimeout(() => {
+				stateResetConfirming = false;
+			}, 3000);
+			return;
+		}
+
+		if (stateResetTimer) clearTimeout(stateResetTimer);
+		stateResetConfirming = false;
+		waterSystem.sendCommand('reset state');
+	}
+
 	function close() {
 		open = false;
 		resetConfirming = false;
+		stateResetConfirming = false;
 		if (resetTimer) clearTimeout(resetTimer);
+		if (stateResetTimer) clearTimeout(stateResetTimer);
 	}
 
 	function lockPageScroll() {
@@ -217,14 +235,24 @@
 		<section>
 			<p class="mb-3 text-xs font-semibold tracking-[0.2em] text-slate-400 uppercase">System</p>
 			<button
+				onclick={handleStateReset}
+				class="mb-4 flex min-h-14 w-full items-center justify-center gap-2 rounded-full border px-4 py-3 text-base font-semibold tracking-[0.14em] uppercase shadow-sm transition active:scale-[0.985]
+					{stateResetConfirming
+					? 'animate-pulse border-amber-300 bg-amber-50 text-amber-700'
+					: 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'}"
+			>
+				<RotateCw size={20} />
+				{stateResetConfirming ? 'Confirm Reset' : 'State Reset'}</button
+			>
+			<button
 				onclick={handleReset}
 				class="flex min-h-14 w-full items-center justify-center gap-2 rounded-full border px-4 py-3 text-base font-semibold tracking-[0.14em] uppercase shadow-sm transition active:scale-[0.985]
 					{resetConfirming
 					? 'animate-pulse border-rose-300 bg-rose-50 text-rose-700'
 					: 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'}"
 			>
-				<RotateCw size={20} />
-				{resetConfirming ? 'Confirm Reset' : 'Reset'}
+				<RotateCcw size={20} />
+				{resetConfirming ? 'Confirm Restart' : 'System Restart'}
 			</button>
 		</section>
 	</div>

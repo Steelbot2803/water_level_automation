@@ -48,7 +48,8 @@ export const arduinoCommands = [
 	'unlock sump',
 	'estop',
 	'resume',
-	'reset'
+	'reset',
+	'reset state'
 ] as const;
 export type ArduinoCommand = (typeof arduinoCommands)[number];
 

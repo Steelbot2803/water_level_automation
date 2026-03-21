@@ -27,7 +27,7 @@ enum class DisplaySlotKind : uint8_t {
 
 struct DisplaySlot {
   DisplaySlotKind kind = DisplaySlotKind::TEXT;
-  char text[TEXT_MAX_LEN] = {0};
+  char text[TEXT_MAX_LEN] = { 0 };
 };
 
 struct LedMatrixRuntime {
@@ -42,45 +42,45 @@ ArduinoLEDMatrix matrix;
 LedMatrixRuntime runtime;
 uint8_t canvas[MATRIX_HEIGHT][MATRIX_WIDTH];
 
-constexpr uint8_t GLYPH_SPACE[FONT_HEIGHT] = {0b000, 0b000, 0b000, 0b000, 0b000};
-constexpr uint8_t GLYPH_DASH[FONT_HEIGHT] = {0b000, 0b000, 0b111, 0b000, 0b000};
-constexpr uint8_t GLYPH_COLON[FONT_HEIGHT] = {0b000, 0b010, 0b000, 0b010, 0b000};
-constexpr uint8_t GLYPH_0[FONT_HEIGHT] = {0b111, 0b101, 0b101, 0b101, 0b111};
-constexpr uint8_t GLYPH_1[FONT_HEIGHT] = {0b010, 0b110, 0b010, 0b010, 0b111};
-constexpr uint8_t GLYPH_2[FONT_HEIGHT] = {0b111, 0b001, 0b111, 0b100, 0b111};
-constexpr uint8_t GLYPH_3[FONT_HEIGHT] = {0b111, 0b001, 0b111, 0b001, 0b111};
-constexpr uint8_t GLYPH_4[FONT_HEIGHT] = {0b101, 0b101, 0b111, 0b001, 0b001};
-constexpr uint8_t GLYPH_5[FONT_HEIGHT] = {0b111, 0b100, 0b111, 0b001, 0b111};
-constexpr uint8_t GLYPH_6[FONT_HEIGHT] = {0b111, 0b100, 0b111, 0b101, 0b111};
-constexpr uint8_t GLYPH_7[FONT_HEIGHT] = {0b111, 0b001, 0b001, 0b001, 0b001};
-constexpr uint8_t GLYPH_8[FONT_HEIGHT] = {0b111, 0b101, 0b111, 0b101, 0b111};
-constexpr uint8_t GLYPH_9[FONT_HEIGHT] = {0b111, 0b101, 0b111, 0b001, 0b111};
-constexpr uint8_t GLYPH_A[FONT_HEIGHT] = {0b111, 0b101, 0b111, 0b101, 0b101};
-constexpr uint8_t GLYPH_B[FONT_HEIGHT] = {0b110, 0b101, 0b110, 0b101, 0b110};
-constexpr uint8_t GLYPH_C[FONT_HEIGHT] = {0b111, 0b100, 0b100, 0b100, 0b111};
-constexpr uint8_t GLYPH_D[FONT_HEIGHT] = {0b110, 0b101, 0b101, 0b101, 0b110};
-constexpr uint8_t GLYPH_E[FONT_HEIGHT] = {0b111, 0b100, 0b111, 0b100, 0b111};
-constexpr uint8_t GLYPH_F[FONT_HEIGHT] = {0b111, 0b100, 0b111, 0b100, 0b100};
-constexpr uint8_t GLYPH_G[FONT_HEIGHT] = {0b111, 0b100, 0b101, 0b101, 0b111};
-constexpr uint8_t GLYPH_H[FONT_HEIGHT] = {0b101, 0b101, 0b111, 0b101, 0b101};
-constexpr uint8_t GLYPH_I[FONT_HEIGHT] = {0b111, 0b010, 0b010, 0b010, 0b111};
-constexpr uint8_t GLYPH_J[FONT_HEIGHT] = {0b111, 0b001, 0b001, 0b101, 0b111};
-constexpr uint8_t GLYPH_K[FONT_HEIGHT] = {0b101, 0b101, 0b110, 0b101, 0b101};
-constexpr uint8_t GLYPH_L[FONT_HEIGHT] = {0b100, 0b100, 0b100, 0b100, 0b111};
-constexpr uint8_t GLYPH_M[FONT_HEIGHT] = {0b101, 0b111, 0b111, 0b101, 0b101};
-constexpr uint8_t GLYPH_N[FONT_HEIGHT] = {0b101, 0b111, 0b111, 0b111, 0b101};
-constexpr uint8_t GLYPH_O[FONT_HEIGHT] = {0b111, 0b101, 0b101, 0b101, 0b111};
-constexpr uint8_t GLYPH_P[FONT_HEIGHT] = {0b111, 0b101, 0b111, 0b100, 0b100};
-constexpr uint8_t GLYPH_Q[FONT_HEIGHT] = {0b111, 0b101, 0b101, 0b111, 0b001};
-constexpr uint8_t GLYPH_R[FONT_HEIGHT] = {0b110, 0b101, 0b110, 0b101, 0b101};
-constexpr uint8_t GLYPH_S[FONT_HEIGHT] = {0b111, 0b100, 0b111, 0b001, 0b111};
-constexpr uint8_t GLYPH_T[FONT_HEIGHT] = {0b111, 0b010, 0b010, 0b010, 0b010};
-constexpr uint8_t GLYPH_U[FONT_HEIGHT] = {0b101, 0b101, 0b101, 0b101, 0b111};
-constexpr uint8_t GLYPH_V[FONT_HEIGHT] = {0b101, 0b101, 0b101, 0b101, 0b010};
-constexpr uint8_t GLYPH_W[FONT_HEIGHT] = {0b101, 0b101, 0b111, 0b111, 0b101};
-constexpr uint8_t GLYPH_X[FONT_HEIGHT] = {0b101, 0b101, 0b010, 0b101, 0b101};
-constexpr uint8_t GLYPH_Y[FONT_HEIGHT] = {0b101, 0b101, 0b010, 0b010, 0b010};
-constexpr uint8_t GLYPH_Z[FONT_HEIGHT] = {0b111, 0b001, 0b010, 0b100, 0b111};
+constexpr uint8_t GLYPH_SPACE[FONT_HEIGHT] = { 0b000, 0b000, 0b000, 0b000, 0b000 };
+constexpr uint8_t GLYPH_DASH[FONT_HEIGHT] = { 0b000, 0b000, 0b111, 0b000, 0b000 };
+constexpr uint8_t GLYPH_COLON[FONT_HEIGHT] = { 0b000, 0b010, 0b000, 0b010, 0b000 };
+constexpr uint8_t GLYPH_0[FONT_HEIGHT] = { 0b111, 0b101, 0b101, 0b101, 0b111 };
+constexpr uint8_t GLYPH_1[FONT_HEIGHT] = { 0b010, 0b110, 0b010, 0b010, 0b111 };
+constexpr uint8_t GLYPH_2[FONT_HEIGHT] = { 0b111, 0b001, 0b111, 0b100, 0b111 };
+constexpr uint8_t GLYPH_3[FONT_HEIGHT] = { 0b111, 0b001, 0b111, 0b001, 0b111 };
+constexpr uint8_t GLYPH_4[FONT_HEIGHT] = { 0b101, 0b101, 0b111, 0b001, 0b001 };
+constexpr uint8_t GLYPH_5[FONT_HEIGHT] = { 0b111, 0b100, 0b111, 0b001, 0b111 };
+constexpr uint8_t GLYPH_6[FONT_HEIGHT] = { 0b111, 0b100, 0b111, 0b101, 0b111 };
+constexpr uint8_t GLYPH_7[FONT_HEIGHT] = { 0b111, 0b001, 0b001, 0b001, 0b001 };
+constexpr uint8_t GLYPH_8[FONT_HEIGHT] = { 0b111, 0b101, 0b111, 0b101, 0b111 };
+constexpr uint8_t GLYPH_9[FONT_HEIGHT] = { 0b111, 0b101, 0b111, 0b001, 0b111 };
+constexpr uint8_t GLYPH_A[FONT_HEIGHT] = { 0b111, 0b101, 0b111, 0b101, 0b101 };
+constexpr uint8_t GLYPH_B[FONT_HEIGHT] = { 0b110, 0b101, 0b110, 0b101, 0b110 };
+constexpr uint8_t GLYPH_C[FONT_HEIGHT] = { 0b111, 0b100, 0b100, 0b100, 0b111 };
+constexpr uint8_t GLYPH_D[FONT_HEIGHT] = { 0b110, 0b101, 0b101, 0b101, 0b110 };
+constexpr uint8_t GLYPH_E[FONT_HEIGHT] = { 0b111, 0b100, 0b111, 0b100, 0b111 };
+constexpr uint8_t GLYPH_F[FONT_HEIGHT] = { 0b111, 0b100, 0b111, 0b100, 0b100 };
+constexpr uint8_t GLYPH_G[FONT_HEIGHT] = { 0b111, 0b100, 0b101, 0b101, 0b111 };
+constexpr uint8_t GLYPH_H[FONT_HEIGHT] = { 0b101, 0b101, 0b111, 0b101, 0b101 };
+constexpr uint8_t GLYPH_I[FONT_HEIGHT] = { 0b111, 0b010, 0b010, 0b010, 0b111 };
+constexpr uint8_t GLYPH_J[FONT_HEIGHT] = { 0b111, 0b001, 0b001, 0b101, 0b111 };
+constexpr uint8_t GLYPH_K[FONT_HEIGHT] = { 0b101, 0b101, 0b110, 0b101, 0b101 };
+constexpr uint8_t GLYPH_L[FONT_HEIGHT] = { 0b100, 0b100, 0b100, 0b100, 0b111 };
+constexpr uint8_t GLYPH_M[FONT_HEIGHT] = { 0b101, 0b111, 0b111, 0b101, 0b101 };
+constexpr uint8_t GLYPH_N[FONT_HEIGHT] = { 0b101, 0b111, 0b111, 0b111, 0b101 };
+constexpr uint8_t GLYPH_O[FONT_HEIGHT] = { 0b111, 0b101, 0b101, 0b101, 0b111 };
+constexpr uint8_t GLYPH_P[FONT_HEIGHT] = { 0b111, 0b101, 0b111, 0b100, 0b100 };
+constexpr uint8_t GLYPH_Q[FONT_HEIGHT] = { 0b111, 0b101, 0b101, 0b111, 0b001 };
+constexpr uint8_t GLYPH_R[FONT_HEIGHT] = { 0b110, 0b101, 0b110, 0b101, 0b101 };
+constexpr uint8_t GLYPH_S[FONT_HEIGHT] = { 0b111, 0b100, 0b111, 0b001, 0b111 };
+constexpr uint8_t GLYPH_T[FONT_HEIGHT] = { 0b111, 0b010, 0b010, 0b010, 0b010 };
+constexpr uint8_t GLYPH_U[FONT_HEIGHT] = { 0b101, 0b101, 0b101, 0b101, 0b111 };
+constexpr uint8_t GLYPH_V[FONT_HEIGHT] = { 0b101, 0b101, 0b101, 0b101, 0b010 };
+constexpr uint8_t GLYPH_W[FONT_HEIGHT] = { 0b101, 0b101, 0b111, 0b111, 0b101 };
+constexpr uint8_t GLYPH_X[FONT_HEIGHT] = { 0b101, 0b101, 0b010, 0b101, 0b101 };
+constexpr uint8_t GLYPH_Y[FONT_HEIGHT] = { 0b101, 0b101, 0b010, 0b010, 0b010 };
+constexpr uint8_t GLYPH_Z[FONT_HEIGHT] = { 0b111, 0b001, 0b010, 0b100, 0b111 };
 
 const uint8_t* glyphFor(char c) {
   if (c >= 'a' && c <= 'z') c = static_cast<char>(c - 'a' + 'A');
@@ -208,8 +208,8 @@ const char* levelShort(SumpLevel level) {
 
 const char* motorShort(MotorType motor) {
   switch (motor) {
-    case MotorType::BOREWELL: return "BW";
-    case MotorType::SUMP: return "SU";
+    case MotorType::BOREWELL: return "B";
+    case MotorType::SUMP: return "S";
     case MotorType::NONE: return "IDLE";
   }
   return "?";
