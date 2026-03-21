@@ -141,17 +141,21 @@
 
 		<!-- Text info -->
 		<div>
-			<p class="text-xs font-semibold tracking-[0.2em] text-slate-500 uppercase">{label}</p>
+			<div class="pointer-events-none">
+				<p class="text-s font-semibold tracking-[0.2em] text-slate-500 uppercase">{label}</p>
+			</div>
 			<div class="mt-3 flex items-center justify-between gap-3">
-				<p
-					class="text-3xl font-semibold uppercase"
-					class:text-emerald-600={resolvedStatus === 'running'}
-					class:text-amber-600={resolvedStatus === 'starting'}
-					class:text-rose-600={isLocked}
-					class:text-slate-950={resolvedStatus === 'stopped'}
-				>
-					{runtimeStatusLabels[resolvedStatus]}
-				</p>
+				<div class="pointer-events-none">
+					<p
+						class="text-3xl font-semibold uppercase"
+						class:text-emerald-600={resolvedStatus === 'running'}
+						class:text-amber-600={resolvedStatus === 'starting'}
+						class:text-rose-600={isLocked}
+						class:text-slate-950={resolvedStatus === 'stopped'}
+					>
+						{runtimeStatusLabels[resolvedStatus]}
+					</p>
+				</div>
 				{#if resolvedStatus === 'dry_run_lock' && onUnlock}
 					<button
 						type="button"

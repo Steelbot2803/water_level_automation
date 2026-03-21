@@ -10,7 +10,7 @@ constexpr unsigned long MQTT_PUBLISH_PERIOD_MS = 2000;
 constexpr unsigned long MQTT_LIVENESS_TIMEOUT_MS = 10UL * 60UL * 1000UL;
 constexpr unsigned long MQTT_RETRY_PERIOD_MS = 5000;
 constexpr unsigned long WIFI_RETRY_PERIOD_MS = 10000;
-constexpr int MOTOR_CURRENT_THRESHOLD = 512;
+constexpr int MOTOR_CURRENT_THRESHOLD = 100;
 constexpr unsigned long AC_PROBE_SETTLE_MS = 60;
 constexpr float AC_PROBE_FREQ_HZ = 1000.0f;
 
