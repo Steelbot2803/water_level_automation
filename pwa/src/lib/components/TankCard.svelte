@@ -27,45 +27,17 @@
 		high: 88
 	};
 
-	// Each marker is { label, fillPct } where fillPct matches the fill height above.
-	// The label is placed at `bottom: fillPct%` so it always aligns with the water line.
-	const overheadMarkers: { label: string; fillPct: number }[] = [
-		{ label: 'High', fillPct: 88 },
-		{ label: 'Med', fillPct: 58 },
-		{ label: 'Low', fillPct: 30 },
-		{ label: 'Crit', fillPct: 8 }
-	];
-
-	const sumpMarkers: { label: string; fillPct: number }[] = [
-		{ label: 'High', fillPct: 88 },
-		{ label: 'Low', fillPct: 48 },
-		{ label: 'Crit', fillPct: 8 }
-	];
-
-	const overheadTones: Record<OverheadLevel, string> = {
-		high: 'from-emerald-400 via-emerald-500 to-emerald-700',
-		medium: 'from-cyan-400 via-sky-500 to-sky-700',
-		low: 'from-amber-300 via-amber-400 to-orange-500',
-		critical: 'from-rose-400 via-rose-500 to-rose-700'
+	const overheadGradients: Record<OverheadLevel, string> = {
+		critical: 'linear-gradient(to top, #9f1239, #fb7185)',
+		low: 'linear-gradient(to top, #b45309, #fcd34d)',
+		medium: 'linear-gradient(to top, #0369a1, #38bdf8)',
+		high: 'linear-gradient(to top, #047857, #6ee7b7)'
 	};
 
-	const sumpTones: Record<SumpLevel, string> = {
-		high: 'from-emerald-400 via-teal-500 to-teal-700',
-		low: 'from-amber-300 via-yellow-400 to-orange-500',
-		critical: 'from-rose-400 via-rose-500 to-rose-700'
-	};
-
-	const overheadLabels: Record<OverheadLevel, string> = {
-		critical: 'Critical',
-		low: 'Low',
-		medium: 'Medium',
-		high: 'High'
-	};
-
-	const sumpLabels: Record<SumpLevel, string> = {
-		critical: 'Critical',
-		low: 'Low',
-		high: 'High'
+	const sumpGradients: Record<SumpLevel, string> = {
+		critical: 'linear-gradient(to top, #9f1239, #fb7185)',
+		low: 'linear-gradient(to top, #b45309, #fcd34d)',
+		high: 'linear-gradient(to top, #047857, #6ee7b7)'
 	};
 
 	const isOverhead = $derived(variant === 'overhead');
@@ -82,8 +54,8 @@
 		level == null
 			? ''
 			: isOverhead
-				? overheadTones[level as OverheadLevel]
-				: sumpTones[level as SumpLevel]
+				? overheadGradients[level as OverheadLevel]
+				: sumpGradients[level as SumpLevel]
 	);
 
 	const shellTone = $derived(
@@ -98,15 +70,22 @@
 						: 'border-slate-300'
 	);
 
-	const label = $derived(
-		level == null
-			? '--'
-			: isOverhead
-				? overheadLabels[level as OverheadLevel]
-				: sumpLabels[level as SumpLevel]
+	// CSS custom properties fed into the wave overlay classes so the shimmer
+	// palette matches the current fill color instead of always being seafoam teal.
+	// --wave-blob: the large slow swell color
+	// --wave-streak: the fine ripple streak color
+	// --wave-foam: the surface foam highlight
+	const waveVars = $derived(
+		level === 'critical'
+			? '--wave-blob: rgba(251,113,133,0.22); --wave-streak: rgba(253,164,175,0.13); --wave-foam: rgba(255,228,230,0.55);'
+			: level === 'low'
+				? '--wave-blob: rgba(252,211,77,0.22); --wave-streak: rgba(253,230,138,0.13); --wave-foam: rgba(255,251,235,0.55);'
+				: level === 'medium'
+					? '--wave-blob: rgba(56,189,248,0.22); --wave-streak: rgba(125,211,252,0.13); --wave-foam: rgba(224,242,254,0.55);'
+					: level === 'high'
+						? '--wave-blob: rgba(110,231,183,0.22); --wave-streak: rgba(167,243,208,0.13); --wave-foam: rgba(236,253,245,0.55);'
+						: '--wave-blob: rgba(148,163,184,0.15); --wave-streak: rgba(203,213,225,0.10); --wave-foam: rgba(241,245,249,0.40);'
 	);
-
-	const markers = $derived(isOverhead ? overheadMarkers : sumpMarkers);
 
 	const tankGlow = $derived(
 		level === 'critical'
@@ -122,7 +101,7 @@
 </script>
 
 <div class="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 shadow-sm">
-	<div class="grid gap-4 sm:grid-cols-[7.5rem,1fr] sm:items-center">
+	<div class="flex flex-col items-center gap-3">
 		<!--
 			Tank graphic container.
 			Position is `relative` so every child that is `absolute` is anchored to this box.
@@ -159,106 +138,97 @@
 				-->
 				<div class="absolute inset-y-4 left-3 w-2 rounded-full bg-white/30 blur-[1px]"></div>
 
-				<!--
-					Tick marks: one horizontal line per level, positioned from the bottom
-					of the shell using inline style so the percentage matches the fill exactly.
-					We omit the "critical" tick (8 %) because it sits near the very bottom
-					and would overlap the rounded corner.
-				-->
-				{#each markers.slice(0, -1) as marker}
-					<div
-						class="pointer-events-none absolute inset-x-4 h-px bg-[linear-gradient(90deg,transparent,rgba(148,163,184,0.8),transparent)]"
-						style="bottom: {marker.fillPct}%;"
-					></div>
-				{/each}
-
-				<!--
-					Water fill: grows from the bottom.
-					`transition-[height]` animates level changes smoothly.
-				-->
 				<div
-					class="absolute inset-x-[0.24rem] bottom-[0.24rem] overflow-hidden rounded-b-[1.42rem] bg-gradient-to-t transition-[height] duration-700 {tone}"
-					style="height: {fillPct}%;"
+					class="absolute inset-x-[0.24rem] bottom-[0.24rem] overflow-hidden rounded-b-[1.42rem] transition-[height,background] duration-700"
+					style="height: {fillPct}%; background: {tone}; {waveVars}"
 				>
-					<div class="absolute inset-x-0 top-0 h-4 bg-white/12 blur-[2px]"></div>
-					<div
-						class="absolute inset-0 opacity-24"
-						style="background-image: linear-gradient(135deg, rgba(255,255,255,0.24) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.24) 50%, rgba(255,255,255,0.24) 75%, transparent 75%); background-size: 20px 20px;"
-					></div>
-					<div class="wave-shimmer absolute inset-x-0 top-0 h-2 opacity-40"></div>
+					<!-- Slow rolling swell: large seafoam blobs drifting sideways -->
+					<div class="wave-swell absolute inset-0"></div>
+					<!-- Fast fine ripples: tight diagonal streaks on top -->
+					<div class="wave-ripple absolute inset-0"></div>
+					<!-- Foam highlight: brighter crescent at the water surface -->
+					<div class="wave-foam absolute inset-x-0 top-0 h-5"></div>
 				</div>
-			</div>
-
-			<!--
-				Level labels column, outside the shell so they never get clipped.
-				Each label is absolutely positioned from the *bottom* of the tank wrapper
-				at the same percentage as its corresponding fill level.
-				`translate-y-1/2` centres the pill vertically on the tick line.
-			-->
-			<div
-				class="pointer-events-none absolute top-10 bottom-0 left-[calc(100%+0.5rem)] flex items-center justify-center"
-			>
-				{#each markers as marker}
-					<span
-						class="absolute -right-12 -translate-y-1/2 rounded-full bg-white/80 px-2 py-0.5 text-center text-[0.65rem] font-semibold tracking-[0.2em] whitespace-nowrap text-slate-400 uppercase shadow-sm"
-						style="bottom: {marker.fillPct}%;"
-					>
-						{marker.label}
-					</span>
-				{/each}
 			</div>
 		</div>
 
-		<!-- Text summary beside the tank -->
-		<div class="pointer-events-none">
-			<p class="text-s font-semibold tracking-[0.2em] text-slate-500 uppercase">
+		<!-- Text summary below the tank -->
+		<div class="pointer-events-none text-center">
+			<p class="text-xs font-semibold tracking-[0.2em] text-slate-500 uppercase">
 				{isOverhead ? 'Overhead' : 'Sump'}
 			</p>
 			<p
-				class="mt-3 text-3xl font-semibold uppercase"
+				class="mt-1 text-2xl font-semibold uppercase transition-colors duration-700"
 				class:text-rose-600={level === 'critical'}
 				class:text-amber-600={level === 'low'}
 				class:text-cyan-600={level === 'medium'}
 				class:text-emerald-600={level === 'high'}
 			>
-				{label}
+				{level ?? '--'}
 			</p>
 		</div>
 	</div>
 </div>
 
 <style>
-	@keyframes wave {
-		0% {
-			transform: translateX(0);
-		}
-		100% {
-			transform: translateX(-50%);
-		}
-	}
-
-	.wave-shimmer {
-		background:
-			radial-gradient(ellipse at 20% 50%, rgba(255, 255, 255, 0.15) 0%, transparent 60%),
-			radial-gradient(ellipse at 80% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 70%),
-			repeating-linear-gradient(
-				100deg,
-				transparent 0px,
-				rgba(255, 255, 255, 0.08) 10px,
-				transparent 30px
-			);
-
-		background-size: 200% 200%;
-		animation: wave 12s linear infinite;
-		filter: blur(1.2px);
-	}
-
-	@keyframes wave {
+	/*
+	 * wave-drift: slides background-position horizontally.
+	 * Used by swell and ripple layers so they scroll across the fill.
+	 */
+	@keyframes wave-drift {
 		from {
-			background-position: 0% 0;
+			background-position: 0% 50%;
 		}
 		to {
-			background-position: 200% 20%;
-		} /* slight vertical drift */
+			background-position: 200% 50%;
+		}
+	}
+
+	/*
+	 * wave-pulse: gently fades the foam highlight in and out,
+	 * mimicking the way sea foam appears and dissolves.
+	 */
+	@keyframes wave-pulse {
+		0%,
+		100% {
+			opacity: 0.45;
+		}
+		50% {
+			opacity: 0.75;
+		}
+	}
+
+	/*
+	 * Large slow blobs — seafoam palette: pale cyan-green ellipses on a transparent base.
+	 * background-size: 200% so the drift animation has room to scroll a full cycle.
+	 */
+	.wave-swell {
+		background:
+			radial-gradient(ellipse 60% 40% at 25% 55%, var(--wave-blob) 0%, transparent 70%),
+			radial-gradient(ellipse 50% 35% at 75% 45%, var(--wave-blob) 0%, transparent 65%),
+			radial-gradient(ellipse 40% 30% at 50% 60%, var(--wave-blob) 0%, transparent 60%);
+		background-size: 200% 200%;
+		animation: wave-drift 14s linear infinite;
+		filter: blur(4px);
+	}
+
+	.wave-ripple {
+		background: repeating-linear-gradient(
+			105deg,
+			transparent 0px,
+			var(--wave-streak) 4px,
+			var(--wave-streak) 8px,
+			transparent 16px
+		);
+		background-size: 200% 100%;
+		animation: wave-drift 7s linear infinite;
+		filter: blur(0.6px);
+		opacity: 0.6;
+	}
+
+	.wave-foam {
+		background: linear-gradient(to bottom, var(--wave-foam) 0%, transparent 100%);
+		filter: blur(3px);
+		animation: wave-pulse 3s ease-in-out infinite;
 	}
 </style>

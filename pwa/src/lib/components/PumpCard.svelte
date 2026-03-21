@@ -1,7 +1,7 @@
 <svelte:options runes={true} />
 
 <script lang="ts">
-	import { Aperture, CircleCheckBig, Lock, TriangleAlert } from 'lucide-svelte';
+	import { Aperture, Lock, TriangleAlert } from 'lucide-svelte';
 	import type { MotorRuntimeStatus } from '$lib/types.js';
 	import { runtimeStatusLabels } from '$lib/control.js';
 
@@ -19,147 +19,230 @@
 
 	const resolvedStatus = $derived(status ?? 'stopped');
 
-	const StatusIcon = $derived(
-		resolvedStatus === 'dry_run_lock'
-			? Lock
-			: resolvedStatus === 'sump_critical'
-				? TriangleAlert
-				: CircleCheckBig
+	const isStarting = $derived(resolvedStatus === 'starting');
+	const isRunning = $derived(resolvedStatus === 'running');
+	const isSpinningDown = $derived(resolvedStatus === 'sump_critical');
+	const isLocked = $derived(
+		resolvedStatus === 'dry_run_lock' || resolvedStatus === 'sump_critical'
 	);
 
-	const bodyTone = $derived(
-		resolvedStatus === 'running'
-			? 'bg-emerald-500'
-			: resolvedStatus === 'starting'
-				? 'bg-amber-400'
-				: resolvedStatus === 'dry_run_lock' || resolvedStatus === 'sump_critical'
-					? 'bg-rose-500'
-					: 'bg-slate-300'
-	);
+	const StatusIcon = $derived(resolvedStatus === 'dry_run_lock' ? Lock : TriangleAlert);
 
-	const ringTone = $derived(
-		resolvedStatus === 'running'
+	const ringClass = $derived(
+		isRunning
 			? 'border-emerald-300'
-			: resolvedStatus === 'starting'
+			: isStarting
 				? 'border-amber-300'
-				: resolvedStatus === 'dry_run_lock' || resolvedStatus === 'sump_critical'
+				: isLocked
 					? 'border-rose-300'
 					: 'border-slate-300'
 	);
 
-	const isSpinning = $derived(resolvedStatus === 'running');
-	const isPulsing = $derived(resolvedStatus === 'starting');
-	const isLocked = $derived(
-		resolvedStatus === 'dry_run_lock' || resolvedStatus === 'sump_critical'
-	);
-	const bladeTone = $derived(
-		resolvedStatus === 'stopped'
-			? 'text-slate-900/72'
-			: resolvedStatus === 'starting'
-				? 'text-amber-950/60'
-				: resolvedStatus === 'running'
-					? 'text-emerald-950/55'
-					: 'text-rose-950/60'
-	);
-	const hubTone = $derived(
-		resolvedStatus === 'running'
+	const hubClass = $derived(
+		isRunning
 			? 'bg-emerald-100'
-			: resolvedStatus === 'starting'
+			: isStarting
 				? 'bg-amber-100'
-				: resolvedStatus === 'dry_run_lock' || resolvedStatus === 'sump_critical'
+				: isLocked
 					? 'bg-rose-100'
 					: 'bg-white'
 	);
-	const impellerShellTone = $derived(
-		resolvedStatus === 'running'
-			? 'from-emerald-400/20 via-transparent to-slate-950/10'
-			: resolvedStatus === 'starting'
-				? 'from-amber-300/22 via-transparent to-slate-950/10'
-				: resolvedStatus === 'dry_run_lock' || resolvedStatus === 'sump_critical'
-					? 'from-rose-400/18 via-transparent to-slate-950/10'
-					: 'from-white/22 via-transparent to-slate-950/10'
+
+	const bladeClass = $derived(
+		isRunning
+			? 'text-emerald-950/70'
+			: isStarting
+				? 'text-amber-950/65'
+				: isLocked
+					? 'text-rose-950/65'
+					: 'text-slate-950/55'
 	);
+
+	const discGradient = $derived(
+		isRunning
+			? 'linear-gradient(145deg, #059669, #34d399)'
+			: isStarting
+				? 'linear-gradient(145deg, #d97706, #fbbf24)'
+				: isLocked
+					? 'linear-gradient(145deg, #e11d48, #fb7185)'
+					: 'linear-gradient(145deg, #94a3b8, #cbd5e1)'
+	);
+
+	const discSheen = $derived(
+		isRunning
+			? 'radial-gradient(circle at 35% 30%, rgba(167,243,208,0.35) 0%, transparent 65%)'
+			: isStarting
+				? 'radial-gradient(circle at 35% 30%, rgba(253,230,138,0.35) 0%, transparent 65%)'
+				: isLocked
+					? 'radial-gradient(circle at 35% 30%, rgba(254,205,211,0.30) 0%, transparent 65%)'
+					: 'radial-gradient(circle at 35% 30%, rgba(255,255,255,0.28) 0%, transparent 65%)'
+	);
+
+	// ── WAAPI spin control ─────────────────────────────────────────────────────
+	//
+	// One persistent Animation object lives for the lifetime of the component.
+	// We never recreate it — only its playbackRate changes, so the disc angle
+	// never resets to 0° between state transitions.
+	//
+	// updatePlaybackRate() sounds like it interpolates but in practice it snaps.
+	// We drive the ramp ourselves with requestAnimationFrame instead.
+
+	let discEl = $state<HTMLElement | null>(null);
+	let spinAnim: Animation | null = null;
+	let rampRafId: number | null = null;
+
+	function getAnim(): Animation {
+		if (spinAnim) return spinAnim;
+		spinAnim = discEl!.animate(
+			[{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }],
+			// duration 250 ms at rate 1 = 1 rev/s. easing is linear so the
+			// playbackRate is the sole driver of perceived speed.
+			{ duration: 250, iterations: Infinity, easing: 'linear' }
+		);
+		spinAnim.pause();
+		return spinAnim;
+	}
+
+	// Interpolates playbackRate from its current value to `target` over `durationMs`.
+	// easingFn defaults to ease-out on ramp-up (rate climbs fast, settles slowly)
+	// and ease-in on ramp-down (rate drops slowly at first, fast at the end).
+	// Both feel physically correct — inertia resists starting and stopping.
+	function rampRate(anim: Animation, target: number, durationMs: number, onDone?: () => void) {
+		if (rampRafId !== null) {
+			cancelAnimationFrame(rampRafId);
+			rampRafId = null;
+		}
+
+		const start = anim.playbackRate;
+		const delta = target - start;
+
+		if (Math.abs(delta) < 0.001) {
+			anim.playbackRate = target;
+			onDone?.();
+			return;
+		}
+
+		// ease-out for spin-up (delta > 0): t² flipped — fast start, slow finish.
+		// ease-in for spin-down (delta < 0): t² — slow start, fast finish.
+		const ease = delta > 0 ? (t: number) => 1 - (1 - t) * (1 - t) : (t: number) => t * t;
+
+		let startTime: number | null = null;
+
+		function step(now: number) {
+			if (startTime === null) startTime = now;
+			const t = Math.min((now - startTime) / durationMs, 1);
+			anim.playbackRate = start + delta * ease(t);
+			if (t < 1) {
+				rampRafId = requestAnimationFrame(step);
+			} else {
+				rampRafId = null;
+				onDone?.();
+			}
+		}
+
+		rampRafId = requestAnimationFrame(step);
+	}
+
+	$effect(() => {
+		if (!discEl) return;
+
+		const anim = getAnim();
+
+		if (isStarting) {
+			anim.play();
+			rampRate(anim, 0.33, 800);
+		} else if (isRunning) {
+			anim.play();
+			rampRate(anim, 1, 600);
+		} else if (isSpinningDown) {
+			rampRate(anim, 0, 1500, () => anim.pause());
+		} else if (resolvedStatus === 'stopped') {
+			rampRate(anim, 0, 800, () => anim.pause());
+		} else {
+			// dry_run_lock — hard snap, no ramp.
+			if (rampRafId !== null) {
+				cancelAnimationFrame(rampRafId);
+				rampRafId = null;
+			}
+			anim.pause();
+		}
+
+		return () => {
+			if (rampRafId !== null) {
+				cancelAnimationFrame(rampRafId);
+				rampRafId = null;
+			}
+		};
+	});
 </script>
 
 <div class="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 shadow-sm">
-	<div class="grid gap-4 sm:grid-cols-[7.5rem,1fr] sm:items-center">
-		<!-- Pump graphic -->
+	<div class="flex flex-col items-center gap-3">
 		<div class="relative mx-auto flex h-28 w-28 items-center justify-center">
-			<!-- Outer ring (casing) -->
 			<div
-				class="absolute inset-0 rounded-full border-[6px] bg-white shadow-inner transition-colors duration-500 {ringTone}"
+				class="absolute inset-0 rounded-full border-[6px] bg-white shadow-inner transition-colors duration-500 {ringClass}"
 			>
-				<!-- Impeller disc -->
+				<!--
+					bind:this wires the DOM element to discEl so the $effect above
+					can call .animate() on it directly via WAAPI.
+				-->
 				<div
-					class="absolute inset-[0.62rem] rounded-full border border-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] transition-colors duration-500 {bodyTone}"
-					class:animate-spin={isSpinning}
-					style="animation-duration: 1.4s"
+					bind:this={discEl}
+					class="absolute inset-[0.62rem] rounded-full border border-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]"
+					style="background: {discGradient}; transition: background 500ms ease;"
 				>
 					<div
-						class="absolute inset-[0.3rem] rounded-full bg-[linear-gradient(145deg,var(--tw-gradient-stops))] {impellerShellTone}"
+						class="absolute inset-0 rounded-full transition-[background] duration-500"
+						style="background: {discSheen};"
 					></div>
-					<div class="absolute inset-[0.45rem] rounded-full border border-white/12"></div>
-					<div class="absolute inset-[1.05rem] rounded-full border border-slate-950/10"></div>
+
 					<Aperture
 						size={80}
 						strokeWidth={2}
-						class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[14deg] {bladeTone} drop-shadow-[0_1px_1px_rgba(255,255,255,0.12)]"
+						class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[14deg] drop-shadow-[0_1px_1px_rgba(255,255,255,0.12)] transition-colors duration-500 {bladeClass}"
 					/>
+
 					<div
-						class="absolute top-[1.05rem] left-[1.35rem] h-[1.1rem] w-[2.15rem] rotate-[28deg] rounded-full bg-white/10 blur-[1px]"
+						class="absolute top-1/2 left-1/2 h-[2.5rem] w-[2.5rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/60 shadow-[0_2px_7px_rgba(15,23,42,0.18)] transition-colors duration-500 {hubClass}"
 					></div>
+
 					<div
-						class="absolute top-1/2 left-1/2 h-[2.5rem] w-[2.5rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/60 {hubTone} shadow-[0_2px_7px_rgba(15,23,42,0.18)]"
-					></div>
-					<div
-						class="absolute top-1/2 left-1/2 h-[1.5rem] w-[1.5rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-950/10 bg-slate-950"
+						class="absolute top-1/2 left-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-950/10 bg-slate-950"
 					></div>
 				</div>
 
-				<!-- Centre hub -->
-				<div
-					class="absolute inset-[34%] rounded-full border border-white/70 bg-white/55 shadow-[0_2px_6px_rgba(15,23,42,0.12)]"
-				></div>
-
-				<!-- Lock/warning overlay for error states -->
 				{#if isLocked}
-					<div class="absolute inset-[0.62rem] rounded-full bg-rose-950/24 backdrop-blur-[1px]">
-						<div class="absolute top-1/2 left-1/2 -translate-x-[49%] -translate-y-[55%]">
+					<div class="absolute inset-[0.62rem] rounded-full bg-rose-950/25 backdrop-blur-[1px]">
+						<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
 							<StatusIcon size={26} class="text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.24)]" />
 						</div>
 					</div>
 				{/if}
 			</div>
 
-			<!-- Pulsing ring when starting -->
-			{#if isPulsing}
+			{#if isStarting}
 				<div
 					class="absolute inset-0 animate-ping rounded-full border-4 border-amber-400 opacity-60"
 				></div>
 			{/if}
 		</div>
 
-		<!-- Text info -->
-		<div>
-			<div class="pointer-events-none">
-				<p class="text-s font-semibold tracking-[0.2em] text-slate-500 uppercase">{label}</p>
-			</div>
-			<div class="mt-3 flex items-center justify-between gap-3">
-				<div class="pointer-events-none">
-					<p
-						class="text-3xl font-semibold uppercase"
-						class:text-emerald-600={resolvedStatus === 'running'}
-						class:text-amber-600={resolvedStatus === 'starting'}
-						class:text-rose-600={isLocked}
-						class:text-slate-950={resolvedStatus === 'stopped'}
-					>
-						{runtimeStatusLabels[resolvedStatus]}
-					</p>
-				</div>
+		<div class="w-full text-center">
+			<p class="text-xs font-semibold tracking-[0.2em] text-slate-500 uppercase">{label}</p>
+			<div class="mt-1 flex items-center justify-center gap-3">
+				<p
+					class="text-2xl font-semibold uppercase transition-colors duration-500"
+					class:text-emerald-600={isRunning}
+					class:text-amber-600={isStarting}
+					class:text-rose-600={isLocked}
+					class:text-slate-950={resolvedStatus === 'stopped'}
+				>
+					{runtimeStatusLabels[resolvedStatus]}
+				</p>
 				{#if resolvedStatus === 'dry_run_lock' && onUnlock}
 					<button
 						type="button"
-						class="text-l shrink-0 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 font-semibold tracking-[0.14em] text-rose-700 uppercase shadow-sm transition hover:bg-rose-100 active:scale-[0.98] disabled:pointer-events-none disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
+						class="shrink-0 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-sm font-semibold tracking-[0.14em] text-rose-700 uppercase shadow-sm transition hover:bg-rose-100 active:scale-[0.98] disabled:pointer-events-none disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
 						disabled={unlockDisabled}
 						onclick={onUnlock}
 					>

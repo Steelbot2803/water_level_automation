@@ -309,7 +309,7 @@
 				</div>
 
 				<p class="mt-4 text-base font-semibold tracking-[0.2em] text-slate-400 uppercase">Tanks</p>
-				<div class="mt-2 grid gap-3 sm:grid-cols-2">
+				<div class="mt-2 grid grid-cols-2 gap-3">
 					<TankCard variant="overhead" level={$waterSystem.device?.overhead} />
 					<TankCard variant="sump" level={$waterSystem.device?.sump} />
 				</div>
@@ -317,7 +317,7 @@
 				<div class="mt-6 h-1 rounded-full bg-slate-200"></div>
 
 				<p class="mt-4 text-base font-semibold tracking-[0.2em] text-slate-400 uppercase">Pumps</p>
-				<div class="mt-2 grid gap-3 sm:grid-cols-2">
+				<div class="mt-2 grid grid-cols-2 gap-3">
 					<PumpCard
 						label="Borewell"
 						status={$waterSystem.device?.motors?.borewell?.status}
