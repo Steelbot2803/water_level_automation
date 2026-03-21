@@ -56,6 +56,6 @@ void publishStatus(SystemState& state) {
   Serial.println(isMqttConnected() ? F("true") : F("false"));
 
   if (state.sumpLevel == SumpLevel::CRITICAL || state.sumpCriticalWarningLatched) {
-    Serial.println(F("warning: sump is CRITICAL - sump transfer motor blocked."));
+    Serial.println(F("warning: sump is CRITICAL - sump motor blocked."));
   }
 }

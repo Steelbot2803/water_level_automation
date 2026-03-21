@@ -28,7 +28,7 @@ void printHelp() {
   Serial.println(F("  manual                -> manual mode"));
   Serial.println(F("  override              -> fill to HIGH regardless of overhead level"));
   Serial.println(F("  motor borewell        -> manual: run borewell motor"));
-  Serial.println(F("  motor sump            -> manual: run sump transfer motor"));
+  Serial.println(F("  motor sump            -> manual: run sump motor"));
   Serial.println(F("  motor stop            -> stop active motor (any mode)"));
   Serial.println(F("  borewell        -> auto: prefer borewell (default)"));
   Serial.println(F("  sump            -> auto: prefer sump over borewell"));
@@ -101,7 +101,7 @@ bool applyCommand(SystemState& state, const String& line) {
     state.command.forcedMotor = MotorType::SUMP;
     state.command.emergencyStop = false;
     persistCommandStateIfChanged(state.command);
-    Serial.println(F("Manual motor: SUMP TRANSFER"));
+    Serial.println(F("Manual motor: SUMP"));
     return true;
   }
 
@@ -126,7 +126,7 @@ bool applyCommand(SystemState& state, const String& line) {
   if (line == "sump") {
     state.command.autoPreferSump = true;
     persistCommandStateIfChanged(state.command);
-    Serial.println(F("Auto preference: SUMP TRANSFER"));
+    Serial.println(F("Auto preference: SUMP"));
     return true;
   }
 

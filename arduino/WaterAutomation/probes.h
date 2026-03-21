@@ -13,7 +13,7 @@ void stopProbes();
 //                                                                           (water)
 //                                                                              │
 // Arduino D7 (RX) ──[10kΩ]──[1N4148 diode]────────────────────────────── Probe B (in water)
-//                                            |                     |
-//                                    [100nF cap to GND]     [100kΩ to GND]
+//                                            |
+//                                    [100nF cap to GND]
 
 bool acProbeActive(uint8_t rxPin);

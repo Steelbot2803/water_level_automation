@@ -243,7 +243,7 @@ export const controlModeLabels: Record<ControlMode, string> = {
 export const motorLabels: Record<ActiveMotor, string> = {
 	none: 'None',
 	borewell: 'Borewell',
-	sump: 'Sump Transfer'
+	sump: 'Sump'
 };
 
 export const runtimeStatusLabels: Record<MotorRuntimeStatus, string> = {

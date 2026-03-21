@@ -30,7 +30,7 @@ This repository includes substantial AI-assisted development.
 - Automatic overhead tank filling based on sensor levels
 - Two-motor support:
   - Borewell motor
-  - Sump transfer motor
+  - Sump motor
 - Safety controls:
   - Emergency stop
   - Dry-run lockout
@@ -67,7 +67,7 @@ The Arduino implementation includes:
 - In `auto` mode:
   - If the overhead tank is `low` or `critical`, the controller starts filling.
   - Borewell is preferred by default.
-  - If borewell is unavailable or dry-run locked, the controller can fall back to sump transfer.
+  - If borewell is unavailable or dry-run locked, the controller can fall back to sump.
   - Filling stops when the overhead tank reaches `high`.
 - `override` fills the overhead tank to `high` regardless of the current overhead level.
 - In `manual` mode:
@@ -151,27 +151,27 @@ The firmware accepts these command strings over both serial and MQTT.
 
 ### Manual Motor Commands
 
-| Payload          | Effect                                                 |
-| ---------------- | ------------------------------------------------------ |
-| `motor borewell` | Switch to manual mode and run the borewell motor.      |
-| `motor sump`     | Switch to manual mode and run the sump transfer motor. |
-| `motor stop`     | Stop the active motor without changing mode.           |
+| Payload          | Effect                                            |
+| ---------------- | ------------------------------------------------- |
+| `motor borewell` | Switch to manual mode and run the borewell motor. |
+| `motor sump`     | Switch to manual mode and run the sump motor.     |
+| `motor stop`     | Stop the active motor without changing mode.      |
 
 ### Auto Preference Commands
 
-| Payload    | Effect                                                  |
-| ---------- | ------------------------------------------------------- |
-| `borewell` | In auto mode, prefer borewell motor.                    |
-| `sump`     | In auto mode, prefer sump transfer motor over borewell. |
+| Payload    | Effect                                         |
+| ---------- | ---------------------------------------------- |
+| `borewell` | In auto mode, prefer borewell motor.           |
+| `sump`     | In auto mode, prefer sump motor over borewell. |
 
 ### Safety Commands
 
-| Payload           | Effect                                                       |
-| ----------------- | ------------------------------------------------------------ |
-| `estop`           | Emergency stop all motors immediately in any mode.           |
-| `resume`          | Clear the emergency stop flag.                               |
-| `unlock borewell` | Clear the borewell dry-run latch so it can start again.      |
-| `unlock sump`     | Clear the sump transfer dry-run latch so it can start again. |
+| Payload           | Effect                                                  |
+| ----------------- | ------------------------------------------------------- |
+| `estop`           | Emergency stop all motors immediately in any mode.      |
+| `resume`          | Clear the emergency stop flag.                          |
+| `unlock borewell` | Clear the borewell dry-run latch so it can start again. |
+| `unlock sump`     | Clear the sump dry-run latch so it can start again.     |
 
 ### Diagnostic Commands
 
@@ -210,7 +210,7 @@ Typical status payload:
   - `dry_run_lock`
   - `sump_critical`
 - `dry_run_lock` means the motor stopped because no flow was detected and must be manually unlocked.
-- `sump_critical` means the sump transfer motor was blocked or stopped for protection.
+- `sump_critical` means the sump motor was blocked or stopped for protection.
 - `sump_warning` becomes `true` when the sump reaches critical or its warning latch is set.
 - `emergency_stop` remains `true` until cleared by `auto`, `manual`, or `resume`.
 - `auto_prefer_sump` reflects whether sump has been selected as the preferred auto-fill source.
