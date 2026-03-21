@@ -1,3 +1,5 @@
+<svelte:options runes={true} />
+
 <script lang="ts">
 	import './layout.css';
 	import AlertMonitor from '$lib/components/AlertMonitor.svelte';
@@ -5,8 +7,6 @@
 
 	const { children } = $props();
 </script>
-
-<svelte:options runes={true} />
 
 <AlertMonitor />
 {@render children()}

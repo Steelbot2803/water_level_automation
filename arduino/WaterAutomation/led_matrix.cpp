@@ -386,8 +386,12 @@ void initLedMatrix() {
   runtime.slotIndex = 0;
   resetSlotProgress(millis());
 
-  if (!runtime.ready) return;
+  if (!runtime.ready) {
+    Serial.println(F("led_matrix: begin() failed"));
+    return;
+  }
 
+  Serial.println(F("led_matrix: ready"));
   matrix.clear();
 }
 

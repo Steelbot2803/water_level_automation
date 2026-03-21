@@ -1,4 +1,5 @@
 #include "controller.h"
+#include "persistence.h"
 #include "probes.h"
 
 namespace {
@@ -201,6 +202,7 @@ void runAutoControl(SystemState& state) {
 void initState(SystemState& state) {
 
   initProbes();
+  loadPersistedCommandState(state.command);
 
   updateLevelsFromPins(state);
 }
@@ -213,6 +215,7 @@ void updateLevelsFromPins(SystemState& state) {
 void runAutomationLogic(SystemState& state) {
   if (state.command.manualMode) runManualControl(state);
   else runAutoControl(state);
+  persistCommandStateIfChanged(state.command);
 }
 
 void writeMotorOutputs(const SystemState& state) {

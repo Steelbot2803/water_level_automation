@@ -1,3 +1,5 @@
+<svelte:options runes={true} />
+
 <script lang="ts">
 	import { CircleCheckBig, Lock, TriangleAlert } from 'lucide-svelte';
 	import type { MotorRuntimeStatus } from '$lib/types.js';
@@ -50,12 +52,8 @@
 	const isLocked = $derived(
 		resolvedStatus === 'dry_run_lock' || resolvedStatus === 'sump_critical'
 	);
-	const bladeTone = $derived(
-		resolvedStatus === 'stopped' ? 'bg-white/65' : 'bg-white/75'
-	);
+	const bladeTone = $derived(resolvedStatus === 'stopped' ? 'bg-white/65' : 'bg-white/75');
 </script>
-
-<svelte:options runes={true} />
 
 <div class="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 shadow-sm">
 	<div class="grid gap-4 sm:grid-cols-[7.5rem,1fr] sm:items-center">
@@ -94,14 +92,9 @@
 
 				<!-- Lock/warning overlay for error states -->
 				{#if isLocked}
-					<div
-						class="absolute inset-[0.62rem] rounded-full bg-rose-950/24 backdrop-blur-[1px]"
-					>
+					<div class="absolute inset-[0.62rem] rounded-full bg-rose-950/24 backdrop-blur-[1px]">
 						<div class="absolute top-1/2 left-1/2 -translate-x-[49%] -translate-y-[55%]">
-							<StatusIcon
-								size={26}
-								class="text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.24)]"
-							/>
+							<StatusIcon size={26} class="text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.24)]" />
 						</div>
 					</div>
 				{/if}
@@ -131,7 +124,7 @@
 				{#if resolvedStatus === 'dry_run_lock' && onUnlock}
 					<button
 						type="button"
-						class="text-l shrink-0 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 font-semibold tracking-[0.14em] text-rose-700 uppercase shadow-sm transition active:scale-[0.98] hover:bg-rose-100 disabled:pointer-events-none disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
+						class="text-l shrink-0 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 font-semibold tracking-[0.14em] text-rose-700 uppercase shadow-sm transition hover:bg-rose-100 active:scale-[0.98] disabled:pointer-events-none disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
 						disabled={unlockDisabled}
 						onclick={onUnlock}
 					>

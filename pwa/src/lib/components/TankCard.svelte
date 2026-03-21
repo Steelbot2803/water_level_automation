@@ -1,3 +1,5 @@
+<svelte:options runes={true} />
+
 <script lang="ts">
 	import type { OverheadLevel, SumpLevel } from '$lib/types.js';
 
@@ -80,8 +82,6 @@
 	// Overhead has 4 markers, sump has 3
 	const markers = $derived(isOverhead ? ['High', 'Med', 'Low', 'Crit'] : ['High', 'Low', 'Crit']);
 </script>
-
-<svelte:options runes={true} />
 
 <div class="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 shadow-sm">
 	<div class="grid gap-4 sm:grid-cols-[7.5rem,1fr] sm:items-center">

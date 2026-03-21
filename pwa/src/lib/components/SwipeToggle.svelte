@@ -1,3 +1,5 @@
+<svelte:options runes={true} />
+
 <script module lang="ts">
 	export type Option<T = string> = {
 		label: string;
@@ -12,12 +14,14 @@
 		options = [],
 		value,
 		color,
+		textColor,
 		disabled = false,
 		change
 	}: {
 		options: Option<T>[];
 		value: T;
 		color?: string;
+		textColor?: string;
 		disabled?: boolean;
 		change?: (value: T, index: number) => void;
 	} = $props();
@@ -98,13 +102,11 @@
 	}
 </script>
 
-<svelte:options runes={true} />
-
 <div
 	role="radiogroup"
 	tabindex="0"
 	aria-disabled={disabled}
-	class="relative flex min-h-14 touch-pan-x overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white p-1.5 shadow-sm"
+	class="relative flex min-h-11 touch-pan-x overflow-hidden rounded-full border border-slate-200 bg-slate-50 p-1 shadow-sm"
 	class:pointer-events-none={disabled}
 	bind:clientWidth={containerWidth}
 	{ontouchstart}
@@ -118,9 +120,9 @@
 >
 	<!-- Slider -->
 	<div
-		class={`absolute top-1.5 bottom-1.5 rounded-[1.1rem] border border-white/70 ${color} shadow-sm transition-colors duration-200`}
+		class={`absolute top-1 bottom-1 rounded-full ${color} shadow-sm transition-colors duration-200`}
 		style="
-			width: calc((100% - 12px) / {options.length});
+			width: calc((100% - 8px) / {options.length});
 			transform: translateX(calc({x.current} * 100%));
 		"
 	></div>
@@ -131,9 +133,7 @@
 			role="radio"
 			aria-checked={i === index}
 			tabindex={i === index ? 0 : -1}
-			class="relative z-10 flex min-h-11 flex-1 items-center justify-center rounded-[1.1rem] p-2 text-l font-semibold tracking-[0.14em] uppercase transition-all duration-200 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-40"
-			class:text-white={i === Math.round(x.current)}
-			class:text-slate-500={i !== Math.round(x.current)}
+			class={`${i === Math.round(x.current) ? textColor : 'text-slate-500'} text-l relative z-10 flex min-h-9 flex-1 items-center justify-center rounded-full px-3 py-2 font-semibold tracking-[0.14em] uppercase transition-all duration-200 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-40`}
 			{disabled}
 			onclick={() => setIndex(i)}
 		>

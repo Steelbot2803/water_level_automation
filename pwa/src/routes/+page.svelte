@@ -1,6 +1,7 @@
+<svelte:options runes={true} />
+
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { pumpPreference } from '$lib/stores/pump.js';
 	import { waterSystem } from '$lib/stores/system.js';
 	import { commandLabels } from '$lib/control.js';
 	import type {
@@ -14,7 +15,7 @@
 		mqttConnectionIconsMap
 	} from '$lib/types.js';
 	import { theme } from '$lib/stores/theme.js';
-	import { Hourglass, LoaderCircle, Menu, OctagonX, RotateCcw } from 'lucide-svelte';
+	import { CircleX, Hourglass, LoaderCircle, Menu, OctagonX, RotateCcw } from 'lucide-svelte';
 	import SwipeToggle from '$lib/components/SwipeToggle.svelte';
 	import type { Option } from '$lib/components/SwipeToggle.svelte';
 	import TankCard from '$lib/components/TankCard.svelte';
@@ -25,6 +26,7 @@
 	let pumpValue: 'borewell' | 'sump' = $state('borewell');
 	let overrideSending = $state(false);
 	let menuOpen = $state(false);
+	let ignoreDeviceSyncUntil = $state(0);
 	const eStopped = $derived($waterSystem.device?.alarms?.emergencyStop ?? false);
 	const borewellStatus = $derived($waterSystem.device?.motors?.borewell?.status);
 	const sumpStatus = $derived($waterSystem.device?.motors?.sump?.status);
@@ -135,16 +137,25 @@
 	onMount(() => {
 		waterSystem.initialize();
 		const cleanupTheme = theme.initialize();
-		const unsubDevice = waterSystem.subscribe((s) => {
-			if (!s.device) return;
-			modeValue = s.device.mode === 'manual' ? 'manual' : 'auto';
-			pumpValue = s.device.auto_prefer_sump ? 'sump' : 'borewell';
-			unsubDevice();
-		});
 		return () => {
 			cleanupTheme?.();
-			unsubDevice();
 		};
+	});
+
+	$effect(() => {
+		const device = $waterSystem.device;
+		if (!device) return;
+		if (Date.now() < ignoreDeviceSyncUntil) return;
+
+		modeValue = device.mode === 'manual' ? 'manual' : 'auto';
+		pumpValue =
+			device.mode === 'manual'
+				? device.manual_target === 'sump'
+					? 'sump'
+					: 'borewell'
+				: device.auto_prefer_sump
+					? 'sump'
+					: 'borewell';
 	});
 
 	function formatTimestamp(value?: number, compact = false) {
@@ -157,17 +168,27 @@
 		}).format(value);
 	}
 
-	const modeColors: Record<'auto' | 'manual', string> = {
-		auto: 'bg-emerald-400',
-		manual: 'bg-red-400'
+	const modePillColors: Record<'auto' | 'manual', string> = {
+		auto: 'bg-emerald-50 shadow-sm border border-emerald-200',
+		manual: 'bg-rose-50 shadow-sm border border-rose-200'
+	};
+	const modeTextColors: Record<'auto' | 'manual', string> = {
+		auto: 'text-emerald-700',
+		manual: 'text-rose-700'
 	};
 
-	const pumpColors: Record<'borewell' | 'sump', string> = {
-		borewell: 'bg-teal-500',
-		sump: 'bg-lime-600'
+	const pumpPillColors: Record<'borewell' | 'sump', string> = {
+		borewell: 'bg-cyan-50 shadow-sm border border-cyan-200',
+		sump: 'bg-green-50 shadow-sm border border-green-200'
+	};
+
+	const pumpTextColors: Record<'borewell' | 'sump', string> = {
+		borewell: 'text-cyan-700',
+		sump: 'text-green-700'
 	};
 
 	function handleModeChange(value: 'auto' | 'manual', _index: number) {
+		ignoreDeviceSyncUntil = Date.now() + 1500;
 		waterSystem.sendCommand(value);
 		if (value === 'manual') {
 			waterSystem.sendCommand(`motor ${pumpValue}` as 'motor borewell' | 'motor sump');
@@ -176,7 +197,7 @@
 	}
 
 	function handlePumpChange(value: 'borewell' | 'sump', _index: number) {
-		pumpPreference.set(value);
+		ignoreDeviceSyncUntil = Date.now() + 1500;
 		pumpValue = value;
 		if (modeValue === 'manual') {
 			waterSystem.sendCommand(`motor ${value}` as 'motor borewell' | 'motor sump');
@@ -201,8 +222,6 @@
 		waterSystem.sendCommand(pump === 'borewell' ? 'unlock borewell' : 'unlock sump');
 	}
 </script>
-
-<svelte:options runes={true} />
 
 <svelte:head>
 	<title>Neptune</title>
@@ -267,7 +286,7 @@
 								class="text-l inline-flex items-center justify-center gap-2 rounded-full border border-rose-300 bg-rose-50 px-4 py-2 font-semibold tracking-[0.14em] text-rose-700 uppercase shadow-sm transition hover:bg-rose-100 active:scale-[0.98]"
 								onclick={() => eStop(true)}
 							>
-								<OctagonX size={24} class="translate-y-0.25" />
+								<CircleX size={24} />
 								{commandLabels['estop']}
 							</button>
 						{/if}
@@ -329,7 +348,8 @@
 						<SwipeToggle
 							options={modeOptions}
 							value={modeValue}
-							color={modeColors[modeValue]}
+							color={modePillColors[modeValue]}
+							textColor={modeTextColors[modeValue]}
 							disabled={!isConnected}
 							change={handleModeChange}
 						/>
@@ -344,7 +364,8 @@
 						<SwipeToggle
 							options={pumpOptions}
 							value={pumpValue}
-							color={pumpColors[pumpValue]}
+							color={pumpPillColors[pumpValue]}
+							textColor={pumpTextColors[pumpValue]}
 							disabled={!isConnected}
 							change={handlePumpChange}
 						/>
@@ -361,7 +382,7 @@
 								($waterSystem.device?.override ?? false)
 									? 'border-orange-300 bg-orange-50 text-orange-700'
 									: overrideSending
-										? 'text-amber-060 animate-pulse border-amber-400 bg-amber-50'
+										? 'animate-pulse border-amber-400 bg-amber-50 text-amber-600'
 										: 'border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100'
 							}`}
 							disabled={!isConnected || ($waterSystem.device?.override ?? false)}

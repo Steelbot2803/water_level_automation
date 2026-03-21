@@ -1,3 +1,5 @@
+<svelte:options runes={true} />
+
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { get } from 'svelte/store';
@@ -269,5 +271,3 @@
 		};
 	});
 </script>
-
-<svelte:options runes={true} />

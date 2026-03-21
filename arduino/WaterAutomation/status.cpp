@@ -37,6 +37,18 @@ void publishStatus(SystemState& state) {
   Serial.print(F("sump_status: "));
   Serial.println(toText(state.sump.status));
 
+  Serial.print(F("borewell_relay_pin: "));
+  Serial.println(digitalRead(PIN_BOREWELL_RELAY) == HIGH ? F("HIGH") : F("LOW"));
+
+  Serial.print(F("sump_relay_pin: "));
+  Serial.println(digitalRead(PIN_SUMP_RELAY) == HIGH ? F("HIGH") : F("LOW"));
+
+  Serial.print(F("borewell_current_adc: "));
+  Serial.println(analogRead(PIN_BOREWELL_CURRENT));
+
+  Serial.print(F("sump_current_adc: "));
+  Serial.println(analogRead(PIN_SUMP_CURRENT));
+
   Serial.print(F("wifi_connected: "));
   Serial.println(isWifiConnected() ? F("true") : F("false"));
 

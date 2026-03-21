@@ -1,6 +1,8 @@
+<svelte:options runes={true} />
+
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import { X, RotateCcw } from 'lucide-svelte';
+	import { X, RotateCw } from 'lucide-svelte';
 	import { theme, themeIcons, type ThemePreference } from '$lib/stores/theme.js';
 	import { notificationPrefs, notificationLabels } from '$lib/stores/notifications.js';
 	import { waterSystem } from '$lib/stores/system.js';
@@ -59,10 +61,7 @@
 	onDestroy(() => {
 		unlockPageScroll();
 	});
-
 </script>
-
-<svelte:options runes={true} />
 
 <!-- Backdrop -->
 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
@@ -93,7 +92,7 @@
 		<h2 class="text-lg font-semibold tracking-wide uppercase">Settings</h2>
 		<button
 			onclick={close}
-			class="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 shadow-sm transition active:scale-[0.98] hover:bg-slate-100"
+			class="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 shadow-sm transition hover:bg-slate-100 active:scale-[0.98]"
 			aria-label="Close menu"
 		>
 			<X size={20} />
@@ -135,21 +134,21 @@
 				{#each Object.entries(notificationLabels) as [key, label]}
 					<button
 						onclick={() => notificationPrefs.toggle(key as keyof typeof $notificationPrefs)}
-						class="flex min-h-14 w-full items-center justify-between rounded-[1.4rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm shadow-sm transition active:scale-[0.985] hover:bg-slate-100"
+						class="flex min-h-14 w-full items-center justify-between rounded-[1.4rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm shadow-sm transition hover:bg-slate-100 active:scale-[0.985]"
 					>
 						<span class="pr-4 text-left font-medium text-slate-700">{label}</span>
 						<!-- Toggle pill -->
 						<div
 							class="relative h-7 w-12 shrink-0 rounded-full border transition-colors duration-200
 								{$notificationPrefs[key as keyof typeof $notificationPrefs]
-									? 'border-cyan-300 bg-cyan-100'
-									: 'border-slate-200 bg-white'}"
+								? 'border-cyan-300 bg-cyan-100'
+								: 'border-slate-200 bg-white'}"
 						>
 							<div
 								class="absolute top-[3px] h-5 w-5 rounded-full shadow-sm transition-transform duration-200
 									{$notificationPrefs[key as keyof typeof $notificationPrefs]
-										? 'translate-x-6 bg-cyan-600'
-										: 'translate-x-[3px] bg-slate-400'}"
+									? 'translate-x-6 bg-cyan-600'
+									: 'translate-x-[3px] bg-slate-400'}"
 							></div>
 						</div>
 					</button>
@@ -219,19 +218,14 @@
 			<p class="mb-3 text-xs font-semibold tracking-[0.2em] text-slate-400 uppercase">System</p>
 			<button
 				onclick={handleReset}
-				class="flex min-h-14 w-full items-center justify-center gap-2 rounded-full border px-4 py-3 text-xs font-semibold tracking-[0.14em] uppercase shadow-sm transition active:scale-[0.985]
+				class="flex min-h-14 w-full items-center justify-center gap-2 rounded-full border px-4 py-3 text-base font-semibold tracking-[0.14em] uppercase shadow-sm transition active:scale-[0.985]
 					{resetConfirming
 					? 'animate-pulse border-rose-300 bg-rose-50 text-rose-700'
 					: 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'}"
 			>
-				<RotateCcw size={16} />
-				{resetConfirming ? 'Tap again to confirm reset' : 'Reset Arduino & App'}
+				<RotateCw size={20} />
+				{resetConfirming ? 'Confirm Reset' : 'Reset'}
 			</button>
-			{#if resetConfirming}
-				<p class="mt-2 text-center text-xs text-rose-500">
-					Resets the Arduino and reloads the app. This takes ~4 seconds.
-				</p>
-			{/if}
 		</section>
 	</div>
 </div>

@@ -1,3 +1,5 @@
+<svelte:options runes={true} />
+
 <script lang="ts">
 	import { onDestroy } from 'svelte';
 	import { fade, fly } from 'svelte/transition';
@@ -72,8 +74,6 @@
 	});
 </script>
 
-<svelte:options runes={true} />
-
 <div
 	class="pointer-events-none fixed inset-x-4 top-[calc(1rem+env(safe-area-inset-top))] z-50 flex flex-col gap-3 md:right-4 md:left-auto md:w-full md:max-w-sm"
 	aria-live="polite"
@@ -103,7 +103,7 @@
 				</div>
 
 				<button
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 shadow-sm transition active:scale-[0.98] hover:bg-slate-100 hover:text-slate-700"
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 shadow-sm transition hover:bg-slate-100 hover:text-slate-700 active:scale-[0.98]"
 					onclick={() => alerts.dismiss(alert.id)}
 					aria-label="Dismiss notification"
 				>
@@ -113,7 +113,7 @@
 
 			<div class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-200/80">
 				<div
-					class={`h-full rounded-full transition-[width] duration-100 linear ${progressStyles[alert.severity]}`}
+					class={`linear h-full rounded-full transition-[width] duration-100 ${progressStyles[alert.severity]}`}
 					style={`width: ${progressPercent(alert)}%;`}
 				></div>
 			</div>
