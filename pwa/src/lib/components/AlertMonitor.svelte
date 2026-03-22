@@ -98,8 +98,6 @@
 	function notifyTelemetryChanges(previous: DeviceTelemetry | null, next: DeviceTelemetry | null) {
 		if (!next) return;
 
-		// Emergency stop activated
-		// Emergency stop activated
 		if (next.alarms.emergencyStop && !previous?.alarms.emergencyStop) {
 			if (get(notificationPrefs).emergencyStop)
 				alerts.push({
@@ -111,82 +109,32 @@
 				});
 		}
 
-		// Overhead tank critical
 		if (!previous || previous.alarms.overheadCritical !== next.alarms.overheadCritical) {
 			if (next.alarms.overheadCritical) {
 				if (get(notificationPrefs).overheadCritical)
 					alerts.push({
 						title: 'Overhead tank critical',
-						message: `Overhead tank is ${next.overhead}. Filling started.`,
+						message: 'Overhead tank is empty. Filling started.',
 						severity: 'error',
 						tag: 'alarm-overhead-critical',
 						cooldownMs: 120000
 					});
-			} else if (previous) {
-				if (get(notificationPrefs).overheadCritical)
-					alerts.push({
-						title: 'Overhead tank recovered',
-						message: `Overhead tank is back to ${next.overhead}.`,
-						severity: 'success',
-						tag: 'alarm-overhead-recovered',
-						cooldownMs: 30000
-					});
 			}
 		}
 
-		// Overhead dropped to low (filling kicks in automatically)
-		if (
-			previous &&
-			previous.overhead !== next.overhead &&
-			next.overhead === 'low' &&
-			previous.overhead !== 'critical'
-		) {
-			if (get(notificationPrefs).overheadLow)
-				alerts.push({
-					title: 'Overhead tank low',
-					message: 'Overhead is LOW. Auto-fill started.',
-					severity: 'warning',
-					tag: 'alarm-overhead-low',
-					cooldownMs: 120000
-				});
-		}
-
-		// Overhead reached high (fill complete)
-		if (previous && previous.overhead !== 'high' && next.overhead === 'high') {
-			if (get(notificationPrefs).overheadFull)
-				alerts.push({
-					title: 'Overhead tank full',
-					message: 'Overhead tank reached HIGH. Pumping stopped.',
-					severity: 'success',
-					tag: 'alarm-overhead-high',
-					cooldownMs: 60000
-				});
-		}
-
-		// Sump tank critical
 		if (!previous || previous.alarms.sumpCritical !== next.alarms.sumpCritical) {
 			if (next.alarms.sumpCritical) {
 				if (get(notificationPrefs).sumpCritical)
 					alerts.push({
 						title: 'Sump tank critical',
-						message: 'Sump tank is CRITICAL. Sump motor is blocked.',
+						message: 'Sump tank is critical. Sump motor is blocked.',
 						severity: 'error',
 						tag: 'alarm-sump-critical',
 						cooldownMs: 120000
 					});
-			} else if (previous) {
-				if (get(notificationPrefs).sumpCritical)
-					alerts.push({
-						title: 'Sump tank recovered',
-						message: `Sump tank is back to ${next.sump}.`,
-						severity: 'success',
-						tag: 'alarm-sump-critical-recovered',
-						cooldownMs: 30000
-					});
 			}
 		}
 
-		// Motor status changes
 		notifyMotorStatusChange(
 			'Borewell motor',
 			'borewell',
@@ -217,10 +165,10 @@
 				if (get(notificationPrefs).borewellDryRun) {
 					const sumpAvailable = telemetry.sump !== 'critical';
 					alerts.push({
-						title: 'Borewell motor: dry-run protection',
+						title: 'Borewell dry-run protection',
 						message: sumpAvailable
-							? 'Borewell stopped after no-flow detection. Sump remains available.'
-							: 'Borewell stopped after no-flow detection. No alternate motor is available.',
+							? 'Borewell stopped — no flow detected. Switching to sump.'
+							: 'Borewell stopped — no flow detected. No alternate motor available.',
 						severity: 'error',
 						tag: 'borewell-dry-run-lock',
 						cooldownMs: 120000
@@ -229,26 +177,13 @@
 			} else {
 				if (get(notificationPrefs).sumpDryRun)
 					alerts.push({
-						title: 'Sump motor: dry-run protection',
-						message: 'Sump motor stopped after no-flow detection.',
+						title: 'Sump dry-run protection',
+						message: 'Sump motor stopped — no flow detected.',
 						severity: 'error',
 						tag: 'sump-dry-run-lock',
 						cooldownMs: 120000
 					});
 			}
-			return;
-		}
-
-		if (nextStatus === 'sump_critical') {
-			if (get(notificationPrefs).sumpCritical)
-				alerts.push({
-					title: 'Sump motor blocked',
-					message: 'Sump motor is blocked because the sump tank is critical.',
-					severity: 'warning',
-					tag: 'sump-motor-blocked-critical',
-					cooldownMs: 120000
-				});
-			return;
 		}
 	}
 

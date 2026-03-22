@@ -2,8 +2,6 @@ import { writable } from 'svelte/store';
 
 export interface NotificationPreferences {
 	overheadCritical: boolean;
-	overheadLow: boolean;
-	overheadFull: boolean;
 	sumpCritical: boolean;
 	borewellDryRun: boolean;
 	sumpDryRun: boolean;
@@ -13,8 +11,6 @@ export interface NotificationPreferences {
 
 export const notificationLabels: Record<keyof NotificationPreferences, string> = {
 	overheadCritical: 'Overhead tank critical',
-	overheadLow: 'Overhead tank low',
-	overheadFull: 'Overhead tank full',
 	sumpCritical: 'Sump tank critical',
 	borewellDryRun: 'Borewell dry-run lock',
 	sumpDryRun: 'Sump dry-run lock',
@@ -22,18 +18,16 @@ export const notificationLabels: Record<keyof NotificationPreferences, string> =
 	connectionLost: 'Broker connection lost'
 };
 
-const STORAGE_KEY = 'notification_preferences';
-
 const defaults: NotificationPreferences = {
 	overheadCritical: true,
-	overheadLow: true,
-	overheadFull: true,
 	sumpCritical: true,
 	borewellDryRun: true,
 	sumpDryRun: true,
 	emergencyStop: true,
 	connectionLost: true
 };
+
+const STORAGE_KEY = 'notification_preferences';
 
 function createNotificationPreferences() {
 	const { subscribe, set, update } = writable<NotificationPreferences>({ ...defaults });

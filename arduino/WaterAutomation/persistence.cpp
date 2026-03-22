@@ -13,15 +13,18 @@ constexpr int ADDR_OVERRIDE = 4;
 constexpr int ADDR_ESTOP = 5;
 constexpr int ADDR_PREFER_SUMP = 6;
 constexpr int ADDR_FORCED_MOTOR = 7;
-constexpr int ADDR_CHECKSUM = 8;
+constexpr int ADDR_FILL_CYCLE_ACTIVE = 8;
+constexpr int ADDR_CHECKSUM = 9;
 
 constexpr uint8_t MAGIC_0 = 0x57;  // W
 constexpr uint8_t MAGIC_1 = 0x4C;  // L
 constexpr uint8_t VERSION = 0x01;
 
 bool persistenceReady = false;
-CommandState lastSavedCommand = {};
 bool haveLastSavedCommand = false;
+bool lastSavedFillCycleActive = false;
+
+CommandState lastSavedCommand = {};
 
 uint8_t toByte(bool value) {
   return value ? 1 : 0;
@@ -32,17 +35,20 @@ uint8_t checksumFor(
   uint8_t overrideFillToHigh,
   uint8_t emergencyStop,
   uint8_t autoPreferSump,
-  uint8_t forcedMotor) {
+  uint8_t forcedMotor,
+  uint8_t fillCycleActive) {
   return static_cast<uint8_t>(
-    MAGIC_0 ^ MAGIC_1 ^ VERSION ^ manualMode ^ overrideFillToHigh ^ emergencyStop ^ autoPreferSump ^ forcedMotor);
+    MAGIC_0 ^ MAGIC_1 ^ VERSION ^ manualMode ^ overrideFillToHigh
+    ^ emergencyStop ^ autoPreferSump ^ forcedMotor ^ fillCycleActive);
 }
 
-bool sameCommandState(const CommandState& a, const CommandState& b) {
+bool sameCommandState(const CommandState& a, const CommandState& b, bool fillA, bool fillB) {
   return a.manualMode == b.manualMode
          && a.overrideFillToHigh == b.overrideFillToHigh
          && a.emergencyStop == b.emergencyStop
          && a.autoPreferSump == b.autoPreferSump
-         && a.forcedMotor == b.forcedMotor;
+         && a.forcedMotor == b.forcedMotor
+         && fillA == fillB;
 }
 
 void applyDefaults(CommandState& command) {
@@ -59,7 +65,7 @@ void initPersistence() {
   persistenceReady = true;
 }
 
-void loadPersistedCommandState(CommandState& command) {
+void loadPersistedState(SystemState& state) {
   if (!persistenceReady) initPersistence();
 
   const uint8_t magic0 = EEPROM.read(ADDR_MAGIC_0);
@@ -70,45 +76,49 @@ void loadPersistedCommandState(CommandState& command) {
   const uint8_t emergencyStop = EEPROM.read(ADDR_ESTOP);
   const uint8_t autoPreferSump = EEPROM.read(ADDR_PREFER_SUMP);
   const uint8_t forcedMotor = EEPROM.read(ADDR_FORCED_MOTOR);
+  const uint8_t fillCycleActive = EEPROM.read(ADDR_FILL_CYCLE_ACTIVE);
   const uint8_t checksum = EEPROM.read(ADDR_CHECKSUM);
 
   const bool valid =
-    magic0 == MAGIC_0 && magic1 == MAGIC_1 && version == VERSION && forcedMotor <= static_cast<uint8_t>(MotorType::SUMP) && checksum == checksumFor(manualMode, overrideFillToHigh, emergencyStop, autoPreferSump, forcedMotor);
+    magic0 == MAGIC_0 && magic1 == MAGIC_1 && version == VERSION
+    && forcedMotor <= static_cast<uint8_t>(MotorType::SUMP)
+    && checksum == checksumFor(manualMode, overrideFillToHigh, emergencyStop, autoPreferSump, forcedMotor, fillCycleActive);
 
   if (!valid) {
-    applyDefaults(command);
-    lastSavedCommand = command;
+    applyDefaults(state.command);
+    state.fillCycleActive = false;
+    lastSavedCommand = state.command;
     haveLastSavedCommand = true;
-    Serial.println(F("persistence: no valid saved command state, using defaults"));
+    Serial.println(F("persistence: no valid saved state, using defaults"));
     return;
   }
 
-  command.manualMode = manualMode != 0;
-  command.overrideFillToHigh = overrideFillToHigh != 0;
-  command.emergencyStop = emergencyStop != 0;
-  command.autoPreferSump = autoPreferSump != 0;
-  command.forcedMotor = static_cast<MotorType>(forcedMotor);
+  state.command.manualMode = manualMode != 0;
+  state.command.overrideFillToHigh = overrideFillToHigh != 0;
+  state.command.emergencyStop = emergencyStop != 0;
+  state.command.autoPreferSump = autoPreferSump != 0;
+  state.command.forcedMotor = static_cast<MotorType>(forcedMotor);
+  state.fillCycleActive = fillCycleActive != 0;
 
-  lastSavedCommand = command;
+  lastSavedCommand = state.command;
   haveLastSavedCommand = true;
-  Serial.println(F("persistence: restored saved command state"));
+  Serial.println(F("persistence: restored saved state"));
 }
 
-void persistCommandStateIfChanged(const CommandState& command) {
+void persistStateIfChanged(const SystemState& state) {
   if (!persistenceReady) initPersistence();
-  if (haveLastSavedCommand && sameCommandState(command, lastSavedCommand)) return;
+  if (haveLastSavedCommand
+      && sameCommandState(state.command, lastSavedCommand,
+                          state.fillCycleActive, lastSavedFillCycleActive)) return;
 
-  const uint8_t manualMode = toByte(command.manualMode);
-  const uint8_t overrideFillToHigh = toByte(command.overrideFillToHigh);
-  const uint8_t emergencyStop = toByte(command.emergencyStop);
-  const uint8_t autoPreferSump = toByte(command.autoPreferSump);
-  const uint8_t forcedMotor = static_cast<uint8_t>(command.forcedMotor);
-  const uint8_t checksum = checksumFor(
-    manualMode,
-    overrideFillToHigh,
-    emergencyStop,
-    autoPreferSump,
-    forcedMotor);
+  const uint8_t manualMode = toByte(state.command.manualMode);
+  const uint8_t overrideFillToHigh = toByte(state.command.overrideFillToHigh);
+  const uint8_t emergencyStop = toByte(state.command.emergencyStop);
+  const uint8_t autoPreferSump = toByte(state.command.autoPreferSump);
+  const uint8_t forcedMotor = static_cast<uint8_t>(state.command.forcedMotor);
+  const uint8_t fillCycleActive = toByte(state.fillCycleActive);
+  const uint8_t checksum = checksumFor(manualMode, overrideFillToHigh, emergencyStop,
+                                       autoPreferSump, forcedMotor, fillCycleActive);
 
   EEPROM.update(ADDR_MAGIC_0, MAGIC_0);
   EEPROM.update(ADDR_MAGIC_1, MAGIC_1);
@@ -118,8 +128,10 @@ void persistCommandStateIfChanged(const CommandState& command) {
   EEPROM.update(ADDR_ESTOP, emergencyStop);
   EEPROM.update(ADDR_PREFER_SUMP, autoPreferSump);
   EEPROM.update(ADDR_FORCED_MOTOR, forcedMotor);
+  EEPROM.update(ADDR_FILL_CYCLE_ACTIVE, fillCycleActive);
   EEPROM.update(ADDR_CHECKSUM, checksum);
 
-  lastSavedCommand = command;
+  lastSavedCommand = state.command;
+  lastSavedFillCycleActive = state.fillCycleActive;
   haveLastSavedCommand = true;
 }

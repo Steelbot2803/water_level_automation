@@ -152,6 +152,7 @@ void runManualControl(SystemState& state) {
 void runAutoControl(SystemState& state) {
   if (state.command.emergencyStop) {
     stopActiveMotor(state);
+    state.fillCycleActive = false;
     return;
   }
 
@@ -163,7 +164,12 @@ void runAutoControl(SystemState& state) {
     }
   }
 
-  const bool shouldFill = state.command.overrideFillToHigh || needsFill(state);
+  if (needsFill(state)) {
+    state.fillCycleActive = true;
+  }
+
+  const bool shouldFill = state.command.overrideFillToHigh || state.fillCycleActive;
+
   if (!shouldFill) {
     stopActiveMotor(state);
     return;
@@ -171,6 +177,7 @@ void runAutoControl(SystemState& state) {
 
   if (reachedStopLevel(state)) {
     stopActiveMotor(state);
+    state.fillCycleActive = false;
     state.command.overrideFillToHigh = false;
     return;
   }
@@ -200,10 +207,8 @@ void runAutoControl(SystemState& state) {
 }
 
 void initState(SystemState& state) {
-
   initProbes();
-  loadPersistedCommandState(state.command);
-
+  loadPersistedState(state);
   updateLevelsFromPins(state);
 }
 
@@ -215,7 +220,7 @@ void updateLevelsFromPins(SystemState& state) {
 void runAutomationLogic(SystemState& state) {
   if (state.command.manualMode) runManualControl(state);
   else runAutoControl(state);
-  persistCommandStateIfChanged(state.command);
+  persistStateIfChanged(state);
 }
 
 void writeMotorOutputs(const SystemState& state) {

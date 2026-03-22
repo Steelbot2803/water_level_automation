@@ -63,7 +63,7 @@ bool applyCommand(SystemState& state, const String& line) {
     state.command.overrideFillToHigh = false;
     state.command.forcedMotor = MotorType::NONE;
     state.command.emergencyStop = false;
-    persistCommandStateIfChanged(state.command);
+    persistStateIfChanged(state);
     Serial.println(F("Mode set: AUTO"));
     return true;
   }
@@ -73,7 +73,7 @@ bool applyCommand(SystemState& state, const String& line) {
     state.command.overrideFillToHigh = false;
     state.command.forcedMotor = MotorType::NONE;
     state.command.emergencyStop = false;
-    persistCommandStateIfChanged(state.command);
+    persistStateIfChanged(state);
     Serial.println(F("Mode set: MANUAL"));
     return true;
   }
@@ -82,7 +82,7 @@ bool applyCommand(SystemState& state, const String& line) {
     state.command.manualMode = false;
     state.command.overrideFillToHigh = true;
     state.command.emergencyStop = false;
-    persistCommandStateIfChanged(state.command);
+    persistStateIfChanged(state);
     Serial.println(F("Override accepted: filling until overhead HIGH"));
     return true;
   }
@@ -91,7 +91,7 @@ bool applyCommand(SystemState& state, const String& line) {
     state.command.manualMode = true;
     state.command.forcedMotor = MotorType::BOREWELL;
     state.command.emergencyStop = false;
-    persistCommandStateIfChanged(state.command);
+    persistStateIfChanged(state);
     Serial.println(F("Manual motor: BOREWELL"));
     return true;
   }
@@ -100,7 +100,7 @@ bool applyCommand(SystemState& state, const String& line) {
     state.command.manualMode = true;
     state.command.forcedMotor = MotorType::SUMP;
     state.command.emergencyStop = false;
-    persistCommandStateIfChanged(state.command);
+    persistStateIfChanged(state);
     Serial.println(F("Manual motor: SUMP"));
     return true;
   }
@@ -110,7 +110,7 @@ bool applyCommand(SystemState& state, const String& line) {
   if (line == "motor stop") {
     state.command.forcedMotor = MotorType::NONE;
     state.command.overrideFillToHigh = false;
-    persistCommandStateIfChanged(state.command);
+    persistStateIfChanged(state);
     Serial.println(F("Motor stop commanded"));
     return true;
   }
@@ -118,14 +118,14 @@ bool applyCommand(SystemState& state, const String& line) {
   // Force switch: sets preferred motor for auto selection without leaving auto mode.
   if (line == "borewell") {
     state.command.autoPreferSump = false;
-    persistCommandStateIfChanged(state.command);
+    persistStateIfChanged(state);
     Serial.println(F("Auto preference: BOREWELL (default)"));
     return true;
   }
 
   if (line == "sump") {
     state.command.autoPreferSump = true;
-    persistCommandStateIfChanged(state.command);
+    persistStateIfChanged(state);
     Serial.println(F("Auto preference: SUMP"));
     return true;
   }
@@ -133,14 +133,14 @@ bool applyCommand(SystemState& state, const String& line) {
   // Emergency stop: stops everything immediately, any mode.
   if (line == "estop") {
     state.command.emergencyStop = true;
-    persistCommandStateIfChanged(state.command);
+    persistStateIfChanged(state);
     Serial.println(F("EMERGENCY STOP"));
     return true;
   }
 
   if (line == "resume") {
     state.command.emergencyStop = false;
-    persistCommandStateIfChanged(state.command);
+    persistStateIfChanged(state);
     Serial.println(F("RESUME OPERATIONS"));
     return true;
   }
@@ -151,7 +151,7 @@ bool applyCommand(SystemState& state, const String& line) {
   }
 
   if (line == "reset") {
-    persistCommandStateIfChanged(state.command);
+    persistStateIfChanged(state);
     Serial.println(F("Resetting by command..."));
     delay(100);
     NVIC_SystemReset();
@@ -190,7 +190,8 @@ bool applyCommand(SystemState& state, const String& line) {
     state.command.emergencyStop = false;
     state.command.autoPreferSump = false;
     state.command.forcedMotor = MotorType::NONE;
-    persistCommandStateIfChanged(state.command);
+    state.fillCycleActive = false;
+    persistStateIfChanged(state);
     Serial.println(F("State reset to defaults"));
     return true;
   }

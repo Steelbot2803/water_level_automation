@@ -3,5 +3,5 @@
 #include "controller.h"
 
 void initPersistence();
-void loadPersistedCommandState(CommandState& command);
-void persistCommandStateIfChanged(const CommandState& command);
+void loadPersistedState(SystemState& state);
+void persistStateIfChanged(const SystemState& state);
