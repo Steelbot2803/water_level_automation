@@ -26,13 +26,14 @@
 		change?: (value: T, index: number) => void;
 	} = $props();
 
-	// internal state
 	let containerWidth = $state(0);
 	let dragging = $state(false);
 	let startX = $state(0);
+	let startY = $state(0);
 	let startIndex = $state(0);
+	let intentDetermined = $state(false);
+	let isHorizontalDrag = $state(false);
 
-	// derived index
 	let index = $derived(
 		Math.max(
 			0,
@@ -40,65 +41,66 @@
 		)
 	);
 
-	// spring (index-based position)
-	const x = new Spring(0, {
-		stiffness: 0.25,
-		damping: 0.6
-	});
+	const x = new Spring(0, { stiffness: 0.25, damping: 0.6 });
 
-	// sync when external value changes
 	$effect(() => {
 		if (!dragging) x.set(index);
 	});
 
 	function setIndex(i: number) {
 		if (disabled) return;
-
 		const clamped = Math.max(0, Math.min(options.length - 1, i));
 		const selected = options[clamped];
-
 		if (!selected || selected.value === value) return;
-
 		change?.(selected.value, clamped);
-
 		x.set(clamped);
 	}
 
 	function ontouchstart(e: TouchEvent) {
-		if (disabled) return;
-		if (!e.touches[0]) return;
+		if (disabled || !e.touches[0]) return;
 		startX = e.touches[0].clientX;
+		startY = e.touches[0].clientY;
 		startIndex = index;
 		dragging = true;
+		intentDetermined = false;
+		isHorizontalDrag = false;
 	}
 
 	function ontouchmove(e: TouchEvent) {
-		if (!dragging) return;
-
-		if (!e.touches[0]) return;
+		if (!dragging || !e.touches[0]) return;
 
 		const dx = e.touches[0].clientX - startX;
+		const dy = e.touches[0].clientY - startY;
+
+		if (!intentDetermined) {
+			// Need at least 5px of movement before we can tell which direction
+			if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+			isHorizontalDrag = Math.abs(dx) > Math.abs(dy);
+			intentDetermined = true;
+		}
+
+		if (!isHorizontalDrag) return;
+
+		// Only block page scroll once we know the user is swiping horizontally
+		e.preventDefault();
+
 		const segmentWidth = containerWidth / options.length;
-
-		let next = startIndex + dx / segmentWidth;
-		next = Math.max(0, Math.min(options.length - 1, next));
-
+		const next = Math.max(0, Math.min(options.length - 1, startIndex + dx / segmentWidth));
 		x.set(next);
 	}
 
 	function ontouchend(e: TouchEvent) {
-		if (!dragging) return;
+		if (!dragging || !e.changedTouches[0]) return;
 
-		if (!e.changedTouches[0]) return;
+		if (isHorizontalDrag) {
+			const dx = e.changedTouches[0].clientX - startX;
+			const segmentWidth = containerWidth / options.length;
+			setIndex(Math.round(startIndex + dx / segmentWidth));
+		}
 
-		const dx = e.changedTouches[0].clientX - startX;
-		const segmentWidth = containerWidth / options.length;
-
-		const moved = startIndex + dx / segmentWidth;
-		const snapped = Math.round(moved);
-
-		setIndex(snapped);
 		dragging = false;
+		intentDetermined = false;
+		isHorizontalDrag = false;
 	}
 </script>
 
@@ -106,7 +108,7 @@
 	role="radiogroup"
 	tabindex="0"
 	aria-disabled={disabled}
-	class="relative flex min-h-11 touch-pan-x overflow-hidden rounded-full border border-slate-200 bg-slate-50 p-1 shadow-sm"
+	class="relative flex min-h-11 overflow-hidden rounded-full border border-slate-200 bg-slate-50 p-1 shadow-sm"
 	class:pointer-events-none={disabled}
 	bind:clientWidth={containerWidth}
 	{ontouchstart}
@@ -118,7 +120,6 @@
 		if (e.key === 'ArrowLeft') setIndex(index - 1);
 	}}
 >
-	<!-- Slider -->
 	<div
 		class={`absolute top-1 bottom-1 rounded-full ${color} shadow-sm transition-colors duration-200`}
 		style="
@@ -127,7 +128,6 @@
 		"
 	></div>
 
-	<!-- Options -->
 	{#each options as opt, i}
 		<button
 			role="radio"
@@ -143,7 +143,5 @@
 </div>
 
 <style>
-	.touch-pan-x {
-		touch-action: pan-x;
-	}
+	/* Removed — touch-action: pan-x is no longer used */
 </style>
