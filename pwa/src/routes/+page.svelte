@@ -235,9 +235,7 @@
 </svelte:head>
 
 <div class="min-h-dvh bg-gradient-to-b from-cyan-50 via-white to-slate-100 text-slate-950">
-	<div
-		class="mx-auto flex max-w-5xl flex-col gap-4 px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-6"
-	>
+	<div class="mx-auto flex max-w-5xl flex-col gap-4 px-4 pt-4 pb-4 sm:px-6">
 		<header
 			class={`overflow-hidden rounded-[2rem] border p-5 shadow-sm backdrop-blur-sm ${connectionShells[$waterSystem.mqttConnection.mqttPhase]}`}
 		>
@@ -301,36 +299,47 @@
 			<section class="rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm">
 				<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 					<h2 class="text-xl font-semibold uppercase">Overview</h2>
-					{#if $waterSystem.device}
+					{#if $waterSystem.telemetryReady && $waterSystem.device}
 						<p class="text-xs text-slate-500">
 							Last update {formatTimestamp($waterSystem.device.receivedAt)}
 						</p>
 					{/if}
 				</div>
 
-				<p class="mt-4 text-base font-semibold tracking-[0.2em] text-slate-400 uppercase">Tanks</p>
-				<div class="mt-2 grid grid-cols-2 gap-3">
-					<TankCard variant="overhead" level={$waterSystem.device?.overhead} />
-					<TankCard variant="sump" level={$waterSystem.device?.sump} />
-				</div>
+				{#if !$waterSystem.telemetryReady}
+					<div class="mt-6 flex flex-col items-center gap-3 py-8">
+						<LoaderCircle size={32} class="animate-spin text-cyan-500" />
+						<p class="text-sm text-slate-400">Waiting for device...</p>
+					</div>
+				{:else}
+					<p class="mt-4 text-base font-semibold tracking-[0.2em] text-slate-400 uppercase">
+						Tanks
+					</p>
+					<div class="mt-2 grid grid-cols-2 gap-3">
+						<TankCard variant="overhead" level={$waterSystem.device?.overhead} />
+						<TankCard variant="sump" level={$waterSystem.device?.sump} />
+					</div>
 
-				<div class="mt-6 h-1 rounded-full bg-slate-200"></div>
+					<div class="mt-6 h-1 rounded-full bg-slate-200"></div>
 
-				<p class="mt-4 text-base font-semibold tracking-[0.2em] text-slate-400 uppercase">Pumps</p>
-				<div class="mt-2 grid grid-cols-2 gap-3">
-					<PumpCard
-						label="Borewell"
-						status={$waterSystem.device?.motors?.borewell?.status}
-						onUnlock={() => unlockPump('borewell')}
-						unlockDisabled={!isConnected}
-					/>
-					<PumpCard
-						label="Sump"
-						status={$waterSystem.device?.motors?.sump?.status}
-						onUnlock={() => unlockPump('sump')}
-						unlockDisabled={!isConnected}
-					/>
-				</div>
+					<p class="mt-4 text-base font-semibold tracking-[0.2em] text-slate-400 uppercase">
+						Pumps
+					</p>
+					<div class="mt-2 grid grid-cols-2 gap-3">
+						<PumpCard
+							label="Borewell"
+							status={$waterSystem.device?.motors?.borewell?.status}
+							onUnlock={() => unlockPump('borewell')}
+							unlockDisabled={!isConnected}
+						/>
+						<PumpCard
+							label="Sump"
+							status={$waterSystem.device?.motors?.sump?.status}
+							onUnlock={() => unlockPump('sump')}
+							unlockDisabled={!isConnected}
+						/>
+					</div>
+				{/if}
 			</section>
 
 			<section class="rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm">

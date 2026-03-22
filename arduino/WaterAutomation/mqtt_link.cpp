@@ -213,7 +213,7 @@ void publishStateToMqtt(const SystemState &state) {
     return;
   }
 
-  if (mqttClient.publish(MQTT_STATUS_TOPIC, payload, true)) {
+  if (mqttClient.publish(MQTT_STATUS_TOPIC, payload, false)) {
     lastSuccessfulPublishMs = millis();
   } else {
     Serial.println(F("mqtt: publish failed"));

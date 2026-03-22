@@ -51,6 +51,7 @@ function createInitialState(): WaterAutomationState {
 	return {
 		initialized: false,
 		statusTopicSubscribed: false,
+		telemetryReady: false,
 		settings,
 		wifiConnection: {
 			wifiPhase: 'unknown',
@@ -135,6 +136,7 @@ function createWaterSystemStore() {
 			...state,
 			settings,
 			statusTopicSubscribed: false,
+			telemetryReady: false,
 			mqttConnection: {
 				...state.mqttConnection,
 				mqttPhase: 'connecting',
@@ -168,6 +170,7 @@ function createWaterSystemStore() {
 				update((state) => ({
 					...state,
 					statusTopicSubscribed: false,
+					telemetryReady: false,
 					mqttConnection: {
 						...state.mqttConnection,
 						mqttPhase: 'error',
@@ -186,6 +189,7 @@ function createWaterSystemStore() {
 				update((state) => ({
 					...state,
 					statusTopicSubscribed: false,
+					telemetryReady: false,
 					mqttConnection: {
 						...state.mqttConnection,
 						mqttPhase: 'connected',
@@ -233,6 +237,7 @@ function createWaterSystemStore() {
 				update((state) => ({
 					...state,
 					statusTopicSubscribed: false,
+					telemetryReady: false,
 					mqttConnection: {
 						...state.mqttConnection,
 						mqttPhase: 'reconnecting',
@@ -248,6 +253,7 @@ function createWaterSystemStore() {
 				update((state) => ({
 					...state,
 					statusTopicSubscribed: false,
+					telemetryReady: false,
 					mqttConnection: {
 						...state.mqttConnection,
 						mqttPhase: reconnectAttempts > 0 ? 'reconnecting' : 'offline',
@@ -266,6 +272,7 @@ function createWaterSystemStore() {
 				update((state) => ({
 					...state,
 					statusTopicSubscribed: false,
+					telemetryReady: false,
 					mqttConnection: {
 						...state.mqttConnection,
 						mqttPhase: reconnectAttempts > 0 ? 'reconnecting' : 'offline',
@@ -306,6 +313,7 @@ function createWaterSystemStore() {
 					update((state) => ({
 						...state,
 						device,
+						telemetryReady: true,
 						wifiConnection: device.wifi_status
 							? { ...state.wifiConnection, wifiPhase: device.wifi_status }
 							: state.wifiConnection,
@@ -341,6 +349,7 @@ function createWaterSystemStore() {
 			update((state) => ({
 				...state,
 				statusTopicSubscribed: false,
+				telemetryReady: false,
 				mqttConnection: {
 					...state.mqttConnection,
 					mqttPhase: 'error',

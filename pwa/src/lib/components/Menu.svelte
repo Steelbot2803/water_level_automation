@@ -9,6 +9,9 @@
 
 	let { open = $bindable(false) }: { open: boolean } = $props();
 
+	let restarting = $state(false);
+	let restartProgress = $state(0);
+	let restartInterval: ReturnType<typeof setInterval> | null = null;
 	let resetConfirming = $state(false);
 	let stateResetConfirming = $state(false);
 	let resetTimer: ReturnType<typeof setTimeout> | null = null;
@@ -26,9 +29,22 @@
 		// Second tap within 3s: execute
 		if (resetTimer) clearTimeout(resetTimer);
 		resetConfirming = false;
+
+		// send command then show 7s progress bar before reloading
 		waterSystem.sendCommand('reset');
-		// Give the Arduino ~4s to reboot before reloading the PWA
-		setTimeout(() => location.reload(), 4000);
+		restarting = true;
+		restartProgress = 0;
+
+		const DURATION = 15000;
+		const TICK = 100;
+		restartInterval = setInterval(() => {
+			restartProgress += (TICK / DURATION) * 100;
+			if (restartProgress >= 100) {
+				restartProgress = 100;
+				if (restartInterval) clearInterval(restartInterval);
+				location.reload();
+			}
+		}, TICK);
 	}
 
 	function handleStateReset() {
@@ -51,6 +67,7 @@
 		stateResetConfirming = false;
 		if (resetTimer) clearTimeout(resetTimer);
 		if (stateResetTimer) clearTimeout(stateResetTimer);
+		if (restartInterval) clearInterval(restartInterval);
 	}
 
 	function lockPageScroll() {
@@ -78,6 +95,7 @@
 
 	onDestroy(() => {
 		unlockPageScroll();
+		if (restartInterval) clearInterval(restartInterval);
 	});
 </script>
 
@@ -237,23 +255,41 @@
 			<button
 				onclick={handleStateReset}
 				class="mb-4 flex min-h-14 w-full items-center justify-center gap-2 rounded-full border px-4 py-3 text-base font-semibold tracking-[0.14em] uppercase shadow-sm transition active:scale-[0.985]
-					{stateResetConfirming
+            {stateResetConfirming
 					? 'animate-pulse border-amber-300 bg-amber-50 text-amber-700'
 					: 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'}"
 			>
 				<RotateCw size={20} />
-				{stateResetConfirming ? 'Confirm Reset' : 'State Reset'}</button
-			>
-			<button
-				onclick={handleReset}
-				class="flex min-h-14 w-full items-center justify-center gap-2 rounded-full border px-4 py-3 text-base font-semibold tracking-[0.14em] uppercase shadow-sm transition active:scale-[0.985]
-					{resetConfirming
-					? 'animate-pulse border-rose-300 bg-rose-50 text-rose-700'
-					: 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'}"
-			>
-				<RotateCcw size={20} />
-				{resetConfirming ? 'Confirm Restart' : 'System Restart'}
+				{stateResetConfirming ? 'Confirm Reset' : 'State Reset'}
 			</button>
+
+			{#if restarting}
+				<div class="overflow-hidden rounded-full border border-rose-300 bg-rose-50">
+					<div class="flex min-h-14 items-center justify-center gap-2 px-4 py-3">
+						<RotateCcw size={20} class="animate-spin [animation-direction:reverse] text-rose-700" />
+						<span class="text-base font-semibold tracking-[0.14em] text-rose-700 uppercase">
+							Restarting...
+						</span>
+					</div>
+					<div class="mx-4 mb-3 h-1.5 overflow-hidden rounded-full bg-rose-100">
+						<div
+							class="h-full rounded-full bg-rose-500 transition-[width] duration-100 ease-linear"
+							style="width: {restartProgress}%"
+						></div>
+					</div>
+				</div>
+			{:else}
+				<button
+					onclick={handleReset}
+					class="flex min-h-14 w-full items-center justify-center gap-2 rounded-full border px-4 py-3 text-base font-semibold tracking-[0.14em] uppercase shadow-sm transition active:scale-[0.985]
+                {resetConfirming
+						? 'animate-pulse border-rose-300 bg-rose-50 text-rose-700'
+						: 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'}"
+				>
+					<RotateCcw size={20} />
+					{resetConfirming ? 'Confirm Restart' : 'System Restart'}
+				</button>
+			{/if}
 		</section>
 	</div>
 </div>

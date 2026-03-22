@@ -210,6 +210,7 @@ export interface CommandLogEntry {
 export interface WaterAutomationState {
 	initialized: boolean;
 	statusTopicSubscribed: boolean;
+	telemetryReady: boolean;
 	settings: BrokerSettings;
 	wifiConnection: WifiConnectionState;
 	arduinoMQTTConnection: ArduinoConnectionStatusPayload;
