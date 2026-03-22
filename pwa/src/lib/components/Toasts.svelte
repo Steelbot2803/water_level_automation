@@ -3,7 +3,7 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
 	import { fade, fly } from 'svelte/transition';
-	import { CheckCircle2, CircleAlert, Info, TriangleAlert, X } from 'lucide-svelte';
+	import { CircleCheckBig, CircleAlert, Info, TriangleAlert, X } from 'lucide-svelte';
 
 	import { alerts } from '$lib/stores/alerts.js';
 
@@ -29,7 +29,7 @@
 	} as const;
 
 	const severityIcons = {
-		success: CheckCircle2,
+		success: CircleCheckBig,
 		error: CircleAlert,
 		info: Info,
 		warning: TriangleAlert

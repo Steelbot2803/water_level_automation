@@ -9,6 +9,18 @@
 
 	let { open = $bindable(false) }: { open: boolean } = $props();
 
+	let status = $derived({
+		Mode: $waterSystem.device?.mode,
+		'Overhead Tank': $waterSystem.device?.overhead,
+		'Sump Tank': $waterSystem.device?.sump,
+		Motor: $waterSystem.device?.motor,
+		'Borewell Pump': $waterSystem.device?.borewell_status,
+		'Sump Pump': $waterSystem.device?.sump_status,
+		Override: $waterSystem.device?.override,
+		'Emergency Stop': $waterSystem.device?.emergency_stop ?? false,
+		'Arduino WiFi': $waterSystem.wifiConnection.wifiPhase,
+		'Arduino MQTT': $waterSystem.arduinoMQTTConnection.mqttPhase
+	});
 	let restarting = $state(false);
 	let restartProgress = $state(0);
 	let restartInterval: ReturnType<typeof setInterval> | null = null;
@@ -198,54 +210,24 @@
 				Device Status
 			</p>
 			{#if $waterSystem.device}
-				<div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-					<div class="space-y-1.5 font-mono text-xs text-slate-600">
-						<div class="flex justify-between">
-							<span class="text-slate-400">mode</span><span>{$waterSystem.device.mode}</span>
+				<div
+					class="space-y-1.5 rounded-2xl border border-slate-200 bg-slate-50 p-4 font-mono text-xs text-slate-600"
+				>
+					{#each Object.entries(status) as [label, value]}
+						<div class="flex items-center justify-between">
+							<span class="text-slate-400 uppercase">{label}</span>
+							<span>{value}</span>
 						</div>
-						<div class="flex justify-between">
-							<span class="text-slate-400">overhead</span><span>{$waterSystem.device.overhead}</span
-							>
-						</div>
-						<div class="flex justify-between">
-							<span class="text-slate-400">sump</span><span>{$waterSystem.device.sump}</span>
-						</div>
-						<div class="flex justify-between">
-							<span class="text-slate-400">motor</span><span>{$waterSystem.device.motor}</span>
-						</div>
-						<div class="flex justify-between">
-							<span class="text-slate-400">borewell</span><span
-								>{$waterSystem.device.borewell_status}</span
-							>
-						</div>
-						<div class="flex justify-between">
-							<span class="text-slate-400">sump pump</span><span
-								>{$waterSystem.device.sump_status}</span
-							>
-						</div>
-						<div class="flex justify-between">
-							<span class="text-slate-400">override</span><span>{$waterSystem.device.override}</span
-							>
-						</div>
-						<div class="flex justify-between">
-							<span class="text-slate-400">estop</span><span
-								>{$waterSystem.device.emergency_stop ?? false}</span
-							>
-						</div>
-						<div class="flex justify-between">
-							<span class="text-slate-400">wifi</span><span
-								>{$waterSystem.wifiConnection.wifiPhase}</span
-							>
-						</div>
-						<div class="flex justify-between">
-							<span class="text-slate-400">arduino mqtt</span><span
-								>{$waterSystem.arduinoMQTTConnection.mqttPhase}</span
-							>
-						</div>
-					</div>
+					{/each}
 				</div>
 			{:else}
-				<p class="text-sm text-slate-400">No device data yet.</p>
+				<div
+					class="space-y-1.5 rounded-2xl border border-slate-200 bg-slate-50 p-4 font-mono text-xs text-slate-600"
+				>
+					<div class="flex items-center justify-center">
+						<p>No device data yet.</p>
+					</div>
+				</div>
 			{/if}
 		</section>
 
@@ -254,7 +236,7 @@
 			<p class="mb-3 text-xs font-semibold tracking-[0.2em] text-slate-400 uppercase">System</p>
 			<button
 				onclick={handleStateReset}
-				class="mb-4 flex min-h-14 w-full items-center justify-center gap-2 rounded-full border px-4 py-3 text-base font-semibold tracking-[0.14em] uppercase shadow-sm transition active:scale-[0.985]
+				class="mb-4 flex min-h-10 w-full items-center justify-center gap-2 rounded-full border px-4 py-2 text-base font-semibold tracking-[0.14em] uppercase shadow-sm transition active:scale-[0.985]
             {stateResetConfirming
 					? 'animate-pulse border-amber-300 bg-amber-50 text-amber-700'
 					: 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'}"
@@ -265,8 +247,8 @@
 
 			{#if restarting}
 				<div class="overflow-hidden rounded-full border border-rose-300 bg-rose-50">
-					<div class="flex min-h-14 items-center justify-center gap-2 px-4 py-3">
-						<RotateCcw size={20} class="animate-spin [animation-direction:reverse] text-rose-700" />
+					<div class="flex min-h-10 items-center justify-center gap-2 px-4 py-2">
+						<RotateCcw size={20} class="animate-spin text-rose-700 [animation-direction:reverse]" />
 						<span class="text-base font-semibold tracking-[0.14em] text-rose-700 uppercase">
 							Restarting...
 						</span>
@@ -281,7 +263,7 @@
 			{:else}
 				<button
 					onclick={handleReset}
-					class="flex min-h-14 w-full items-center justify-center gap-2 rounded-full border px-4 py-3 text-base font-semibold tracking-[0.14em] uppercase shadow-sm transition active:scale-[0.985]
+					class="flex min-h-10 w-full items-center justify-center gap-2 rounded-full border px-4 py-2 text-base font-semibold tracking-[0.14em] uppercase shadow-sm transition active:scale-[0.985]
                 {resetConfirming
 						? 'animate-pulse border-rose-300 bg-rose-50 text-rose-700'
 						: 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'}"
