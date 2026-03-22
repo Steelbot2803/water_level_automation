@@ -178,7 +178,7 @@
 
 <div class="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 shadow-sm">
 	<div class="flex flex-col items-center gap-3">
-		<div class="relative mx-auto flex h-28 w-28 items-center justify-center">
+		<div class="relative flex h-29 w-29 items-center justify-center">
 			<div
 				class="absolute inset-0 rounded-full border-[6px] bg-white shadow-inner transition-colors duration-500 {ringClass}"
 			>

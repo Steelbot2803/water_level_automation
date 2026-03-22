@@ -34,6 +34,7 @@ body {
 :root.dark canvas,
 :root.dark [data-no-theme-invert='true'] {
 	filter: invert(1) hue-rotate(180deg);
+	will-change: transform;
 }
 
 /* ── Smooth transitions when switching theme ─────────────── */

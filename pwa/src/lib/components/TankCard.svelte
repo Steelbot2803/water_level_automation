@@ -106,24 +106,19 @@
 			Tank graphic container.
 			Position is `relative` so every child that is `absolute` is anchored to this box.
 		-->
-		<div class="relative mx-auto h-56 w-28">
+		<div class="relative h-55 w-29 items-center justify-center">
 			<!-- Cap on top of tank (different shape per variant) -->
 			{#if isOverhead}
 				<div
 					class="absolute inset-x-5 top-0 h-4 rounded-full bg-slate-300/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.62)]"
 				></div>
-				<div class="absolute inset-x-7 top-[0.18rem] h-2 rounded-full bg-white/35 blur-[1px]"></div>
+				<div class="absolute inset-x-7 top-[0.18rem] h-1 rounded-full bg-white/35 blur-[1px]"></div>
 			{:else}
 				<div
 					class="absolute inset-x-4 top-0 h-6 rounded-t-[1.4rem] border-4 border-b-0 border-slate-300 bg-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]"
 				></div>
 			{/if}
 
-			<!--
-				Tank shell: the visible tube.
-				`overflow-hidden` is the key fix for the stray vertical line — decorative
-				elements that extend past the rounded edge are now clipped.
-			-->
 			<div
 				class="absolute inset-x-0 {isOverhead
 					? 'top-3'

@@ -9,6 +9,7 @@
 
 <script lang="ts" generics="T = string">
 	import { Spring } from 'svelte/motion';
+	import { onMount } from 'svelte';
 
 	let {
 		options = [],
@@ -26,6 +27,7 @@
 		change?: (value: T, index: number) => void;
 	} = $props();
 
+	let containerEl = $state<HTMLElement | null>(null);
 	let containerWidth = $state(0);
 	let dragging = $state(false);
 	let startX = $state(0);
@@ -56,7 +58,7 @@
 		x.set(clamped);
 	}
 
-	function ontouchstart(e: TouchEvent) {
+	function handleTouchStart(e: TouchEvent) {
 		if (disabled || !e.touches[0]) return;
 		startX = e.touches[0].clientX;
 		startY = e.touches[0].clientY;
@@ -66,14 +68,13 @@
 		isHorizontalDrag = false;
 	}
 
-	function ontouchmove(e: TouchEvent) {
+	function handleTouchMove(e: TouchEvent) {
 		if (!dragging || !e.touches[0]) return;
 
 		const dx = e.touches[0].clientX - startX;
 		const dy = e.touches[0].clientY - startY;
 
 		if (!intentDetermined) {
-			// Need at least 5px of movement before we can tell which direction
 			if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
 			isHorizontalDrag = Math.abs(dx) > Math.abs(dy);
 			intentDetermined = true;
@@ -81,15 +82,15 @@
 
 		if (!isHorizontalDrag) return;
 
-		// Only block page scroll once we know the user is swiping horizontally
 		e.preventDefault();
+		e.stopPropagation();
 
 		const segmentWidth = containerWidth / options.length;
 		const next = Math.max(0, Math.min(options.length - 1, startIndex + dx / segmentWidth));
 		x.set(next);
 	}
 
-	function ontouchend(e: TouchEvent) {
+	function handleTouchEnd(e: TouchEvent) {
 		if (!dragging || !e.changedTouches[0]) return;
 
 		if (isHorizontalDrag) {
@@ -102,6 +103,22 @@
 		intentDetermined = false;
 		isHorizontalDrag = false;
 	}
+
+	onMount(() => {
+		const el = containerEl;
+		if (!el) return;
+
+		// passive: false is what makes preventDefault() actually work in a WebView
+		el.addEventListener('touchstart', handleTouchStart, { passive: true });
+		el.addEventListener('touchmove', handleTouchMove, { passive: false });
+		el.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+		return () => {
+			el.removeEventListener('touchstart', handleTouchStart);
+			el.removeEventListener('touchmove', handleTouchMove);
+			el.removeEventListener('touchend', handleTouchEnd);
+		};
+	});
 </script>
 
 <div
@@ -110,10 +127,8 @@
 	aria-disabled={disabled}
 	class="relative flex min-h-11 overflow-hidden rounded-full border border-slate-200 bg-slate-50 p-1 shadow-sm"
 	class:pointer-events-none={disabled}
+	bind:this={containerEl}
 	bind:clientWidth={containerWidth}
-	{ontouchstart}
-	{ontouchmove}
-	{ontouchend}
 	onkeydown={(e) => {
 		if (disabled) return;
 		if (e.key === 'ArrowRight') setIndex(index + 1);
@@ -141,7 +156,3 @@
 		</button>
 	{/each}
 </div>
-
-<style>
-	/* Removed — touch-action: pan-x is no longer used */
-</style>
