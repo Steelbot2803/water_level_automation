@@ -23,6 +23,25 @@ const CONNECTION_TIMEOUT_MS = 15000;
 const MAX_RECONNECT_ATTEMPTS = 10;
 const RECONNECT_PERIOD_MS = 5000;
 
+const SETTINGS_STORAGE_KEY = 'broker_settings';
+
+function loadStoredSettings(): Partial<BrokerSettings> {
+	try {
+		const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+		return raw ? (JSON.parse(raw) as Partial<BrokerSettings>) : {};
+	} catch {
+		return {};
+	}
+}
+
+function saveSettings(settings: BrokerSettings) {
+	try {
+		localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+	} catch {
+		// storage blocked in some private browsing configs
+	}
+}
+
 function appendCommandLog(history: CommandLogEntry[], entry: CommandLogEntry) {
 	return [entry, ...history].slice(0, COMMAND_HISTORY_LIMIT);
 }
@@ -44,7 +63,9 @@ function sameSettings(a: BrokerSettings | null, b: BrokerSettings) {
 }
 
 function createInitialState(): WaterAutomationState {
-	const settings = createDefaultBrokerSettings();
+	const envSettings = createDefaultBrokerSettings();
+	const stored = browser ? loadStoredSettings() : {};
+	const settings: BrokerSettings = { ...envSettings, ...stored };
 	const url = settings.host ? buildBrokerUrl(settings) : '';
 	const configurationError = validateBrowserBrokerSettings(settings);
 
@@ -440,10 +461,17 @@ function createWaterSystemStore() {
 		}
 	}
 
+	function updateSettings(next: BrokerSettings) {
+		saveSettings(next);
+		update((state) => ({ ...state, settings: next }));
+		void connect();
+	}
+
 	return {
 		subscribe,
 		initialize,
-		sendCommand
+		sendCommand,
+		updateSettings
 	};
 }
 

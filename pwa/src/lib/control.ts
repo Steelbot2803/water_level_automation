@@ -270,3 +270,43 @@ export const commandLabels: Record<ArduinoCommand, string> = {
 	reset: 'Reset System',
 	'reset state': 'Reset State'
 };
+
+export function encodeBrokerSettingsAsQR(settings: BrokerSettings): string {
+	const params = new URLSearchParams({
+		username: settings.username,
+		password: settings.password
+	});
+	return `${params.toString()}`;
+}
+
+export function decodeBrokerSettingsFromQR(raw: string): Partial<BrokerSettings> | null {
+	try {
+		const queryStart = raw.indexOf('?');
+		if (queryStart === -1) return null;
+
+		const params = new URLSearchParams(raw.slice(queryStart + 1));
+		const host = params.get('host');
+		if (!host) return null;
+
+		const result: Partial<BrokerSettings> = { host };
+		const port = params.get('port');
+		const path = params.get('path');
+		const username = params.get('username');
+		const password = params.get('password');
+		const ssl = params.get('ssl');
+		const cmd = params.get('cmd');
+		const status = params.get('status');
+
+		if (port) result.port = port;
+		if (path) result.path = path;
+		if (username) result.username = username;
+		if (password) result.password = password;
+		if (ssl !== null) result.useSSL = ssl === '1';
+		if (cmd) result.commandTopic = cmd;
+		if (status) result.statusTopic = status;
+
+		return result;
+	} catch {
+		return null;
+	}
+}

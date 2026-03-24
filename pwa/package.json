@@ -38,8 +38,6 @@
 		"@eslint/compat": "^2.0.2",
 		"@eslint/js": "^9.39.2",
 		"@playwright/test": "^1.58.1",
-		"@sveltejs/adapter-netlify": "^6.0.4",
-		"@sveltejs/adapter-static": "^3.0.10",
 		"@sveltejs/kit": "^2.55.0",
 		"@sveltejs/package": "^2.5.7",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
@@ -47,11 +45,11 @@
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.1.18",
 		"@types/node": "^24",
+		"@types/qrcode": "^1.5.6",
 		"eslint": "^9.39.2",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.14.0",
 		"globals": "^17.3.0",
-		"mdsvex": "^0.12.6",
 		"prettier": "^3.8.1",
 		"prettier-plugin-svelte": "^3.4.1",
 		"prettier-plugin-tailwindcss": "^0.7.2",
@@ -67,14 +65,11 @@
 		"svelte"
 	],
 	"dependencies": {
-		"@capacitor/android": "^8.2.0",
-		"@capacitor/cli": "^8.2.0",
-		"@capacitor/core": "^8.2.0",
-		"@iconify/svelte": "^5.2.1",
-		"@sveltejs/adapter-node": "^0.0.18",
-		"android": "^0.0.8",
+		"@sveltejs/adapter-netlify": "^6.0.4",
+		"@sveltejs/adapter-vercel": "^6.3.3",
+		"jsqr": "^1.4.0",
 		"lucide-svelte": "^0.577.0",
 		"mqtt": "^5.15.0",
-		"netlify": "^13.3.5"
+		"qrcode": "^1.5.4"
 	}
 }

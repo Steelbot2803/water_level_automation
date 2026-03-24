@@ -1,17 +1,22 @@
-import { mdsvex } from 'mdsvex';
-import adapter from '@sveltejs/adapter-static';
+import adapterNetlify from '@sveltejs/adapter-netlify';
+import adapterVercel from '@sveltejs/adapter-vercel';
 
 /** @type {import('@sveltejs/kit').Config} */
-const config = {
-	kit: {
-		adapter: adapter({
-			pages: 'build',
-			assets: 'build',
-			fallback: 'index.html'
-		})
-	},
-	preprocess: [mdsvex()],
-	extensions: ['.svelte', '.svx']
-};
 
-export default config;
+function getAdapter() {
+	const adapter = process.env.ADAPTER || 'vercel';
+	switch (adapter) {
+		case 'netlify':
+			return adapterNetlify();
+		case 'vercel':
+			return adapterVercel();
+		default:
+			throw new Error(`Unknown adapter: ${adapter}`);
+	}
+}
+
+export default {
+	kit: {
+		adapter: getAdapter()
+	}
+};
