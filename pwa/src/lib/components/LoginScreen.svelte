@@ -16,6 +16,7 @@
 	import type { BrokerSettings } from '$lib/types.js';
 	import QrScanner from '$lib/components/QrScanner.svelte';
 	import QRCode from 'qrcode';
+    import logo from '$lib/img/neptune_icon.png';
 
 	let username = $state('');
 	let password = $state('');
@@ -67,7 +68,7 @@
 		<div
 			class="flex h-16 w-16 items-center justify-center rounded-[1.4rem] shadow-lg shadow-blue-500"
 		>
-			<img src="src/img/neptune_icon.png" alt="Neptune logo" />
+			<img src={logo} alt="Neptune logo" />
 		</div>
 		<div class="text-center">
 			<h1 class="text-3xl font-semibold tracking-tight text-slate-900 uppercase">Neptune</h1>
