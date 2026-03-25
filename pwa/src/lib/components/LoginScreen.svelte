@@ -65,9 +65,9 @@
 	<!-- Brand mark -->
 	<div class="mb-10 flex flex-col items-center gap-3">
 		<div
-			class="flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-cyan-500 shadow-lg shadow-cyan-200"
+			class="flex h-16 w-16 items-center justify-center rounded-[1.4rem] shadow-lg shadow-blue-500"
 		>
-			<img src="%sveltekit.assets%/neptune_icon.png" alt="Neptune logo" class="h-8 w-8" />
+			<img src="src/img/neptune_icon.png" alt="Neptune logo" />
 		</div>
 		<div class="text-center">
 			<h1 class="text-3xl font-semibold tracking-tight text-slate-900 uppercase">Neptune</h1>
