@@ -1,7 +1,7 @@
 {
     "name": "Neptune",
     "short_name": "Neptune",
-    "description": "Water level automation control dashboard",
+    "description": "Water Flow automation control dashboard",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#0a7bff",
@@ -9,13 +9,13 @@
     "orientation": "portrait",
     "icons": [
         {
-            "src": "/neptune_icon_sized.png",
+            "src": "/neptune_icon.png",
             "sizes": "192x192",
             "type": "image/png",
             "purpose": "any maskable"
         },
         {
-            "src": "/neptune_icon_sized.png",
+            "src": "/neptune_icon.png",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any maskable"

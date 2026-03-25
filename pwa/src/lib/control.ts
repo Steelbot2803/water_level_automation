@@ -1,13 +1,11 @@
 import {
-	PUBLIC_MQTT_CLIENT_ID_PREFIX,
-	PUBLIC_MQTT_COMMAND_TOPIC,
 	PUBLIC_MQTT_HOST,
-	PUBLIC_MQTT_PASSWORD,
-	PUBLIC_MQTT_PATH,
 	PUBLIC_MQTT_PORT,
+	PUBLIC_MQTT_PATH,
+	PUBLIC_MQTT_USE_SSL,
+	PUBLIC_MQTT_COMMAND_TOPIC,
 	PUBLIC_MQTT_STATUS_TOPIC,
-	PUBLIC_MQTT_USERNAME,
-	PUBLIC_MQTT_USE_SSL
+	PUBLIC_MQTT_CLIENT_ID_PREFIX
 } from '$env/static/public';
 
 import {
@@ -27,10 +25,21 @@ import {
 } from './types.js';
 
 const refillLevels = new Set(['critical', 'low']);
-const defaultWebSocketPorts = {
-	secure: '8884',
-	insecure: '8000'
-} as const;
+
+// All connection details come from .env — only credentials are user-supplied.
+// These are treated as read-only constants after app boot.
+const HARDCODED_HOST = PUBLIC_MQTT_HOST?.trim() ?? '';
+const HARDCODED_PORT = PUBLIC_MQTT_PORT?.trim() || '8884';
+const HARDCODED_PATH = (() => {
+	const p = PUBLIC_MQTT_PATH ?? '/mqtt';
+	const t = p.trim();
+	if (!t) return '/mqtt';
+	return t.startsWith('/') ? t : `/${t}`;
+})();
+const HARDCODED_USE_SSL = PUBLIC_MQTT_USE_SSL?.toLowerCase() !== 'false';
+const HARDCODED_COMMAND_TOPIC = PUBLIC_MQTT_COMMAND_TOPIC ?? 'water-system/cmd';
+const HARDCODED_STATUS_TOPIC = PUBLIC_MQTT_STATUS_TOPIC ?? 'water-system/status';
+const HARDCODED_CLIENT_ID_PREFIX = PUBLIC_MQTT_CLIENT_ID_PREFIX ?? 'water-pwa';
 
 function isOneOf<T extends string>(value: unknown, values: readonly T[]): value is T {
 	return typeof value === 'string' && (values as readonly string[]).includes(value);
@@ -40,7 +49,6 @@ function readEnum<T extends string>(value: unknown, values: readonly T[], field:
 	if (!isOneOf(value, values)) {
 		throw new Error(`Invalid "${field}" value in MQTT status payload`);
 	}
-
 	return value;
 }
 
@@ -48,77 +56,63 @@ function readBoolean(value: unknown, field: string): boolean {
 	if (typeof value !== 'boolean') {
 		throw new Error(`Invalid "${field}" value in MQTT status payload`);
 	}
-
 	return value;
-}
-
-function normalizePath(path: string) {
-	const trimmed = path.trim();
-	if (!trimmed) return '/mqtt';
-	return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
 }
 
 function fallbackMotorStatus(activeMotor: ActiveMotor, motor: 'borewell' | 'sump') {
 	return activeMotor === motor ? 'running' : 'stopped';
 }
 
-function defaultPort(useSSL: boolean) {
-	return useSSL ? defaultWebSocketPorts.secure : defaultWebSocketPorts.insecure;
-}
-
-export function createDefaultBrokerSettings(): BrokerSettings {
-	const useSSL = PUBLIC_MQTT_USE_SSL?.toLowerCase() !== 'false';
-
+// Returns a full BrokerSettings object using hardcoded infrastructure values
+// and whatever credentials the user has saved (or empty strings by default).
+export function createDefaultBrokerSettings(
+	overrides: Pick<BrokerSettings, 'username' | 'password'> = { username: '', password: '' }
+): BrokerSettings {
 	return {
-		host: PUBLIC_MQTT_HOST?.trim() ?? '',
-		port: PUBLIC_MQTT_PORT?.trim() || defaultPort(useSSL),
-		path: normalizePath(PUBLIC_MQTT_PATH ?? '/mqtt'),
-		username: PUBLIC_MQTT_USERNAME ?? '',
-		password: PUBLIC_MQTT_PASSWORD ?? '',
-		useSSL,
-		commandTopic: PUBLIC_MQTT_COMMAND_TOPIC ?? 'water-system/cmd',
-		statusTopic: PUBLIC_MQTT_STATUS_TOPIC ?? 'water-system/status',
-		clientIdPrefix: PUBLIC_MQTT_CLIENT_ID_PREFIX ?? 'water-pwa'
+		host: HARDCODED_HOST,
+		port: HARDCODED_PORT,
+		path: HARDCODED_PATH,
+		useSSL: HARDCODED_USE_SSL,
+		commandTopic: HARDCODED_COMMAND_TOPIC,
+		statusTopic: HARDCODED_STATUS_TOPIC,
+		clientIdPrefix: HARDCODED_CLIENT_ID_PREFIX,
+		username: overrides.username,
+		password: overrides.password
 	};
 }
 
+// No user-facing sanitization needed for hardcoded fields.
+// We still expose this for the system store which calls it on connect.
 export function sanitizeBrokerSettings(settings: BrokerSettings): BrokerSettings {
 	return {
 		...settings,
-		host: settings.host.trim(),
-		port: settings.port.trim(),
-		path: normalizePath(settings.path)
+		host: HARDCODED_HOST,
+		port: HARDCODED_PORT,
+		path: HARDCODED_PATH,
+		useSSL: HARDCODED_USE_SSL,
+		commandTopic: HARDCODED_COMMAND_TOPIC,
+		statusTopic: HARDCODED_STATUS_TOPIC,
+		clientIdPrefix: HARDCODED_CLIENT_ID_PREFIX
 	};
 }
 
+// Only validates that a host exists in the environment — the user can't
+// misconfigure port/SSL anymore so those checks are gone.
 export function validateBrowserBrokerSettings(settings: BrokerSettings): string | null {
-	const normalized = sanitizeBrokerSettings(settings);
-
-	if (!normalized.host) {
-		return 'Broker host is required.';
+	if (!HARDCODED_HOST) {
+		return 'Broker host is not configured. Set PUBLIC_MQTT_HOST in your .env file.';
 	}
-
-	if (normalized.useSSL && normalized.port === '8883') {
-		return 'Use HiveMQ secure WebSocket port `8884` in the PWA. Port `8883` is the Arduino MQTT/TLS port.';
-	}
-
-	if (!normalized.useSSL && normalized.port === '1883') {
-		return 'Use a WebSocket listener for the PWA. Port `1883` is raw MQTT, not browser WebSockets.';
-	}
-
 	return null;
 }
 
 export function buildBrokerUrl(settings: BrokerSettings) {
-	const normalized = sanitizeBrokerSettings(settings);
-	const protocol = normalized.useSSL ? 'wss' : 'ws';
-	const port = normalized.port ? `:${normalized.port}` : '';
-	return `${protocol}://${normalized.host}${port}${normalized.path}`;
+	const protocol = HARDCODED_USE_SSL ? 'wss' : 'ws';
+	const port = HARDCODED_PORT ? `:${HARDCODED_PORT}` : '';
+	return `${protocol}://${HARDCODED_HOST}${port}${HARDCODED_PATH}`;
 }
 
 export function parseArduinoStatusPayload(rawPayload: string): ArduinoStatusPayload {
 	let parsed: unknown;
-
 	try {
 		parsed = JSON.parse(rawPayload);
 	} catch {
@@ -138,45 +132,28 @@ export function parseArduinoStatusPayload(rawPayload: string): ArduinoStatusPayl
 		motor: readEnum(payload.motor, activeMotors, 'motor')
 	};
 
-	if (payload.manual_target !== undefined) {
+	if (payload.manual_target !== undefined)
 		status.manual_target = readEnum(payload.manual_target, activeMotors, 'manual_target');
-	}
-
-	if (payload.borewell_status !== undefined) {
+	if (payload.borewell_status !== undefined)
 		status.borewell_status = readEnum(
 			payload.borewell_status,
 			motorRuntimeStatuses,
 			'borewell_status'
 		);
-	}
-
-	if (payload.sump_status !== undefined) {
+	if (payload.sump_status !== undefined)
 		status.sump_status = readEnum(payload.sump_status, motorRuntimeStatuses, 'sump_status');
-	}
-
-	if (payload.sump_warning !== undefined) {
+	if (payload.sump_warning !== undefined)
 		status.sump_warning = readBoolean(payload.sump_warning, 'sump_warning');
-	}
-
-	if (payload.emergency_stop !== undefined) {
+	if (payload.emergency_stop !== undefined)
 		status.emergency_stop = readBoolean(payload.emergency_stop, 'emergency_stop');
-	}
-
-	if (payload.auto_prefer_sump !== undefined) {
+	if (payload.auto_prefer_sump !== undefined)
 		status.auto_prefer_sump = readBoolean(payload.auto_prefer_sump, 'auto_prefer_sump');
-	}
-	if (payload.wifi_status !== undefined) {
-		status.wifi_status = readEnum(
-			payload.wifi_status,
-			wifiConnectionPhases, // you need to add this constant — see below
-			'wifi_status'
-		);
-	}
-	if (payload.mqtt_connected !== undefined) {
+	if (payload.wifi_status !== undefined)
+		status.wifi_status = readEnum(payload.wifi_status, wifiConnectionPhases, 'wifi_status');
+	if (payload.mqtt_connected !== undefined)
 		status.mqtt_status = readBoolean(payload.mqtt_connected, 'mqtt_connected')
 			? 'connected'
 			: 'disconnected';
-	}
 
 	return status;
 }
@@ -210,14 +187,8 @@ export function toDeviceTelemetry(rawPayload: string, receivedAt = Date.now()): 
 			emergencyStop: parsed.emergency_stop ?? false
 		},
 		motors: {
-			borewell: {
-				active: parsed.motor === 'borewell',
-				status: borewellStatus
-			},
-			sump: {
-				active: parsed.motor === 'sump',
-				status: sumpTransferStatus
-			}
+			borewell: { active: parsed.motor === 'borewell', status: borewellStatus },
+			sump: { active: parsed.motor === 'sump', status: sumpTransferStatus }
 		}
 	};
 }
@@ -230,7 +201,6 @@ export function createClientId(prefix: string) {
 	if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
 		return `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
 	}
-
 	return `${prefix}-${Date.now().toString(36)}`;
 }
 
@@ -271,40 +241,37 @@ export const commandLabels: Record<ArduinoCommand, string> = {
 	'reset state': 'Reset State'
 };
 
+// Encodes only credentials into the QR payload — everything else is hardcoded
+// on the receiving device too, so there's nothing else to transmit.
 export function encodeBrokerSettingsAsQR(settings: BrokerSettings): string {
 	const params = new URLSearchParams({
 		username: settings.username,
 		password: settings.password
 	});
-	return `${params.toString()}`;
+	return params.toString();
 }
 
+// Decodes a QR produced by encodeBrokerSettingsAsQR.
+// No host check — the QR only carries credentials.
+// Returns null only if the payload is completely unparseable.
 export function decodeBrokerSettingsFromQR(raw: string): Partial<BrokerSettings> | null {
 	try {
+		// Support both bare query strings ("username=x&password=y")
+		// and full URLs that happen to include a query string.
 		const queryStart = raw.indexOf('?');
-		if (queryStart === -1) return null;
+		const queryString = queryStart === -1 ? raw : raw.slice(queryStart + 1);
+		const params = new URLSearchParams(queryString);
 
-		const params = new URLSearchParams(raw.slice(queryStart + 1));
-		const host = params.get('host');
-		if (!host) return null;
-
-		const result: Partial<BrokerSettings> = { host };
-		const port = params.get('port');
-		const path = params.get('path');
 		const username = params.get('username');
 		const password = params.get('password');
-		const ssl = params.get('ssl');
-		const cmd = params.get('cmd');
-		const status = params.get('status');
 
-		if (port) result.port = port;
-		if (path) result.path = path;
-		if (username) result.username = username;
-		if (password) result.password = password;
-		if (ssl !== null) result.useSSL = ssl === '1';
-		if (cmd) result.commandTopic = cmd;
-		if (status) result.statusTopic = status;
+		// Require at least one credential field to be present so we don't
+		// accidentally accept random QR codes from other apps.
+		if (username === null && password === null) return null;
 
+		const result: Partial<BrokerSettings> = {};
+		if (username !== null) result.username = username;
+		if (password !== null) result.password = password;
 		return result;
 	} catch {
 		return null;

@@ -1,6 +1,6 @@
 import { browser } from '$app/environment';
 import mqtt, { type MqttClient } from 'mqtt';
-import { get, writable } from 'svelte/store';
+import { derived, get, writable } from 'svelte/store';
 
 import {
 	buildBrokerUrl,
@@ -23,49 +23,46 @@ const CONNECTION_TIMEOUT_MS = 15000;
 const MAX_RECONNECT_ATTEMPTS = 10;
 const RECONNECT_PERIOD_MS = 5000;
 
-const SETTINGS_STORAGE_KEY = 'broker_settings';
+const CREDENTIALS_STORAGE_KEY = 'broker_credentials';
 
-function loadStoredSettings(): Partial<BrokerSettings> {
+function loadStoredCredentials(): Pick<BrokerSettings, 'username' | 'password'> {
 	try {
-		const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-		return raw ? (JSON.parse(raw) as Partial<BrokerSettings>) : {};
+		const raw = localStorage.getItem(CREDENTIALS_STORAGE_KEY);
+		if (!raw) return { username: '', password: '' };
+		const parsed = JSON.parse(raw) as Partial<BrokerSettings>;
+		return { username: parsed.username ?? '', password: parsed.password ?? '' };
 	} catch {
-		return {};
+		return { username: '', password: '' };
 	}
 }
 
-function saveSettings(settings: BrokerSettings) {
+function saveCredentials(settings: BrokerSettings) {
 	try {
-		localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
-	} catch {
-		// storage blocked in some private browsing configs
-	}
+		localStorage.setItem(
+			CREDENTIALS_STORAGE_KEY,
+			JSON.stringify({ username: settings.username, password: settings.password })
+		);
+	} catch {}
+}
+
+function clearStoredCredentials() {
+	try {
+		localStorage.removeItem(CREDENTIALS_STORAGE_KEY);
+	} catch {}
 }
 
 function appendCommandLog(history: CommandLogEntry[], entry: CommandLogEntry) {
 	return [entry, ...history].slice(0, COMMAND_HISTORY_LIMIT);
 }
 
-function sameSettings(a: BrokerSettings | null, b: BrokerSettings) {
+function sameCredentials(a: BrokerSettings | null, b: BrokerSettings) {
 	if (!a) return false;
-
-	return (
-		a.host === b.host &&
-		a.port === b.port &&
-		a.path === b.path &&
-		a.username === b.username &&
-		a.password === b.password &&
-		a.useSSL === b.useSSL &&
-		a.commandTopic === b.commandTopic &&
-		a.statusTopic === b.statusTopic &&
-		a.clientIdPrefix === b.clientIdPrefix
-	);
+	return a.username === b.username && a.password === b.password;
 }
 
 function createInitialState(): WaterAutomationState {
-	const envSettings = createDefaultBrokerSettings();
-	const stored = browser ? loadStoredSettings() : {};
-	const settings: BrokerSettings = { ...envSettings, ...stored };
+	const credentials = browser ? loadStoredCredentials() : { username: '', password: '' };
+	const settings = createDefaultBrokerSettings(credentials);
 	const url = settings.host ? buildBrokerUrl(settings) : '';
 	const configurationError = validateBrowserBrokerSettings(settings);
 
@@ -80,16 +77,12 @@ function createInitialState(): WaterAutomationState {
 			lastConnectedAt: undefined,
 			lastError: undefined
 		},
-		arduinoMQTTConnection: {
-			mqttPhase: 'unknown'
-		},
+		arduinoMQTTConnection: { mqttPhase: 'unknown' },
 		mqttConnection: {
 			mqttPhase: configurationError ? 'error' : 'idle',
 			detail:
 				configurationError ??
-				(settings.host
-					? `Auto-connect is configured for ${url}.`
-					: 'Set the HiveMQ WebSocket values in `pwa/.env` and reload the app.'),
+				(settings.host ? `Ready to connect to ${url}.` : 'Set PUBLIC_MQTT_HOST in your .env file.'),
 			url,
 			lastError: configurationError ?? undefined
 		},
@@ -107,7 +100,6 @@ function createWaterSystemStore() {
 
 	function closeClient() {
 		if (!client) return;
-
 		const activeClient = client;
 		client = null;
 		activeSettings = null;
@@ -136,7 +128,7 @@ function createWaterSystemStore() {
 			return;
 		}
 
-		if (client?.connected && sameSettings(activeSettings, settings)) {
+		if (client?.connected && sameCredentials(activeSettings, settings)) {
 			update((state) => ({
 				...state,
 				mqttConnection: {
@@ -187,7 +179,6 @@ function createWaterSystemStore() {
 			function failAndStop(detail: string, lastError?: string) {
 				if (client !== nextClient || retriesExhausted) return;
 				retriesExhausted = true;
-
 				update((state) => ({
 					...state,
 					statusTopicSubscribed: false,
@@ -199,14 +190,12 @@ function createWaterSystemStore() {
 						lastError: lastError ?? state.mqttConnection.lastError
 					}
 				}));
-
 				closeClient();
 			}
 
 			nextClient.on('connect', () => {
 				if (client !== nextClient) return;
 				reconnectAttempts = 0;
-
 				update((state) => ({
 					...state,
 					statusTopicSubscribed: false,
@@ -214,24 +203,18 @@ function createWaterSystemStore() {
 					mqttConnection: {
 						...state.mqttConnection,
 						mqttPhase: 'connected',
-						detail: `Connected to ${url}. Subscribing to ${settings.statusTopic}.`,
+						detail: `Connected. Subscribing to ${settings.statusTopic}.`,
 						url,
 						lastConnectedAt: Date.now(),
 						lastError: undefined
 					}
 				}));
-
 				nextClient.subscribe(settings.statusTopic, (error) => {
 					if (client !== nextClient) return;
-
 					if (error) {
-						failAndStop(
-							'Connected, but status subscription failed. Pull to refresh to try again.',
-							error.message
-						);
+						failAndStop('Connected, but subscription failed. Try again.', error.message);
 						return;
 					}
-
 					update((state) => ({
 						...state,
 						statusTopicSubscribed: true,
@@ -246,15 +229,13 @@ function createWaterSystemStore() {
 			nextClient.on('reconnect', () => {
 				if (client !== nextClient || retriesExhausted) return;
 				reconnectAttempts += 1;
-
 				if (reconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
 					failAndStop(
-						`Unable to reconnect after ${MAX_RECONNECT_ATTEMPTS} attempts. Pull to refresh to try again.`,
-						`Reconnect limit exceeded after ${MAX_RECONNECT_ATTEMPTS} attempts`
+						`Unable to reconnect after ${MAX_RECONNECT_ATTEMPTS} attempts.`,
+						'Reconnect limit exceeded'
 					);
 					return;
 				}
-
 				update((state) => ({
 					...state,
 					statusTopicSubscribed: false,
@@ -262,7 +243,7 @@ function createWaterSystemStore() {
 					mqttConnection: {
 						...state.mqttConnection,
 						mqttPhase: 'reconnecting',
-						detail: `Retrying broker connection (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}).`,
+						detail: `Retrying (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})…`,
 						lastError: state.mqttConnection.lastError
 					}
 				}));
@@ -270,7 +251,6 @@ function createWaterSystemStore() {
 
 			nextClient.on('offline', () => {
 				if (client !== nextClient || retriesExhausted) return;
-
 				update((state) => ({
 					...state,
 					statusTopicSubscribed: false,
@@ -280,8 +260,8 @@ function createWaterSystemStore() {
 						mqttPhase: reconnectAttempts > 0 ? 'reconnecting' : 'offline',
 						detail:
 							reconnectAttempts > 0
-								? `Retrying broker connection (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}).`
-								: 'Broker connection is offline. Retrying automatically.',
+								? `Retrying (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})…`
+								: 'Broker offline. Retrying automatically.',
 						lastError: state.mqttConnection.lastError
 					}
 				}));
@@ -289,7 +269,6 @@ function createWaterSystemStore() {
 
 			nextClient.on('close', () => {
 				if (client !== nextClient || retriesExhausted) return;
-
 				update((state) => ({
 					...state,
 					statusTopicSubscribed: false,
@@ -299,8 +278,8 @@ function createWaterSystemStore() {
 						mqttPhase: reconnectAttempts > 0 ? 'reconnecting' : 'offline',
 						detail:
 							reconnectAttempts > 0
-								? `Retrying broker connection (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}).`
-								: 'Broker connection closed. Retrying automatically.',
+								? `Retrying (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})…`
+								: 'Connection closed. Retrying automatically.',
 						lastError: state.mqttConnection.lastError
 					}
 				}));
@@ -308,7 +287,6 @@ function createWaterSystemStore() {
 
 			nextClient.on('error', (error) => {
 				if (client !== nextClient || retriesExhausted) return;
-
 				update((state) => ({
 					...state,
 					mqttConnection: {
@@ -316,8 +294,8 @@ function createWaterSystemStore() {
 						mqttPhase: reconnectAttempts > 0 ? 'reconnecting' : 'connecting',
 						detail:
 							reconnectAttempts > 0
-								? `Retry ${reconnectAttempts} of ${MAX_RECONNECT_ATTEMPTS} failed. Retrying automatically.`
-								: 'Initial broker connection failed. Retrying automatically.',
+								? `Retry ${reconnectAttempts} of ${MAX_RECONNECT_ATTEMPTS} failed.`
+								: 'Connection failed. Retrying automatically.',
 						lastError: error.message || 'MQTT client error'
 					}
 				}));
@@ -325,10 +303,8 @@ function createWaterSystemStore() {
 
 			nextClient.on('message', (topic, payload) => {
 				if (client !== nextClient || topic !== settings.statusTopic) return;
-
 				const rawPayload =
 					typeof payload === 'string' ? payload : new TextDecoder().decode(payload);
-
 				try {
 					const device = toDeviceTelemetry(rawPayload);
 					update((state) => ({
@@ -338,9 +314,7 @@ function createWaterSystemStore() {
 						wifiConnection: device.wifi_status
 							? { ...state.wifiConnection, wifiPhase: device.wifi_status }
 							: state.wifiConnection,
-						arduinoMQTTConnection: {
-							mqttPhase: device.mqtt_status ?? 'unknown'
-						},
+						arduinoMQTTConnection: { mqttPhase: device.mqtt_status ?? 'unknown' },
 						mqttConnection: {
 							...state.mqttConnection,
 							mqttPhase: 'connected',
@@ -352,14 +326,6 @@ function createWaterSystemStore() {
 				} catch (error) {
 					const message = error instanceof Error ? error.message : 'Unknown payload parse failure';
 					console.warn('[system] MQTT payload parse failure:', message, rawPayload);
-					update((state) => ({
-						...state,
-						mqttConnection: {
-							...state.mqttConnection,
-							detail: `Warning: received unparseable status payload. Waiting for next message.`,
-							lastError: message
-						}
-					}));
 				}
 			});
 
@@ -385,40 +351,34 @@ function createWaterSystemStore() {
 		const at = Date.now();
 		const id = createCommandLogId(command, at);
 		const topic = activeSettings?.commandTopic ?? get({ subscribe }).settings.commandTopic;
-
 		if (!client || !client.connected || !activeSettings) {
-			const entry: CommandLogEntry = {
-				id,
-				at,
-				command,
-				status: 'failed',
-				error: 'Broker is not connected'
-			};
-
 			update((state) => ({
 				...state,
-				recentCommands: appendCommandLog(state.recentCommands, entry)
+				recentCommands: appendCommandLog(state.recentCommands, {
+					id,
+					at,
+					command,
+					status: 'failed',
+					error: 'Broker is not connected'
+				})
 			}));
 			return;
 		}
-
 		client.publish(topic, command, (error) => {
-			const entry: CommandLogEntry = {
-				id,
-				at,
-				command,
-				status: error ? 'failed' : 'sent',
-				error: error?.message
-			};
-
 			update((state) => ({
 				...state,
-				recentCommands: appendCommandLog(state.recentCommands, entry),
+				recentCommands: appendCommandLog(state.recentCommands, {
+					id,
+					at,
+					command,
+					status: error ? 'failed' : 'sent',
+					error: error?.message
+				}),
 				mqttConnection: error
 					? {
 							...state.mqttConnection,
 							mqttPhase: 'error',
-							detail: `Failed to publish ${command} to ${topic}.`,
+							detail: `Failed to publish ${command}.`,
 							lastError: error.message
 						}
 					: state.mqttConnection
@@ -428,14 +388,12 @@ function createWaterSystemStore() {
 
 	function initialize() {
 		if (!browser || initialized) {
-			if (!browser) {
-				update((state) => ({ ...state, initialized: true }));
-			}
+			if (!browser) update((state) => ({ ...state, initialized: true }));
 			return;
 		}
-
 		initialized = true;
-		const settings = sanitizeBrokerSettings(createDefaultBrokerSettings());
+		const credentials = loadStoredCredentials();
+		const settings = createDefaultBrokerSettings(credentials);
 		const url = settings.host ? buildBrokerUrl(settings) : '';
 		const configurationError = validateBrowserBrokerSettings(settings);
 
@@ -446,33 +404,56 @@ function createWaterSystemStore() {
 			mqttConnection: {
 				...state.mqttConnection,
 				mqttPhase: configurationError ? 'error' : 'idle',
-				detail:
-					configurationError ??
-					(settings.host
-						? `Auto-connecting to ${url}.`
-						: 'Set the HiveMQ WebSocket values in `pwa/.env` and reload the app.'),
+				detail: configurationError ?? (settings.host ? 'Ready.' : 'Set PUBLIC_MQTT_HOST in .env.'),
 				url,
 				lastError: configurationError ?? undefined
 			}
 		}));
 
-		if (!configurationError && settings.host) {
+		// Don't auto-connect with empty credentials — just stay on the login screen.
+		const hasCreds = !!(credentials.username || credentials.password);
+		if (!configurationError && settings.host && hasCreds) {
 			void connect();
 		}
 	}
 
 	function updateSettings(next: BrokerSettings) {
-		saveSettings(next);
-		update((state) => ({ ...state, settings: next }));
+		saveCredentials(next);
+		update((state) => ({
+			...state,
+			settings: createDefaultBrokerSettings({ username: next.username, password: next.password })
+		}));
 		void connect();
 	}
 
-	return {
-		subscribe,
-		initialize,
-		sendCommand,
-		updateSettings
-	};
+	// Wipes credentials and drops the connection so the login screen re-appears.
+	function clearCredentials() {
+		closeClient();
+		clearStoredCredentials();
+		update((state) => ({
+			...state,
+			device: null,
+			telemetryReady: false,
+			statusTopicSubscribed: false,
+			settings: createDefaultBrokerSettings({ username: '', password: '' }),
+			mqttConnection: {
+				...state.mqttConnection,
+				mqttPhase: 'idle',
+				detail: 'Credentials cleared.',
+				lastError: undefined
+			}
+		}));
+	}
+
+	return { subscribe, initialize, sendCommand, updateSettings, clearCredentials };
 }
 
 export const waterSystem = createWaterSystemStore();
+
+// Drives the login-screen gate in +page.svelte.
+// True as soon as the user has any credential string saved,
+// regardless of whether the connection has succeeded yet.
+export const hasCredentials = derived(
+	waterSystem,
+	($s) => !!($s.settings.username || $s.settings.password)
+);
