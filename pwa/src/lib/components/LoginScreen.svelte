@@ -67,7 +67,7 @@
 		<div
 			class="flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-cyan-500 shadow-lg shadow-cyan-200"
 		>
-			<link rel="icon" href="%sveltekit.assets%/neptune_icon.png" />
+			<img src="%sveltekit.assets%/neptune_icon.png" alt="Neptune logo" class="h-8 w-8" />
 		</div>
 		<div class="text-center">
 			<h1 class="text-3xl font-semibold tracking-tight text-slate-900 uppercase">Neptune</h1>
@@ -122,7 +122,7 @@
 				</button>
 			</div>
 		{:else}
-			<form class="space-y-3">
+			<form id="connection-credentials" name="Connection Credentials" class="space-y-3">
 				<div class="space-y-3">
 					<input
 						type="text"
@@ -139,7 +139,6 @@
 								placeholder="Password"
 								bind:value={password}
 								autocomplete="current-password"
-								onkeydown={(e) => e.key === 'Enter' && handleSubmit()}
 								class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 pr-12 text-sm text-slate-800 placeholder:text-slate-400 focus:border-cyan-300 focus:outline-none"
 							/>
 						{:else}
@@ -148,7 +147,6 @@
 								placeholder="Password"
 								bind:value={password}
 								autocomplete="current-password"
-								onkeydown={(e) => e.key === 'Enter' && handleSubmit()}
 								class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 pr-12 text-sm text-slate-800 placeholder:text-slate-400 focus:border-cyan-300 focus:outline-none"
 							/>
 						{/if}
