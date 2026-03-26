@@ -2,10 +2,13 @@
 
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import { X, RotateCw, RotateCcw, LogOut } from 'lucide-svelte';
+	import { X, RotateCw, RotateCcw, LogOut, QrCode } from 'lucide-svelte';
 	import { theme, themeIcons, type ThemePreference } from '$lib/stores/theme.js';
 	import { notificationPrefs, notificationLabels } from '$lib/stores/notifications.js';
 	import { waterSystem } from '$lib/stores/system.js';
+	import { encodeBrokerSettingsAsQR } from '$lib/control.js';
+	import type { BrokerSettings } from '$lib/types.js';
+	import QRCode from 'qrcode';
 
 	let { open = $bindable(false) }: { open: boolean } = $props();
 
@@ -31,6 +34,8 @@
 	let resetTimer: ReturnType<typeof setTimeout> | null = null;
 	let stateResetTimer: ReturnType<typeof setTimeout> | null = null;
 	let disconnectTimer: ReturnType<typeof setTimeout> | null = null;
+	let qrDataUrl = $state<string | null>(null);
+	let qrOpen = $state(false);
 
 	function handleReset() {
 		if (!resetConfirming) {
@@ -105,6 +110,17 @@
 		document.body.style.touchAction = '';
 	}
 
+	async function openQr() {
+		const encoded = encodeBrokerSettingsAsQR($waterSystem.settings);
+		qrDataUrl = await QRCode.toDataURL(encoded, { width: 200, margin: 2 });
+		qrOpen = true;
+	}
+
+	function closeQr() {
+		qrOpen = false;
+		qrDataUrl = null;
+	}
+
 	$effect(() => {
 		if (open) {
 			lockPageScroll();
@@ -150,6 +166,32 @@
 	<div
 		class="min-h-0 flex-1 [touch-action:pan-y] space-y-6 overflow-y-auto overscroll-contain px-5 py-4 [-webkit-overflow-scrolling:touch]"
 	>
+		<!-- QR Code -->
+		<section>
+			{#if !qrOpen}
+				<button
+					onclick={() => openQr()}
+					class="mb-2 flex min-h-10 w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-base font-semibold tracking-[0.14em] text-slate-700 uppercase shadow-sm transition hover:bg-slate-100 active:scale-[0.985]"
+				>
+					<QrCode size={18} /> Credentials QR</button
+				>
+			{:else}
+				<button
+					onclick={() => closeQr()}
+					class="mb-2 flex min-h-10 w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-base font-semibold tracking-[0.14em] text-slate-700 uppercase shadow-sm transition hover:bg-slate-100 active:scale-[0.985]"
+				>
+					<X size={18} /> Close
+				</button>
+			{/if}
+
+			{#if qrDataUrl}
+				<img
+					src={qrDataUrl}
+					alt="Credentials QR code"
+					class="mx-auto mt-2 h-2/3 w-2/3 rounded-xl"
+				/>
+			{/if}
+		</section>
 		<!-- Theme -->
 		<section>
 			<p class="mb-3 text-xs font-semibold tracking-[0.2em] text-slate-400 uppercase">Theme</p>

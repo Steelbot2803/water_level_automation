@@ -16,7 +16,7 @@
 	import type { BrokerSettings } from '$lib/types.js';
 	import QrScanner from '$lib/components/QrScanner.svelte';
 	import QRCode from 'qrcode';
-    import logo from '$lib/img/neptune_icon.png';
+	import logo from '$lib/img/neptune_icon.png';
 
 	let username = $state('');
 	let password = $state('');
@@ -49,14 +49,6 @@
 			username,
 			password
 		});
-	}
-
-	async function openQr() {
-		// Only show QR if there are credentials worth sharing
-		if (!$waterSystem.settings.username && !$waterSystem.settings.password) return;
-		const encoded = encodeBrokerSettingsAsQR($waterSystem.settings);
-		qrDataUrl = await QRCode.toDataURL(encoded, { width: 200, margin: 2 });
-		qrOpen = true;
 	}
 </script>
 
@@ -97,30 +89,10 @@
 		{#if scannerOpen}
 			<!-- QR scanner replaces the form temporarily -->
 			<div
-				class="overflow-hidden rounded-2xl border border-slate-200 bg-black"
-				style="height: 220px;"
+				class="overflow-hidden rounded-2xl border-2 border-slate-200 bg-black"
+				style="height: 320px;"
 			>
 				<QrScanner inline onResult={handleQrResult} onClose={() => (scannerOpen = false)} />
-			</div>
-			<button
-				onclick={() => (scannerOpen = false)}
-				class="mt-3 w-full rounded-full border border-slate-200 bg-slate-50 py-2.5 text-sm font-semibold tracking-[0.12em] text-slate-500 uppercase transition hover:bg-slate-100"
-			>
-				Cancel
-			</button>
-		{:else if qrOpen && qrDataUrl}
-			<div class="flex flex-col items-center gap-3 py-2">
-				<img src={qrDataUrl} alt="Credentials QR code" class="h-40 w-40 rounded-xl" />
-				<p class="text-xs tracking-widest text-slate-400 uppercase">Scan from another device</p>
-				<button
-					onclick={() => {
-						qrOpen = false;
-						qrDataUrl = null;
-					}}
-					class="mt-1 w-full rounded-full border border-slate-200 bg-slate-50 py-2.5 text-sm font-semibold tracking-[0.12em] text-slate-500 uppercase transition hover:bg-slate-100"
-				>
-					Done
-				</button>
 			</div>
 		{:else}
 			<form id="connection-credentials" name="Connection Credentials" class="space-y-3">

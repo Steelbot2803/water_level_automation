@@ -145,8 +145,8 @@
 				CSS transition handles the colour change smoothly — no JS animation loop needed.
 			-->
 			<div
-				class={`mt-4 rounded-xl border-2 shadow-[0_0_0_9999px_rgba(255,255,255,0.45)] transition-colors duration-150
-					${inline ? 'h-32 w-32' : 'h-56 w-56'}
+				class={`mt-4 h-2/3 w-2/3 rounded-xl border-3 shadow-[0_0_0_9999px_rgba(255,255,255,0.45)]
+					transition-colors duration-150
 					${borderFlash ? 'border-amber-400' : 'border-black/70'}`}
 			></div>
 		</div>
