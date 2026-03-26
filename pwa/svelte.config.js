@@ -17,6 +17,18 @@ function getAdapter() {
 
 export default {
 	kit: {
-		adapter: getAdapter()
+		adapter: getAdapter(),
+		serviceWorker: {
+			register: true,
+			files: (filepath) => {
+				if (
+					filepath.endsWith('.map') ||
+					filepath.includes('hot-update') ||
+					filepath.includes('dev')
+				)
+					return false;
+				return true;
+			}
+		}
 	}
 };

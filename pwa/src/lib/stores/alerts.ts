@@ -176,14 +176,7 @@ function initialize() {
 	const handleMediaChange = () => refreshEnvironmentState();
 
 	mediaQuery.addEventListener('change', handleMediaChange);
-
-	if ('serviceWorker' in navigator) {
-		serviceWorkerRegistration = navigator.serviceWorker
-			.register('/service-worker.js')
-			.then(() => navigator.serviceWorker.ready)
-			.catch(() => null);
-	}
-
+	
 	const handleFirstGesture = () => {
 		void requestNotificationPermission();
 	};

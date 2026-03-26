@@ -2,6 +2,7 @@
 
 <script lang="ts">
 	import type { OverheadLevel, SumpLevel } from '$lib/types.js';
+	import { LoaderCircle } from 'lucide-svelte';
 
 	type TankVariant = 'overhead' | 'sump';
 
@@ -68,6 +69,18 @@
 					: level === 'high'
 						? 'border-emerald-300'
 						: 'border-slate-300'
+	);
+
+	const textTone = $derived(
+		level === 'critical'
+			? 'text-rose-600'
+			: level === 'low'
+				? 'text-amber-600'
+				: level === 'medium'
+					? 'text-cyan-600'
+					: level === 'high'
+						? 'text-emerald-600'
+						: 'text-slate-950'
 	);
 
 	// CSS custom properties fed into the wave overlay classes so the shimmer
@@ -145,6 +158,11 @@
 					<div class="wave-foam absolute inset-x-0 top-0 h-5"></div>
 				</div>
 			</div>
+			{#if level == null}
+				<div class="absolute inset-0 flex items-center justify-center">
+					<LoaderCircle size={70} class="animate-spin text-slate-300" />
+				</div>
+			{/if}
 		</div>
 
 		<!-- Text summary below the tank -->
@@ -153,11 +171,7 @@
 				{isOverhead ? 'Overhead' : 'Sump'}
 			</p>
 			<p
-				class="mt-1 text-2xl font-semibold uppercase transition-colors duration-700"
-				class:text-rose-600={level === 'critical'}
-				class:text-amber-600={level === 'low'}
-				class:text-cyan-600={level === 'medium'}
-				class:text-emerald-600={level === 'high'}
+				class="mt-1 text-2xl font-semibold uppercase transition-colors duration-700 {textTone}"
 			>
 				{level ?? '--'}
 			</p>
@@ -209,7 +223,7 @@
 
 	.wave-ripple {
 		background: repeating-linear-gradient(
-			105deg,
+			170deg,
 			transparent 0px,
 			var(--wave-streak) 4px,
 			var(--wave-streak) 8px,

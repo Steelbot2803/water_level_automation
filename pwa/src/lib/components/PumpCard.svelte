@@ -1,7 +1,7 @@
 <svelte:options runes={true} />
 
 <script lang="ts">
-	import { Aperture, Lock, TriangleAlert } from 'lucide-svelte';
+	import { Aperture, LoaderCircle, Lock, TriangleAlert } from 'lucide-svelte';
 	import type { MotorRuntimeStatus } from '$lib/types.js';
 	import { runtimeStatusLabels } from '$lib/control.js';
 
@@ -25,8 +25,15 @@
 	const isLocked = $derived(
 		resolvedStatus === 'dry_run_lock' || resolvedStatus === 'sump_critical'
 	);
+	const isNull = $derived(status == null || status === undefined);
 
-	const StatusIcon = $derived(resolvedStatus === 'dry_run_lock' ? Lock : TriangleAlert);
+	const StatusIcon = $derived(
+		resolvedStatus === 'dry_run_lock'
+			? Lock
+			: resolvedStatus === 'sump_critical'
+				? TriangleAlert
+				: LoaderCircle
+	);
 
 	const ringClass = $derived(
 		isRunning
@@ -56,6 +63,20 @@
 				: isLocked
 					? 'text-rose-950/65'
 					: 'text-slate-950/55'
+	);
+
+	const labelClass = $derived(
+		isRunning
+			? 'text-emerald-600'
+			: isStarting
+				? 'text-amber-600'
+				: isLocked
+					? 'text-rose-600'
+					: 'text-slate-950'
+	);
+
+	const iconClass = $derived(
+		StatusIcon === Lock || StatusIcon === TriangleAlert ? 'text-rose-700' : 'text-slate-300'
 	);
 
 	const discGradient = $derived(
@@ -212,9 +233,23 @@
 				</div>
 
 				{#if isLocked}
-					<div class="absolute inset-[0.62rem] rounded-full bg-rose-950/25 backdrop-blur-[1px]">
+					<div class="bg-black-950/25 absolute inset-[0.62rem] rounded-full backdrop-blur-md">
+						<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-4/7">
+							<StatusIcon
+								size={50}
+								class={`drop-shadow-[0_1px_1px_rgba(255,255,255,0.25)] ${iconClass}`}
+							/>
+						</div>
+					</div>
+				{/if}
+
+				{#if isNull}
+					<div class="bg-black-950/25 absolute inset-[0.62rem] rounded-full backdrop-blur-sm">
 						<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-							<StatusIcon size={26} class="text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.24)]" />
+							<LoaderCircle
+								size={70}
+								class={`animate-spin drop-shadow-[0_1px_1px_rgba(255,255,255,0.25)] ${iconClass}`}
+							/>
 						</div>
 					</div>
 				{/if}
@@ -229,20 +264,16 @@
 
 		<div class="w-full text-center">
 			<p class="text-xs font-semibold tracking-[0.2em] text-slate-500 uppercase">{label}</p>
-			<div class="mt-1 flex items-center justify-center gap-3">
-				<p
-					class="text-2xl font-semibold uppercase transition-colors duration-500"
-					class:text-emerald-600={isRunning}
-					class:text-amber-600={isStarting}
-					class:text-rose-600={isLocked}
-					class:text-slate-950={resolvedStatus === 'stopped'}
-				>
+			<div
+				class="mt-1 flex flex-col items-center justify-center gap-3 sm:flex-row sm:justify-between"
+			>
+				<p class="text-xl font-semibold uppercase transition-colors duration-500 {labelClass}">
 					{runtimeStatusLabels[resolvedStatus]}
 				</p>
 				{#if resolvedStatus === 'dry_run_lock' && onUnlock}
 					<button
 						type="button"
-						class="shrink-0 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-sm font-semibold tracking-[0.14em] text-rose-700 uppercase shadow-sm transition hover:bg-rose-100 active:scale-[0.98] disabled:pointer-events-none disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
+						class="mt-1 shrink-0 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-sm font-semibold tracking-[0.14em] text-rose-700 uppercase shadow-sm transition hover:bg-rose-100 active:scale-[0.98] disabled:pointer-events-none disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
 						disabled={unlockDisabled}
 						onclick={onUnlock}
 					>

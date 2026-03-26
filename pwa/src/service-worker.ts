@@ -44,10 +44,14 @@ self.addEventListener('fetch', (event) => {
 			if (cached) return cached;
 			return fetch(request).then((response) => {
 				// Only cache successful opaque-safe responses for static assets.
-				if (response.ok && url.pathname.match(/\.(js|css|png|svg|ico|woff2?)(\?|$)/)) {
-					caches.open(CACHE).then((cache) => cache.put(request, response.clone()));
+				if (!response.ok || !url.pathname.match(/\.(js|css|png|svg|ico|woff2?)(\?|$)/)) {
+					return response;
 				}
-				return response;
+				const responseClone = response.clone();
+				return caches.open(CACHE).then((cache) => {
+					cache.put(request, responseClone);
+					return response;
+				});
 			});
 		})
 	);
