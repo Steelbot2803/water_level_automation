@@ -60,8 +60,13 @@ function sameCredentials(a: BrokerSettings | null, b: BrokerSettings) {
 	return a.username === b.username && a.password === b.password;
 }
 
+// Read credentials synchronously at module evaluation time (browser only).
+// This runs before any component renders, so hasCredentials is correct on
+// the very first render — no login flash.
+const INITIAL_CREDENTIALS = browser ? loadStoredCredentials() : { username: '', password: '' };
+
 function createInitialState(): WaterAutomationState {
-	const credentials = browser ? loadStoredCredentials() : { username: '', password: '' };
+	const credentials = INITIAL_CREDENTIALS;
 	const settings = createDefaultBrokerSettings(credentials);
 	const url = settings.host ? buildBrokerUrl(settings) : '';
 	const configurationError = validateBrowserBrokerSettings(settings);
@@ -392,26 +397,16 @@ function createWaterSystemStore() {
 			return;
 		}
 		initialized = true;
-		const credentials = loadStoredCredentials();
-		const settings = createDefaultBrokerSettings(credentials);
-		const url = settings.host ? buildBrokerUrl(settings) : '';
+
+		// INITIAL_CREDENTIALS was already read at module load time, so settings
+		// are already correct in the store. We just flip the flag and connect.
+		update((state) => ({ ...state, initialized: true }));
+
+		const credentials = INITIAL_CREDENTIALS;
+		const hasCreds = !!(credentials.username || credentials.password);
+		const settings = get({ subscribe }).settings;
 		const configurationError = validateBrowserBrokerSettings(settings);
 
-		update((state) => ({
-			...state,
-			initialized: true,
-			settings,
-			mqttConnection: {
-				...state.mqttConnection,
-				mqttPhase: configurationError ? 'error' : 'idle',
-				detail: configurationError ?? (settings.host ? 'Ready.' : 'Set PUBLIC_MQTT_HOST in .env.'),
-				url,
-				lastError: configurationError ?? undefined
-			}
-		}));
-
-		// Don't auto-connect with empty credentials — just stay on the login screen.
-		const hasCreds = !!(credentials.username || credentials.password);
 		if (!configurationError && settings.host && hasCreds) {
 			void connect();
 		}
@@ -426,7 +421,6 @@ function createWaterSystemStore() {
 		void connect();
 	}
 
-	// Wipes credentials and drops the connection so the login screen re-appears.
 	function clearCredentials() {
 		closeClient();
 		clearStoredCredentials();
@@ -450,9 +444,8 @@ function createWaterSystemStore() {
 
 export const waterSystem = createWaterSystemStore();
 
-// Drives the login-screen gate in +page.svelte.
-// True as soon as the user has any credential string saved,
-// regardless of whether the connection has succeeded yet.
+// Derived from the eagerly-read INITIAL_CREDENTIALS so it is correct on the
+// very first render, before initialize() is ever called.
 export const hasCredentials = derived(
 	waterSystem,
 	($s) => !!($s.settings.username || $s.settings.password)

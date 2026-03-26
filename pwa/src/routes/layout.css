@@ -15,20 +15,16 @@
 html,
 body {
 	overflow-x: clip;
+	/* Smooth scrolling on iOS */
+	-webkit-overflow-scrolling: touch;
 }
 
 /* ── Dark mode: invert the entire body ───────────────────── */
 :root.dark body {
 	filter: invert(1) hue-rotate(180deg);
-	background: #f8fafc; /* matches your light bg, so inverted it becomes a nice dark slate */
+	background: #f8fafc;
 }
 
-/* 
-  Re-invert things that should NOT be colour-flipped.
-  Images and videos would look broken inverted (photos go negative).
-  The [data-no-theme-invert] attribute lets you opt specific elements out — 
-  we'll use this on the tank/pump graphics so status colours stay meaningful.
-*/
 :root.dark img,
 :root.dark video,
 :root.dark canvas,
@@ -45,10 +41,6 @@ body {
 		filter 220ms ease;
 }
 
-/* 
-  Transition most interactive/layout elements independently too.
-  This prevents a jarring snap when the filter changes.
-*/
 :root body,
 :root main,
 :root section,
@@ -70,7 +62,6 @@ body {
 		filter 180ms ease;
 }
 
-/* Respect reduced motion — no transitions at all for those users */
 @media (prefers-reduced-motion: reduce) {
 	body,
 	:root body,
@@ -90,6 +81,28 @@ body {
 	}
 }
 
+/* ── GPU compositing hints ───────────────────────────────── */
+
+/*
+ * Pump and tank cards are repainted on every MQTT message. Promoting them to
+ * their own compositor layer means the GPU can composite them without touching
+ * the surrounding layout. `contain: layout style` additionally tells the
+ * browser that nothing inside the card affects layout outside it.
+ */
+.pump-card,
+.tank-card {
+	will-change: transform;
+	contain: layout style;
+}
+
+/*
+ * The spinning disc in PumpCard animates via WAAPI on the `transform` property.
+ * `will-change: transform` on the disc element itself ensures it gets its own
+ * compositor layer and never triggers parent repaints during animation.
+ * (The class is applied inline in PumpCard.svelte via bind:this + style.)
+ */
+
+/* ── Hourglass keyframe ──────────────────────────────────── */
 @keyframes hourglass-flip {
 	0%,
 	15% {

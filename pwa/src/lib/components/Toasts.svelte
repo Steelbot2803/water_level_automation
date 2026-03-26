@@ -4,7 +4,6 @@
 	import { onDestroy } from 'svelte';
 	import { fade, fly } from 'svelte/transition';
 	import { CircleCheckBig, CircleAlert, Info, TriangleAlert, X } from 'lucide-svelte';
-
 	import { alerts } from '$lib/stores/alerts.js';
 
 	const severityStyles = {
@@ -35,43 +34,38 @@
 		warning: TriangleAlert
 	} as const;
 
+	// rAF-based ticker — only runs when there are visible toasts, automatically
+	// aligned with the browser paint cycle so it never runs between frames.
 	let now = $state(Date.now());
-	let ticker: ReturnType<typeof setInterval> | null = null;
+	let rafId: number | null = null;
 
-	function ensureTicker(active: boolean) {
-		if (active) {
-			if (!ticker) {
-				ticker = setInterval(() => {
-					now = Date.now();
-				}, 100);
-			}
-			return;
-		}
-
-		if (ticker) {
-			clearInterval(ticker);
-			ticker = null;
+	function tick() {
+		now = Date.now();
+		if ($alerts.length > 0) {
+			rafId = requestAnimationFrame(tick);
+		} else {
+			rafId = null;
 		}
 	}
 
+	$effect(() => {
+		if ($alerts.length > 0 && rafId === null) {
+			rafId = requestAnimationFrame(tick);
+		}
+	});
+
+	onDestroy(() => {
+		if (rafId !== null) cancelAnimationFrame(rafId);
+	});
+
 	function progressPercent(alert: (typeof $alerts)[number]) {
 		if (!alert.duration) return 0;
-
 		const remaining =
 			alert.timer && alert.startedAt
 				? Math.max(0, alert.remaining - (now - alert.startedAt))
 				: alert.remaining;
-
 		return Math.max(0, Math.min(100, (remaining / alert.duration) * 100));
 	}
-
-	$effect(() => {
-		ensureTicker($alerts.length > 0);
-	});
-
-	onDestroy(() => {
-		ensureTicker(false);
-	});
 </script>
 
 <div

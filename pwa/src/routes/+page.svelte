@@ -22,36 +22,28 @@
 	import PumpCard from '$lib/components/PumpCard.svelte';
 	import MenuDrawer from '$lib/components/Menu.svelte';
 	import LoginScreen from '$lib/components/LoginScreen.svelte';
+	import SplashScreen from '$lib/components/SplashScreen.svelte';
 
-	// ── login gate ────────────────────────────────────────────────────────────
-	// Show login when:
-	//   - no credentials are stored yet (first run), OR
-	//   - a connection error fired after the user submitted credentials
-	//     (wrong password, broker unreachable, etc.)
-	//
-	// Once connected, the dashboard replaces the login screen and stays visible
-	// even if the connection later drops — the reconnect logic handles that
-	// silently with the status badges in the header.
-	const phase = $derived($waterSystem.mqttConnection.mqttPhase);
-
-	// "showLogin" is true when there are no credentials saved.
-	// An error phase alone does NOT send the user back to login — they stay on
-	// the dashboard and the header badges show the problem. This avoids
-	// constantly bouncing back to login on a flaky network.
+	// Splash is visible until the store has read localStorage and decided
+	// whether we have credentials. This covers the ~1-frame gap that used to
+	// cause the login screen to flash before hasCredentials settled.
+	const splashVisible = $derived(!$waterSystem.initialized);
 	const showLogin = $derived(!$hasCredentials);
 
-	// ── the rest is the original dashboard logic, unchanged ───────────────────
 	let modeValue: 'auto' | 'manual' = $state('auto');
 	let pumpValue: 'borewell' | 'sump' = $state('borewell');
 	let overrideSending = $state(false);
 	let menuOpen = $state(false);
 	let ignoreDeviceSyncUntil = $state(0);
+
 	const eStopped = $derived($waterSystem.device?.alarms?.emergencyStop ?? false);
 	const borewellStatus = $derived($waterSystem.device?.motors?.borewell?.status);
 	const sumpStatus = $derived($waterSystem.device?.motors?.sump?.status);
+	const isConnected = $derived($waterSystem.mqttConnection.mqttPhase === 'connected');
+	const connectionPhase = $derived($waterSystem.mqttConnection.mqttPhase);
 
 	const wifiIcon = $derived(wifiConnectionIconsMap[$waterSystem.wifiConnection.wifiPhase]);
-	const mqttIcon = $derived(mqttConnectionIconsMap[$waterSystem.mqttConnection.mqttPhase]);
+	const mqttIcon = $derived(mqttConnectionIconsMap[connectionPhase]);
 	const arduinoMqttIcon = $derived(
 		arduinoMQTTConnectionIconsMap[$waterSystem.arduinoMQTTConnection.mqttPhase]
 	);
@@ -114,8 +106,6 @@
 		}
 	] as const;
 
-	const isConnected = $derived($waterSystem.mqttConnection.mqttPhase === 'connected');
-
 	const wifiConnectionBadges: Record<WifiConnectionPhase, string> = {
 		unknown: 'bg-slate-200 text-slate-700',
 		connecting: 'bg-amber-100 text-amber-900',
@@ -148,6 +138,16 @@
 		error: 'border-rose-200 bg-rose-50/92'
 	};
 
+	// Pre-computed so it doesn't reformat on every MQTT tick.
+	const lastUpdateLabel = $derived(
+		$waterSystem.device?.receivedAt
+			? new Intl.DateTimeFormat(undefined, {
+					dateStyle: 'medium',
+					timeStyle: 'short'
+				}).format($waterSystem.device.receivedAt)
+			: null
+	);
+
 	onMount(() => {
 		waterSystem.initialize();
 		const cleanupTheme = theme.initialize();
@@ -156,29 +156,28 @@
 		};
 	});
 
+	// Debounce device → UI sync so rapid MQTT messages don't thrash reactive
+	// state and trigger unnecessary layout passes on mobile.
+	let syncTimer: ReturnType<typeof setTimeout> | null = null;
 	$effect(() => {
 		const device = $waterSystem.device;
 		if (!device) return;
 		if (Date.now() < ignoreDeviceSyncUntil) return;
-		modeValue = device.mode === 'manual' ? 'manual' : 'auto';
-		pumpValue =
-			device.mode === 'manual'
-				? device.manual_target === 'sump'
-					? 'sump'
-					: 'borewell'
-				: device.auto_prefer_sump
-					? 'sump'
-					: 'borewell';
-	});
 
-	function formatTimestamp(value?: number, compact = false) {
-		if (!value) return 'Not available';
-		return new Intl.DateTimeFormat(undefined, {
-			...(compact
-				? { hour: 'numeric', minute: '2-digit' }
-				: { dateStyle: 'medium', timeStyle: 'short' })
-		}).format(value);
-	}
+		if (syncTimer !== null) clearTimeout(syncTimer);
+		syncTimer = setTimeout(() => {
+			syncTimer = null;
+			modeValue = device.mode === 'manual' ? 'manual' : 'auto';
+			pumpValue =
+				device.mode === 'manual'
+					? device.manual_target === 'sump'
+						? 'sump'
+						: 'borewell'
+					: device.auto_prefer_sump
+						? 'sump'
+						: 'borewell';
+		}, 300);
+	});
 
 	const modePillColors: Record<'auto' | 'manual', string> = {
 		auto: 'bg-emerald-50 shadow-sm border border-emerald-200',
@@ -240,19 +239,16 @@
 	<meta name="theme-color" content="#0f766e" />
 </svelte:head>
 
-<!--
-	Gate: render the login screen until the user has credentials saved.
-	Once hasCredentials flips true, the connection attempt starts automatically
-	and the dashboard appears. If the connection later drops, we stay on the
-	dashboard and show it through the header status badges.
--->
+<!-- Splash covers the app until the store has resolved credentials from localStorage -->
+<SplashScreen visible={splashVisible} />
+
 {#if showLogin}
 	<LoginScreen />
 {:else}
 	<div class="min-h-dvh bg-gradient-to-b from-cyan-50 via-white to-slate-100 text-slate-950">
 		<div class="mx-auto flex max-w-5xl flex-col gap-4 px-4 pt-4 pb-4 sm:px-6">
 			<header
-				class={`overflow-hidden rounded-[2rem] border p-5 shadow-sm backdrop-blur-sm ${connectionShells[$waterSystem.mqttConnection.mqttPhase]}`}
+				class={`overflow-hidden rounded-[2rem] border p-5 shadow-sm backdrop-blur-sm ${connectionShells[connectionPhase]}`}
 			>
 				<div class="flex flex-col">
 					<div class="flex max-w-full items-center justify-between gap-3">
@@ -271,7 +267,7 @@
 								<ArduinoMqttIconConfig.component size={20} class={ArduinoMqttIconConfig.class} />
 							</span>
 							<span
-								class={`rounded-full p-1 text-xs font-semibold ${mqttConnectionBadges[$waterSystem.mqttConnection.mqttPhase]}`}
+								class={`rounded-full p-1 text-xs font-semibold ${mqttConnectionBadges[connectionPhase]}`}
 							>
 								<MqttIconConfig.component size={20} class={MqttIconConfig.class} />
 							</span>
@@ -313,10 +309,8 @@
 				<section class="rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm">
 					<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 						<h2 class="text-xl font-semibold uppercase">Overview</h2>
-						{#if $waterSystem.telemetryReady && $waterSystem.device}
-							<p class="text-xs text-slate-500">
-								Last update {formatTimestamp($waterSystem.device.receivedAt)}
-							</p>
+						{#if lastUpdateLabel}
+							<p class="text-xs text-slate-500">Last update {lastUpdateLabel}</p>
 						{/if}
 					</div>
 
