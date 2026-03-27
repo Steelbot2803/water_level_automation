@@ -411,7 +411,7 @@
 							</div>
 						</div>
 						<div class="mt-4 flex max-w-full items-center justify-between gap-3">
-							<h1 class="text-4xl font-semibold tracking-tight uppercase sm:text-5xl">Neptune</h1>
+							<h1 class="text-3xl font-semibold tracking-tight uppercase sm:text-5xl">Neptune</h1>
 							{#if $waterSystem.device}
 								{#if eStopped}
 									<button
