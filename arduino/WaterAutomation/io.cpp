@@ -4,6 +4,7 @@
 namespace {
 
 SystemState* gState = nullptr;
+constexpr size_t MAX_COMMAND_LEN = 96;
 
 String readLine() {
   static String line;
@@ -17,7 +18,13 @@ String readLine() {
       out.toLowerCase();
       return out;
     }
-    line += c;
+    if (line.length() < MAX_COMMAND_LEN) {
+      line += c;
+    } else {
+      // Drop oversized input to avoid unbounded String growth.
+      line = "";
+      Serial.println(F("Command too long. Input discarded."));
+    }
   }
   return "";
 }

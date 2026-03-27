@@ -21,11 +21,7 @@ unsigned long lastSuccessfulPublishMs = 0;
 uint8_t lastWifiStatus = WL_NO_MODULE;
 bool lastMqttConnected = false;
 
-// ── Published-state snapshot ─────────────────────────────────────────────────
-//
-// We only care about the fields that appear in the JSON payload.  Tracking the
-// full SystemState struct would be brittle (padding, pointers, etc.).  A plain
-// struct of POD types is safe to memcmp.
+// Snapshot only payload fields to detect publish changes.
 struct PublishedSnapshot {
   // mode / command
   bool manualMode;
@@ -131,6 +127,12 @@ void connectWifi() {
 }
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
+  (void)topic;
+  if (length > 128) {
+    Serial.println(F("mqtt: command payload too long, ignoring"));
+    return;
+  }
+
   String cmd;
   cmd.reserve(length);
   for (unsigned int i = 0; i < length; ++i) cmd += static_cast<char>(payload[i]);
@@ -178,7 +180,7 @@ const char* manualTargetText(const SystemState& state) {
   return toStr(state.command.forcedMotor);
 }
 
-// Assembles and sends the JSON payload.  Returns true on success.
+// Build and send JSON payload.
 bool doPublish(const SystemState& state) {
   char payload[640];
   const int written = snprintf(
@@ -238,12 +240,10 @@ void publishStateToMqtt(const SystemState& state) {
   const unsigned long nowMs = millis();
   const PublishedSnapshot current = snapshotOf(state);
 
-  // Always enforce a minimum gap between publishes.  This prevents a rapidly
-  // oscillating sensor (e.g. a chattering float switch) from flooding the
-  // broker with dozens of packets per second.
+  // Keep a minimum gap between publishes.
   if (lastMqttPublishMs != 0 && nowMs - lastMqttPublishMs < MQTT_PUBLISH_PERIOD_MS) return;
 
-  // Decide whether we actually need to send anything.
+  // Publish on state change or heartbeat.
   const bool changed = !haveSnapshot || snapshotChanged(lastSnapshot, current);
   const bool heartbeat = (lastMqttPublishMs == 0) || (nowMs - lastMqttPublishMs >= MQTT_HEARTBEAT_PERIOD_MS);
 
