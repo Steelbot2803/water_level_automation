@@ -1,29 +1,16 @@
 <svelte:options runes={true} />
 
 <script lang="ts">
-	import {
-		Droplets,
-		LoaderCircle,
-		Wifi,
-		WifiOff,
-		ScanQrCode,
-		QrCode,
-		Eye,
-		EyeOff
-	} from 'lucide-svelte';
+	import { LoaderCircle, Wifi, WifiOff, ScanQrCode, Eye, EyeOff } from 'lucide-svelte';
 	import { waterSystem } from '$lib/stores/system.js';
-	import { encodeBrokerSettingsAsQR } from '$lib/control.js';
 	import type { BrokerSettings } from '$lib/types.js';
 	import QrScanner from '$lib/components/QrScanner.svelte';
-	import QRCode from 'qrcode';
 	import logo from '$lib/img/neptune_icon.png';
 
 	let username = $state('');
 	let password = $state('');
 	let showPassword = $state(false);
 	let scannerOpen = $state(false);
-	let qrDataUrl = $state<string | null>(null);
-	let qrOpen = $state(false);
 
 	const phase = $derived($waterSystem.mqttConnection.mqttPhase);
 	const lastError = $derived($waterSystem.mqttConnection.lastError);
@@ -95,7 +82,12 @@
 				<QrScanner inline onResult={handleQrResult} onClose={() => (scannerOpen = false)} />
 			</div>
 		{:else}
-			<form onsubmit={handleSubmit} id="connection-credentials" name="Connection Credentials" class="space-y-3">
+			<form
+				onsubmit={handleSubmit}
+				id="connection-credentials"
+				name="Connection Credentials"
+				class="space-y-3"
+			>
 				<div class="space-y-3">
 					<input
 						type="text"

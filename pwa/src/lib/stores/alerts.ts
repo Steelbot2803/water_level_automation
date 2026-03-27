@@ -34,7 +34,7 @@ let alertIdCounter = 0;
 let initialized = false;
 let mobileLike = false;
 let notificationPermission: NotificationPermission = 'default';
-let serviceWorkerRegistration: Promise<ServiceWorkerRegistration | null> | null = null;
+const serviceWorkerRegistration: Promise<ServiceWorkerRegistration | null> | null = null;
 const lastAlertByTag = new Map<string, number>();
 
 function startTimer(id: number) {
@@ -176,7 +176,7 @@ function initialize() {
 	const handleMediaChange = () => refreshEnvironmentState();
 
 	mediaQuery.addEventListener('change', handleMediaChange);
-	
+
 	const handleFirstGesture = () => {
 		void requestNotificationPermission();
 	};
