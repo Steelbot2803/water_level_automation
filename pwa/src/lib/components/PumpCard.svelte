@@ -233,7 +233,7 @@
 				</div>
 
 				{#if isLocked}
-					<div class="bg-black-950/25 absolute inset-[0.62rem] rounded-full backdrop-blur-md">
+					<div class="bg-black-950/25 absolute inset-[0.62rem] rounded-full backdrop-blur-[3px]">
 						<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-4/7">
 							<StatusIcon
 								size={50}
@@ -244,7 +244,7 @@
 				{/if}
 
 				{#if isNull}
-					<div class="bg-black-950/25 absolute inset-[0.62rem] rounded-full backdrop-blur-sm">
+					<div class="bg-black-950/25 absolute inset-[0.62rem] rounded-full backdrop-blur-[3px]">
 						<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
 							<LoaderCircle
 								size={70}

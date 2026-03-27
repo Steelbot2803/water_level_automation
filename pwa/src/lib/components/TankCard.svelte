@@ -223,7 +223,7 @@
 
 	.wave-ripple {
 		background: repeating-linear-gradient(
-			170deg,
+			165deg,
 			transparent 0px,
 			var(--wave-streak) 4px,
 			var(--wave-streak) 8px,

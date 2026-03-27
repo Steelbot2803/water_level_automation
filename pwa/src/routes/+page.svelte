@@ -33,15 +33,17 @@
 	// $state (writable) so both the $effect and the setTimeout can assign to it.
 	// $derived is read-only — assigning to it throws a runtime error in Svelte 5.
 
-	const MIN_SPLASH_TIME = 500; // ms
-	const MAX_SPLASH_TIME = 10000; // ms
+	const MIN_SPLASH_TIME = 3000; // ms
+	const MAX_SPLASH_TIME = 100000; // ms
 
 	let splashVisible = $state(true);
+	let splashDone = $state(false); // trails splashVisible by the fade-out duration
 	let modeValue: 'auto' | 'manual' = $state('auto');
 	let pumpValue: 'borewell' | 'sump' = $state('borewell');
 	let overrideSending = $state(false);
 	let menuOpen = $state(false);
 	let ignoreDeviceSyncUntil = $state(0);
+	let openBadge = $state<string | null>(null);
 
 	const showLogin = $derived(!$hasCredentials);
 	const eStopped = $derived($waterSystem.device?.alarms?.emergencyStop ?? false);
@@ -114,50 +116,118 @@
 		}
 	] as const;
 
-	// ── Phase → tone mapping ──────────────────────────────────────────────────
-	//
-	// The three phase union types share string values like 'connected' and
-	// 'disconnected', so TypeScript cannot safely index a Record<Phase, T> —
-	// it treats the union as potentially unresolvable at the call site.
-	// A Map<string, T> sidesteps this: lookup is by runtime string value and
-	// the function falls back to 'neutral' for any key not in the map.
+	// Per-phase inline style records — Tailwind class strings assembled at runtime
+	// get purged at build time, so we use hex values directly instead.
 
-	type StatusTone = 'neutral' | 'loading' | 'success' | 'error' | 'warning' | 'offline';
+	const wifiConnectionBadges: Record<WifiConnectionPhase, string> = {
+		unknown: 'background:#e2e8f0; color:#334155;',
+		connecting: 'background:#fef3c7; color:#422006;',
+		connected: 'background:#d1fae5; color:#064e3b;',
+		disconnected: 'background:#fecdd3; color:#4c0519;',
+		connection_lost: 'background:#fecdd3; color:#4c0519;',
+		connect_failed: 'background:#fecdd3; color:#4c0519;',
+		ssid_unavailable: 'background:#fecdd3; color:#4c0519;',
+		no_module: 'background:#fecdd3; color:#4c0519;'
+	};
 
-	type Phase = WifiConnectionPhase | ArduinoMQTTConnectionPhase | MQTTConnectionPhase;
+	const arduinoMQTTConnectionBadges: Record<ArduinoMQTTConnectionPhase, string> = {
+		unknown: 'background:#e2e8f0; color:#334155;',
+		connected: 'background:#d1fae5; color:#064e3b;',
+		disconnected: 'background:#fecdd3; color:#4c0519;'
+	};
 
-	const phaseToneMap = new Map<string, StatusTone>([
-		['idle', 'neutral'],
-		['unknown', 'neutral'],
-		['connecting', 'loading'],
-		['reconnecting', 'warning'],
-		['connected', 'success'],
-		['disconnected', 'error'],
-		['connection_lost', 'error'],
-		['connect_failed', 'error'],
-		['ssid_unavailable', 'error'],
-		['no_module', 'error'],
-		['error', 'error'],
-		['offline', 'offline']
+	const mqttConnectionBadges: Record<MQTTConnectionPhase, string> = {
+		idle: 'background:#e2e8f0; color:#334155;',
+		connecting: 'background:#fef3c7; color:#422006;',
+		connected: 'background:#d1fae5; color:#064e3b;',
+		reconnecting: 'background:#ffedd5; color:#431407;',
+		offline: 'background:#cbd5e1; color:#1e293b;',
+		error: 'background:#fecdd3; color:#4c0519;'
+	};
+
+	const connectionShells: Record<MQTTConnectionPhase, string> = {
+		idle: 'border:1px solid #e2e8f0; background:rgba(255,255,255,0.92);',
+		connecting: 'border:1px solid #fde68a; background:rgba(255,251,235,0.92);',
+		connected: 'border:1px solid #6ee7b7; background:rgba(236,253,245,0.92);',
+		reconnecting: 'border:1px solid #fed7aa; background:rgba(255,247,237,0.92);',
+		offline: 'border:1px solid #cbd5e1; background:rgba(241,245,249,0.92);',
+		error: 'border:1px solid #fecdd3; background:rgba(255,241,242,0.92);'
+	};
+
+	// Shell color: green only when all three connections are green, otherwise
+	// the worst state wins (error > offline > reconnecting > connecting > idle).
+	const combinedShellStyle = $derived(
+		(() => {
+			const allGreen =
+				wifiConnectionPhase === 'connected' &&
+				arduinoMQTTConnectionPhase === 'connected' &&
+				mqttConnectionPhase === 'connected';
+			if (allGreen) return connectionShells['connected'];
+
+			const hasError =
+				[
+					'disconnected',
+					'connection_lost',
+					'connect_failed',
+					'ssid_unavailable',
+					'no_module'
+				].includes(wifiConnectionPhase) ||
+				arduinoMQTTConnectionPhase === 'disconnected' ||
+				mqttConnectionPhase === 'error';
+			if (hasError) return connectionShells['error'];
+
+			const hasOffline = mqttConnectionPhase === 'offline';
+			if (hasOffline) return connectionShells['offline'];
+
+			const hasReconnecting = mqttConnectionPhase === 'reconnecting';
+			if (hasReconnecting) return connectionShells['reconnecting'];
+
+			const hasConnecting =
+				wifiConnectionPhase === 'connecting' || mqttConnectionPhase === 'connecting';
+			if (hasConnecting) return connectionShells['connecting'];
+
+			return connectionShells['idle'];
+		})()
+	);
+
+	const phaseLabels: Record<string, string> = {
+		idle: 'Idle',
+		unknown: 'Unknown',
+		connecting: 'Connecting',
+		reconnecting: 'Reconnecting',
+		connected: 'Connected',
+		disconnected: 'Disconnected',
+		connection_lost: 'Connection lost',
+		connect_failed: 'Connection failed',
+		ssid_unavailable: 'SSID unavailable',
+		no_module: 'No WiFi module',
+		error: 'Error',
+		offline: 'Offline'
+	};
+
+	const badgeConfigs = $derived([
+		{
+			key: 'wifi',
+			phase: wifiConnectionPhase,
+			Icon: WifiIconConfig.component,
+			iconClass: WifiIconConfig.class,
+			label: 'WiFi'
+		},
+		{
+			key: 'arduinoMqtt',
+			phase: arduinoMQTTConnectionPhase,
+			Icon: ArduinoMqttIconConfig.component,
+			iconClass: ArduinoMqttIconConfig.class,
+			label: 'Arduino MQTT'
+		},
+		{
+			key: 'broker',
+			phase: mqttConnectionPhase,
+			Icon: MqttIconConfig.component,
+			iconClass: MqttIconConfig.class,
+			label: 'Broker'
+		}
 	]);
-
-	const badgeToneStyles: Record<StatusTone, string> = {
-		neutral: 'border-slate-200 bg-white/96 text-slate-800',
-		loading: 'border-amber-200 bg-amber-50/96 text-amber-800',
-		success: 'border-emerald-200 bg-emerald-50/96 text-emerald-800',
-		error: 'border-rose-200 bg-rose-50/96 text-rose-800',
-		warning: 'border-orange-200 bg-orange-50/96 text-orange-800',
-		offline: 'border-slate-300 bg-slate-100/96 text-slate-700'
-	};
-
-	const shellToneStyles: Record<StatusTone, string> = {
-		neutral: 'border-slate-200 bg-white/92',
-		loading: 'border-amber-200 bg-amber-50/92',
-		success: 'border-emerald-200 bg-emerald-50/92',
-		error: 'border-rose-200 bg-rose-50/92',
-		warning: 'border-orange-200 bg-orange-50/92',
-		offline: 'border-slate-300 bg-slate-100/92'
-	};
 
 	// Pre-computed so it doesn't reformat on every MQTT tick.
 	const lastUpdateLabel = $derived(
@@ -209,11 +279,6 @@
 		sump: 'text-violet-700'
 	};
 
-	function getConnectionTone(phase: Phase, type: 'badge' | 'shell'): string {
-		const tone = phaseToneMap.get(phase) ?? 'neutral';
-		return type === 'badge' ? badgeToneStyles[tone] : shellToneStyles[tone];
-	}
-
 	function handleModeChange(value: 'auto' | 'manual', _index: number) {
 		ignoreDeviceSyncUntil = Date.now() + 1500;
 		waterSystem.sendCommand(value);
@@ -247,41 +312,38 @@
 		waterSystem.sendCommand(pump === 'borewell' ? 'unlock borewell' : 'unlock sump');
 	}
 
-	async function showSplash() {
-		let startTime = Date.now();
-		const elapsed = Date.now() - startTime;
-		const remaining = Math.max(0, MIN_SPLASH_TIME - elapsed);
-
-		setTimeout(() => {
-			splashVisible = false;
-		}, remaining);
-	}
-
 	onMount(() => {
 		waterSystem.initialize();
 		const cleanupTheme = theme.initialize();
 
-		// Fallback: if the store hasn't initialized within 5 s (crash / hang),
-		// dismiss the splash anyway so the user sees the app state (even if it's
-		// an error phase) rather than being stuck on the splash forever.
+		const handleOutsideClick = () => {
+			openBadge = null;
+		};
+		document.addEventListener('click', handleOutsideClick);
 
 		const splashMinTime = setTimeout(() => {
-			if (splashVisible) {
-				showSplash();
-			}
+			splashVisible = false;
+			setTimeout(() => {
+				splashDone = true;
+			}, 300);
 		}, MIN_SPLASH_TIME);
 
+		// Hard fallback: force-dismiss if something hangs beyond MAX_SPLASH_TIME.
 		const splashTimeout = setTimeout(() => {
 			if (splashVisible) {
 				console.warn('[neptune] splash timeout — forcing dismiss');
 				splashVisible = false;
+				setTimeout(() => {
+					splashDone = true;
+				}, 300);
 			}
 		}, MAX_SPLASH_TIME);
 
 		return () => {
-			clearTimeout(splashTimeout);
 			clearTimeout(splashMinTime);
+			clearTimeout(splashTimeout);
 			cleanupTheme?.();
+			document.removeEventListener('click', handleOutsideClick);
 		};
 	});
 </script>
@@ -298,18 +360,19 @@
 <!-- Splash covers the app until the store has resolved credentials from localStorage -->
 <SplashScreen visible={splashVisible} />
 
-<div class:overflow-hidden={splashVisible}>
+<div class:overflow-hidden={!splashDone}>
 	{#if showLogin}
 		<LoginScreen />
 	{:else}
 		<div
 			class="bg-gradient-to-b from-cyan-50 via-white to-slate-100 text-slate-950"
-			class:min-h-dvh={!splashVisible}
-			class:h-dvh={splashVisible}
+			class:min-h-dvh={splashDone}
+			class:h-dvh={!splashDone}
 		>
 			<div class="mx-auto flex max-w-5xl flex-col gap-4 px-4 pt-4 pb-4 sm:px-6">
 				<header
-					class={`overflow-hidden rounded-[2rem] border p-5 shadow-sm backdrop-blur-sm ${getConnectionTone(mqttConnectionPhase, 'shell')}`}
+					class="overflow-hidden rounded-[2rem] p-5 shadow-sm backdrop-blur-sm"
+					style={combinedShellStyle}
 				>
 					<div class="flex flex-col">
 						<div class="flex max-w-full items-center justify-between gap-3">
@@ -317,21 +380,39 @@
 								Water Flow Automation
 							</p>
 							<div class="flex items-center gap-1.5">
-								<span
-									class={`rounded-full p-1 text-xs font-semibold ${getConnectionTone(wifiConnectionPhase, 'badge')}`}
-								>
-									<WifiIconConfig.component size={20} class={WifiIconConfig.class} />
-								</span>
-								<span
-									class={`rounded-full p-1 text-xs font-semibold ${getConnectionTone(arduinoMQTTConnectionPhase, 'badge')}`}
-								>
-									<ArduinoMqttIconConfig.component size={20} class={ArduinoMqttIconConfig.class} />
-								</span>
-								<span
-									class={`rounded-full p-1 text-xs font-semibold ${getConnectionTone(mqttConnectionPhase, 'badge')}`}
-								>
-									<MqttIconConfig.component size={20} class={MqttIconConfig.class} />
-								</span>
+								{#each badgeConfigs as { key, phase, Icon, iconClass, label }}
+									<div class="relative">
+										<button
+											type="button"
+											onclick={(e) => {
+												e.stopPropagation();
+												openBadge = openBadge === key ? null : key;
+											}}
+											class="flex h-11 w-11 items-center justify-center rounded-full transition active:scale-[0.95]"
+											style={key === 'wifi'
+												? wifiConnectionBadges[phase as WifiConnectionPhase]
+												: key === 'arduinoMqtt'
+													? arduinoMQTTConnectionBadges[phase as ArduinoMQTTConnectionPhase]
+													: mqttConnectionBadges[phase as MQTTConnectionPhase]}
+											aria-label="{label}: {phaseLabels[phase] ?? phase}"
+										>
+											<Icon size={20} class={iconClass} />
+										</button>
+										{#if openBadge === key}
+											<div
+												class="absolute top-full left-1/2 z-50 mt-2 min-w-max -translate-x-1/2 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-lg"
+												role="tooltip"
+											>
+												<p class="text-sm font-semibold tracking-[0.15em] text-slate-500 uppercase">
+													{label}
+												</p>
+												<p class="mt-0.5 text-sm font-semibold text-slate-800 capitalize uppercase">
+													{phaseLabels[phase] ?? phase}
+												</p>
+											</div>
+										{/if}
+									</div>
+								{/each}
 								<button
 									onclick={() => (menuOpen = true)}
 									class="ml-1 flex h-11 w-11 items-center justify-center rounded-full border border-white/80 bg-white/70 text-cyan-900/70 shadow-sm transition hover:bg-white hover:text-cyan-900 active:scale-[0.98]"
@@ -342,7 +423,7 @@
 							</div>
 						</div>
 						<div class="mt-4 flex max-w-full items-center justify-between gap-3">
-							<h1 class="text-3xl font-semibold tracking-tight uppercase sm:text-4xl">Neptune</h1>
+							<h1 class="text-4xl font-semibold tracking-tight uppercase sm:text-5xl">Neptune</h1>
 							{#if $waterSystem.device}
 								{#if eStopped}
 									<button

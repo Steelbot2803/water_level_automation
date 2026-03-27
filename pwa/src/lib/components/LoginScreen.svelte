@@ -95,7 +95,7 @@
 				<QrScanner inline onResult={handleQrResult} onClose={() => (scannerOpen = false)} />
 			</div>
 		{:else}
-			<form id="connection-credentials" name="Connection Credentials" class="space-y-3">
+			<form onsubmit={handleSubmit} id="connection-credentials" name="Connection Credentials" class="space-y-3">
 				<div class="space-y-3">
 					<input
 						type="text"
@@ -144,7 +144,6 @@
 					{/if}
 
 					<button
-						onclick={handleSubmit}
 						disabled={isConnecting || (!username && !password)}
 						class="flex min-h-11 w-full items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold tracking-[0.14em] uppercase shadow-sm transition active:scale-[0.98] disabled:pointer-events-none disabled:cursor-not-allowed
 						{isConnecting
