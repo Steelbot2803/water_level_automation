@@ -3,15 +3,10 @@
 <script lang="ts">
 	import logo from '$lib/img/neptune_icon.png';
 
-	// visible controls whether the splash is on top of everything.
-	// The parent sets it to false once the store has resolved.
+	// Parent toggles splash visibility.
 	let { visible }: { visible: boolean } = $props();
 </script>
 
-<!--
-	The splash is always in the DOM but fades out rather than unmounting instantly.
-	pointer-events:none while invisible so it doesn't block the app behind it.
--->
 <div
 	class="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-8 bg-gradient-to-b from-cyan-50 via-white to-slate-100 transition-opacity duration-300"
 	class:opacity-0={!visible}
@@ -31,9 +26,9 @@
 		</div>
 	</div>
 
-	<!-- Simple pulsing dots — no setInterval, pure CSS -->
+	<!-- CSS-only loading dots. -->
 	<div class="flex gap-2">
-		{#each [0, 1, 2] as i}
+		{#each [0, 1, 2] as i (i)}
 			<div
 				class="h-2 w-2 rounded-full bg-cyan-400"
 				style="animation: splash-pulse 1.2s ease-in-out {i * 0.2}s infinite both;"

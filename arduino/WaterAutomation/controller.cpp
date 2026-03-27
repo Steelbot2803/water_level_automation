@@ -44,9 +44,9 @@ bool flowOkay(MotorType motor) {
                         : PIN_SUMP_CURRENT;
 
   int peakDeviation = 0;
-  const unsigned long endMs = millis() + 30;
+  const unsigned long startMs = millis();
 
-  while (millis() < endMs) {
+  while (millis() - startMs < 30UL) {
     const int sample = analogRead(pin);
     const int deviation = abs(sample - 512);
     if (deviation > peakDeviation) {
