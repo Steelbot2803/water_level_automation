@@ -24,15 +24,6 @@
 	import LoginScreen from '$lib/components/LoginScreen.svelte';
 	import SplashScreen from '$lib/components/SplashScreen.svelte';
 
-	// ── Splash visibility ─────────────────────────────────────────────────────
-	//
-	// Two conditions can dismiss the splash:
-	//   1. The store sets initialized = true  (normal path, happens in <1 frame)
-	//   2. The 5 s timeout fires              (crash/hang fallback)
-	//
-	// $state (writable) so both the $effect and the setTimeout can assign to it.
-	// $derived is read-only — assigning to it throws a runtime error in Svelte 5.
-
 	const MIN_SPLASH_TIME = 3000; // ms
 	const MAX_SPLASH_TIME = 100000; // ms
 
@@ -116,9 +107,7 @@
 		}
 	] as const;
 
-	// Per-phase inline style records — Tailwind class strings assembled at runtime
-	// get purged at build time, so we use hex values directly instead.
-
+	// Use inline color values to avoid Tailwind purge issues on dynamic classes.
 	const wifiConnectionBadges: Record<WifiConnectionPhase, string> = {
 		unknown: 'background:#e2e8f0; color:#334155;',
 		connecting: 'background:#fef3c7; color:#422006;',
@@ -154,8 +143,7 @@
 		error: 'border:1px solid #fecdd3; background:rgba(255,241,242,0.92);'
 	};
 
-	// Shell color: green only when all three connections are green, otherwise
-	// the worst state wins (error > offline > reconnecting > connecting > idle).
+	// Select shell color from the worst active connection state.
 	const combinedShellStyle = $derived(
 		(() => {
 			const allGreen =
@@ -279,7 +267,7 @@
 		sump: 'text-violet-700'
 	};
 
-	function handleModeChange(value: 'auto' | 'manual', _index: number) {
+	function handleModeChange(value: 'auto' | 'manual') {
 		ignoreDeviceSyncUntil = Date.now() + 1500;
 		waterSystem.sendCommand(value);
 		if (value === 'manual')
@@ -288,7 +276,7 @@
 		modeValue = value;
 	}
 
-	function handlePumpChange(value: 'borewell' | 'sump', _index: number) {
+	function handlePumpChange(value: 'borewell' | 'sump') {
 		ignoreDeviceSyncUntil = Date.now() + 1500;
 		pumpValue = value;
 		if (modeValue === 'manual')
@@ -328,7 +316,7 @@
 			}, 300);
 		}, MIN_SPLASH_TIME);
 
-		// Hard fallback: force-dismiss if something hangs beyond MAX_SPLASH_TIME.
+		// Hard fallback in case initialization stalls.
 		const splashTimeout = setTimeout(() => {
 			if (splashVisible) {
 				console.warn('[neptune] splash timeout — forcing dismiss');
@@ -380,7 +368,7 @@
 								Water Flow Automation
 							</p>
 							<div class="flex items-center gap-1.5">
-								{#each badgeConfigs as { key, phase, Icon, iconClass, label }}
+								{#each badgeConfigs as { key, phase, Icon, iconClass, label } (key)}
 									<div class="relative">
 										<button
 											type="button"
@@ -584,15 +572,14 @@
 				</main>
 
 				<footer class="flex flex-wrap items-center justify-center gap-2 px-2 pt-1">
-					{#each appBadges as badge}
-						<a
-							href={badge.href}
-							target="_blank"
-							rel="noreferrer"
+					{#each appBadges as badge (badge.label)}
+						<button
+							type="button"
+							onclick={() => window.open(badge.href, '_blank', 'noopener,noreferrer')}
 							class={`flex items-center justify-center rounded-full border px-2 py-1 text-[0.68rem] font-semibold tracking-[0.18em] uppercase shadow-sm transition hover:-translate-y-0.5 hover:shadow active:scale-[0.98] ${badge.tone}`}
 						>
 							{badge.label}
-						</a>
+						</button>
 					{/each}
 				</footer>
 

@@ -1,12 +1,4 @@
-import {
-	PUBLIC_MQTT_HOST,
-	PUBLIC_MQTT_PORT,
-	PUBLIC_MQTT_PATH,
-	PUBLIC_MQTT_USE_SSL,
-	PUBLIC_MQTT_COMMAND_TOPIC,
-	PUBLIC_MQTT_STATUS_TOPIC,
-	PUBLIC_MQTT_CLIENT_ID_PREFIX
-} from '$env/static/public';
+import * as publicEnv from '$env/static/public';
 
 import {
 	activeMotors,
@@ -26,20 +18,24 @@ import {
 
 const refillLevels = new Set(['critical', 'low']);
 
-// All connection details come from .env — only credentials are user-supplied.
-// These are treated as read-only constants after app boot.
-const HARDCODED_HOST = PUBLIC_MQTT_HOST?.trim() ?? '';
-const HARDCODED_PORT = PUBLIC_MQTT_PORT?.trim() || '8884';
+const readPublicEnv = (key: string) => {
+	const value = (publicEnv as Record<string, unknown>)[key];
+	return typeof value === 'string' ? value : '';
+};
+
+// Keep infrastructure values fixed; users only supply credentials.
+const HARDCODED_HOST = readPublicEnv('PUBLIC_MQTT_HOST').trim();
+const HARDCODED_PORT = readPublicEnv('PUBLIC_MQTT_PORT').trim() || '8884';
 const HARDCODED_PATH = (() => {
-	const p = PUBLIC_MQTT_PATH ?? '/mqtt';
+	const p = readPublicEnv('PUBLIC_MQTT_PATH') || '/mqtt';
 	const t = p.trim();
 	if (!t) return '/mqtt';
 	return t.startsWith('/') ? t : `/${t}`;
 })();
-const HARDCODED_USE_SSL = PUBLIC_MQTT_USE_SSL?.toLowerCase() !== 'false';
-const HARDCODED_COMMAND_TOPIC = PUBLIC_MQTT_COMMAND_TOPIC ?? 'water-system/cmd';
-const HARDCODED_STATUS_TOPIC = PUBLIC_MQTT_STATUS_TOPIC ?? 'water-system/status';
-const HARDCODED_CLIENT_ID_PREFIX = PUBLIC_MQTT_CLIENT_ID_PREFIX ?? 'water-pwa';
+const HARDCODED_USE_SSL = readPublicEnv('PUBLIC_MQTT_USE_SSL').toLowerCase() !== 'false';
+const HARDCODED_COMMAND_TOPIC = readPublicEnv('PUBLIC_MQTT_COMMAND_TOPIC') || 'water-system/cmd';
+const HARDCODED_STATUS_TOPIC = readPublicEnv('PUBLIC_MQTT_STATUS_TOPIC') || 'water-system/status';
+const HARDCODED_CLIENT_ID_PREFIX = readPublicEnv('PUBLIC_MQTT_CLIENT_ID_PREFIX') || 'water-pwa';
 
 function isOneOf<T extends string>(value: unknown, values: readonly T[]): value is T {
 	return typeof value === 'string' && (values as readonly string[]).includes(value);
@@ -63,8 +59,7 @@ function fallbackMotorStatus(activeMotor: ActiveMotor, motor: 'borewell' | 'sump
 	return activeMotor === motor ? 'running' : 'stopped';
 }
 
-// Returns a full BrokerSettings object using hardcoded infrastructure values
-// and whatever credentials the user has saved (or empty strings by default).
+// Merge saved credentials with fixed infrastructure settings.
 export function createDefaultBrokerSettings(
 	overrides: Pick<BrokerSettings, 'username' | 'password'> = { username: '', password: '' }
 ): BrokerSettings {
@@ -81,8 +76,7 @@ export function createDefaultBrokerSettings(
 	};
 }
 
-// No user-facing sanitization needed for hardcoded fields.
-// We still expose this for the system store which calls it on connect.
+// Enforce fixed infra settings during connect.
 export function sanitizeBrokerSettings(settings: BrokerSettings): BrokerSettings {
 	return {
 		...settings,
@@ -96,16 +90,15 @@ export function sanitizeBrokerSettings(settings: BrokerSettings): BrokerSettings
 	};
 }
 
-// Only validates that a host exists in the environment — the user can't
-// misconfigure port/SSL anymore so those checks are gone.
-export function validateBrowserBrokerSettings(settings: BrokerSettings): string | null {
+// Validate required env before allowing connect.
+export function validateBrowserBrokerSettings(): string | null {
 	if (!HARDCODED_HOST) {
 		return 'Broker host is not configured. Set PUBLIC_MQTT_HOST in your .env file.';
 	}
 	return null;
 }
 
-export function buildBrokerUrl(settings: BrokerSettings) {
+export function buildBrokerUrl() {
 	const protocol = HARDCODED_USE_SSL ? 'wss' : 'ws';
 	const port = HARDCODED_PORT ? `:${HARDCODED_PORT}` : '';
 	return `${protocol}://${HARDCODED_HOST}${port}${HARDCODED_PATH}`;
@@ -241,8 +234,7 @@ export const commandLabels: Record<ArduinoCommand, string> = {
 	'reset state': 'Reset State'
 };
 
-// Encodes only credentials into the QR payload — everything else is hardcoded
-// on the receiving device too, so there's nothing else to transmit.
+// QR payload contains credentials only.
 export function encodeBrokerSettingsAsQR(settings: BrokerSettings): string {
 	const params = new URLSearchParams({
 		username: settings.username,
@@ -251,13 +243,10 @@ export function encodeBrokerSettingsAsQR(settings: BrokerSettings): string {
 	return params.toString();
 }
 
-// Decodes a QR produced by encodeBrokerSettingsAsQR.
-// No host check — the QR only carries credentials.
-// Returns null only if the payload is completely unparseable.
+// Decode QR payload produced by encodeBrokerSettingsAsQR.
 export function decodeBrokerSettingsFromQR(raw: string): Partial<BrokerSettings> | null {
 	try {
-		// Support both bare query strings ("username=x&password=y")
-		// and full URLs that happen to include a query string.
+		// Accept both query strings and full URLs.
 		const queryStart = raw.indexOf('?');
 		const queryString = queryStart === -1 ? raw : raw.slice(queryStart + 1);
 		const params = new URLSearchParams(queryString);
@@ -265,8 +254,7 @@ export function decodeBrokerSettingsFromQR(raw: string): Partial<BrokerSettings>
 		const username = params.get('username');
 		const password = params.get('password');
 
-		// Require at least one credential field to be present so we don't
-		// accidentally accept random QR codes from other apps.
+		// Reject unrelated QR payloads.
 		if (username === null && password === null) return null;
 
 		const result: Partial<BrokerSettings> = {};

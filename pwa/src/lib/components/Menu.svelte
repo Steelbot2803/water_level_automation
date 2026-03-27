@@ -7,7 +7,6 @@
 	import { notificationPrefs, notificationLabels } from '$lib/stores/notifications.js';
 	import { waterSystem } from '$lib/stores/system.js';
 	import { encodeBrokerSettingsAsQR } from '$lib/control.js';
-	import type { BrokerSettings } from '$lib/types.js';
 	import QRCode from 'qrcode';
 
 	let { open = $bindable(false) }: { open: boolean } = $props();
@@ -80,8 +79,7 @@
 		if (disconnectTimer) clearTimeout(disconnectTimer);
 		disconnectConfirming = false;
 		close();
-		// clearCredentials wipes localStorage and resets the store,
-		// which flips hasCredentials → false and shows the login screen.
+		// Clears local credentials and returns to login.
 		waterSystem.clearCredentials();
 	}
 
@@ -135,7 +133,6 @@
 </script>
 
 <!-- Backdrop -->
-<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 <div
 	role="button"
 	tabindex={open ? 0 : -1}
@@ -196,7 +193,7 @@
 		<section>
 			<p class="mb-3 text-xs font-semibold tracking-[0.2em] text-slate-400 uppercase">Theme</p>
 			<div class="flex gap-2">
-				{#each themeIcons as { val, icon: Icon }}
+				{#each themeIcons as { val, icon: Icon } (val)}
 					<button
 						onclick={() => theme.set(val as ThemePreference)}
 						class="flex min-h-14 flex-1 flex-col items-center justify-center gap-1.5 rounded-[1.4rem] border px-3 py-3 text-xs font-semibold tracking-[0.14em] uppercase shadow-sm transition active:scale-[0.985]"
@@ -221,7 +218,7 @@
 				Notifications
 			</p>
 			<div class="space-y-2">
-				{#each Object.entries(notificationLabels) as [key, label]}
+				{#each Object.entries(notificationLabels) as [key, label] (key)}
 					<button
 						onclick={() => notificationPrefs.toggle(key as keyof typeof $notificationPrefs)}
 						class="flex min-h-14 w-full items-center justify-between rounded-[1.4rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm shadow-sm transition hover:bg-slate-100 active:scale-[0.985]"
@@ -256,7 +253,7 @@
 				<div
 					class="space-y-1.5 rounded-2xl border border-slate-200 bg-slate-50 p-4 font-mono text-xs text-slate-600"
 				>
-					{#each Object.entries(status) as [label, value]}
+					{#each Object.entries(status) as [label, value] (label)}
 						<div class="flex items-center justify-between">
 							<span class="text-slate-400 uppercase">{label}</span>
 							<span>{value}</span>
@@ -313,7 +310,7 @@
 				</button>
 			{/if}
 
-			<!-- Disconnect requires two taps — accidental taps would lose all session context -->
+			<!-- Two-step confirm avoids accidental disconnect. -->
 			<button
 				onclick={handleDisconnect}
 				class="mb-2 flex min-h-10 w-full items-center justify-center gap-2 rounded-full border px-4 py-2 text-base font-semibold tracking-[0.14em] uppercase shadow-sm transition active:scale-[0.985] {disconnectConfirming

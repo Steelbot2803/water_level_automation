@@ -170,9 +170,7 @@
 			<p class="text-xs font-semibold tracking-[0.2em] text-slate-500 uppercase">
 				{isOverhead ? 'Overhead' : 'Sump'}
 			</p>
-			<p
-				class="mt-1 text-2xl font-semibold uppercase transition-colors duration-700 {textTone}"
-			>
+			<p class="mt-1 text-2xl font-semibold uppercase transition-colors duration-700 {textTone}">
 				{level ?? '--'}
 			</p>
 		</div>

@@ -143,7 +143,7 @@
 		"
 	></div>
 
-	{#each options as opt, i}
+	{#each options as opt, i (opt.value)}
 		<button
 			role="radio"
 			aria-checked={i === index}

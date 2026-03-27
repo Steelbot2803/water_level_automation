@@ -28,6 +28,7 @@
 	let rafId: number | null = null;
 	let stream: MediaStream | null = null;
 	let timeoutId: ReturnType<typeof setTimeout> | null = null;
+	let flashResetId: ReturnType<typeof setTimeout> | null = null;
 
 	$effect(() => {
 		if (!videoEl) return;
@@ -54,17 +55,15 @@
 		}
 	}
 
-	// Arms the "nothing found" timeout. Called on start and reset after each flash
-	// so the user gets another full window on every attempt.
+	// Re-arm scan timeout after each flash.
 	function armTimeout() {
 		if (timeoutId !== null) clearTimeout(timeoutId);
 		timeoutId = setTimeout(() => {
-			// Flash the reticle border amber for 600 ms then restore it.
-			// Does NOT close the scanner — user may want to try again immediately.
+			if (flashResetId !== null) clearTimeout(flashResetId);
 			borderFlash = true;
-			setTimeout(() => {
+			flashResetId = setTimeout(() => {
 				borderFlash = false;
-				armTimeout(); // re-arm for another cycle
+				armTimeout();
 			}, 600);
 		}, timeoutMs);
 	}
@@ -77,6 +76,10 @@
 		if (timeoutId !== null) {
 			clearTimeout(timeoutId);
 			timeoutId = null;
+		}
+		if (flashResetId !== null) {
+			clearTimeout(flashResetId);
+			flashResetId = null;
 		}
 		stream?.getTracks().forEach((t) => t.stop());
 		stream = null;
@@ -135,15 +138,10 @@
 			<p class="text-center text-sm text-rose-300">{error}</p>
 		</div>
 	{:else}
-		<!-- svelte-ignore a11y_media_has_caption -->
-		<video bind:this={videoEl} class="hidden" playsinline></video>
+		<video bind:this={videoEl} class="hidden" playsinline muted aria-hidden="true"></video>
 		<canvas bind:this={canvasEl} class="h-full w-full object-cover"></canvas>
 
 		<div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-			<!--
-				borderFlash transitions the border from white to amber.
-				CSS transition handles the colour change smoothly — no JS animation loop needed.
-			-->
 			<div
 				class={`mt-4 h-2/3 w-2/3 rounded-xl border-3 shadow-[0_0_0_9999px_rgba(255,255,255,0.45)]
 					transition-colors duration-150
@@ -157,6 +155,16 @@
 			>
 				{borderFlash ? 'No valid QR found — try again' : 'Point at a Neptune QR'}
 			</p>
+		{/if}
+
+		{#if !inline}
+			<button
+				type="button"
+				onclick={onClose}
+				class="absolute top-3 right-3 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold tracking-[0.12em] text-slate-700 uppercase shadow-sm"
+			>
+				Close
+			</button>
 		{/if}
 	{/if}
 </div>

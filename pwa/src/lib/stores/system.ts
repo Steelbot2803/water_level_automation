@@ -42,13 +42,17 @@ function saveCredentials(settings: BrokerSettings) {
 			CREDENTIALS_STORAGE_KEY,
 			JSON.stringify({ username: settings.username, password: settings.password })
 		);
-	} catch {}
+	} catch {
+		// Ignore storage quota/private mode errors.
+	}
 }
 
 function clearStoredCredentials() {
 	try {
 		localStorage.removeItem(CREDENTIALS_STORAGE_KEY);
-	} catch {}
+	} catch {
+		// Ignore storage quota/private mode errors.
+	}
 }
 
 function appendCommandLog(history: CommandLogEntry[], entry: CommandLogEntry) {
@@ -68,8 +72,8 @@ const INITIAL_CREDENTIALS = browser ? loadStoredCredentials() : { username: '', 
 function createInitialState(): WaterAutomationState {
 	const credentials = INITIAL_CREDENTIALS;
 	const settings = createDefaultBrokerSettings(credentials);
-	const url = settings.host ? buildBrokerUrl(settings) : '';
-	const configurationError = validateBrowserBrokerSettings(settings);
+	const url = settings.host ? buildBrokerUrl() : '';
+	const configurationError = validateBrowserBrokerSettings();
 
 	return {
 		initialized: false,
@@ -116,8 +120,8 @@ function createWaterSystemStore() {
 		if (!browser) return;
 
 		const settings = sanitizeBrokerSettings(get({ subscribe }).settings);
-		const configurationError = validateBrowserBrokerSettings(settings);
-		const url = settings.host ? buildBrokerUrl(settings) : '';
+		const configurationError = validateBrowserBrokerSettings();
+		const url = settings.host ? buildBrokerUrl() : '';
 
 		if (configurationError) {
 			update((state) => ({
@@ -405,7 +409,7 @@ function createWaterSystemStore() {
 		const credentials = INITIAL_CREDENTIALS;
 		const hasCreds = !!(credentials.username || credentials.password);
 		const settings = get({ subscribe }).settings;
-		const configurationError = validateBrowserBrokerSettings(settings);
+		const configurationError = validateBrowserBrokerSettings();
 
 		if (!configurationError && settings.host && hasCreds) {
 			void connect();
