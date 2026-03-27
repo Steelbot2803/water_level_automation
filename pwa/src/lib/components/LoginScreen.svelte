@@ -45,7 +45,7 @@
 	<!-- Brand mark -->
 	<div class="mb-10 flex flex-col items-center gap-3">
 		<div
-			class="flex h-16 w-16 items-center justify-center rounded-[1.4rem] shadow-lg shadow-blue-500"
+			class="flex h-20 w-20 items-center justify-center rounded-[1.4rem] shadow-lg shadow-blue-500"
 		>
 			<img src={logo} alt="Neptune logo" />
 		</div>

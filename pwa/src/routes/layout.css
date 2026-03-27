@@ -81,28 +81,12 @@ body {
 	}
 }
 
-/* ── GPU compositing hints ───────────────────────────────── */
-
-/*
- * Pump and tank cards are repainted on every MQTT message. Promoting them to
- * their own compositor layer means the GPU can composite them without touching
- * the surrounding layout. `contain: layout style` additionally tells the
- * browser that nothing inside the card affects layout outside it.
- */
 .pump-card,
 .tank-card {
 	will-change: transform;
 	contain: layout style;
 }
 
-/*
- * The spinning disc in PumpCard animates via WAAPI on the `transform` property.
- * `will-change: transform` on the disc element itself ensures it gets its own
- * compositor layer and never triggers parent repaints during animation.
- * (The class is applied inline in PumpCard.svelte via bind:this + style.)
- */
-
-/* ── Hourglass keyframe ──────────────────────────────────── */
 @keyframes hourglass-flip {
 	0%,
 	15% {
@@ -119,4 +103,21 @@ body {
 
 .animate-hourglass {
 	animation: hourglass-flip 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+	0%,
+	80%,
+	100% {
+		opacity: 0.25;
+		transform: scale(0.8);
+	}
+	40% {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+.animate-pulse {
+	animation: pulse 1.2s ease-in-out infinite;
 }

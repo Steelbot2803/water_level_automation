@@ -2,6 +2,7 @@
 
 <script lang="ts">
 	import logo from '$lib/img/neptune_icon.png';
+	import { Dot } from 'lucide-svelte';
 
 	// Parent toggles splash visibility.
 	let { visible }: { visible: boolean } = $props();
@@ -14,10 +15,9 @@
 	aria-hidden={!visible}
 >
 	<div class="flex flex-col items-center gap-5">
-		<div
-			class="flex h-24 w-24 items-center justify-center rounded-[2rem] shadow-xl shadow-cyan-300/60"
-		>
-			<img src={logo} alt="Neptune logo" class="h-20 w-20 rounded-[1.6rem]" />
+		<div class="relative h-36 w-36">
+			<div class="absolute inset-0 animate-pulse shadow-lg shadow-blue-500 rounded-[1.4rem]"></div>
+			<img src={logo} alt="Neptune logo" class="absolute inset-0 h-36 w-36" />
 		</div>
 
 		<div class="text-center">
@@ -25,29 +25,4 @@
 			<p class="mt-1 text-sm tracking-[0.25em] text-slate-400 uppercase">Water Flow Automation</p>
 		</div>
 	</div>
-
-	<!-- CSS-only loading dots. -->
-	<div class="flex gap-2">
-		{#each [0, 1, 2] as i (i)}
-			<div
-				class="h-2 w-2 rounded-full bg-cyan-400"
-				style="animation: splash-pulse 1.2s ease-in-out {i * 0.2}s infinite both;"
-			></div>
-		{/each}
-	</div>
 </div>
-
-<style>
-	@keyframes splash-pulse {
-		0%,
-		80%,
-		100% {
-			opacity: 0.25;
-			transform: scale(0.8);
-		}
-		40% {
-			opacity: 1;
-			transform: scale(1);
-		}
-	}
-</style>
