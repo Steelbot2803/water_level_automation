@@ -1,12 +1,14 @@
 # Water Level Automation
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Frontend: SvelteKit](https://img.shields.io/badge/Frontend-SvelteKit-FF3E00?logo=svelte&logoColor=white)](https://svelte.dev/)
-[![Broker: MQTT](https://img.shields.io/badge/Protocol-MQTT-660066)](https://mqtt.org/)
+[![Frontend: SvelteKit](https://img.shields.io/badge/Frontend-SvelteKit-FF3E00?logo=svelte&logoColor=FF3E00)](https://svelte.dev/)
+[![Broker: HiveMQ](https://img.shields.io/badge/Protocol-HiveMQ-fec111?logo=hivemq&logoColor=fec111)](https://mqtt.org/)
+[![Host: Netlify](https://img.shields.io/badge/Host-Netlify-2596be?logo=netlify&logoColor=2596be)](https://www.netlify.com/)
 
 Water Level Automation is an open source Arduino + PWA project for tank monitoring and pump control.
 
 It provides:
+
 - Firmware for sensor reading, safety checks, and pump automation.
 - A mobile-friendly web app for live telemetry and remote commands over MQTT/WebSockets.
 
@@ -35,6 +37,7 @@ This project is actively maintained. Issues and pull requests are welcome.
 This software controls motors and water systems. Validate all wiring, relay ratings, and fail-safe behavior before real-world use.
 
 Recommended precautions:
+
 - Add hardware interlocks and overload protection.
 - Test dry-run, emergency stop, and power-loss recovery.
 - Never run unattended until your safety tests pass.
@@ -54,24 +57,24 @@ Recommended precautions:
 
 ### Supported Commands
 
-| Command | Description |
-|---|---|
-| `auto` | Enable automatic mode and clear e-stop. |
-| `manual` | Enable manual mode and clear e-stop. |
-| `override` | Fill until overhead tank reaches `high`. |
-| `motor borewell` | Manual: run borewell motor. |
-| `motor sump` | Manual: run sump motor. |
-| `motor stop` | Stop active motor. |
-| `borewell` | Auto preference: borewell. |
-| `sump` | Auto preference: sump. |
-| `estop` | Emergency stop motors. |
-| `resume` | Clear emergency stop. |
-| `unlock borewell` | Clear borewell dry-run lock. |
-| `unlock sump` | Clear sump dry-run lock. |
-| `reset` | Reboot controller. |
-| `reset state` | Reset persisted state defaults. |
-| `status` | Force serial status print. |
-| `help` | Print command list on serial. |
+| Command           | Description                              |
+| ----------------- | ---------------------------------------- |
+| `auto`            | Enable automatic mode and clear e-stop.  |
+| `manual`          | Enable manual mode and clear e-stop.     |
+| `override`        | Fill until overhead tank reaches `high`. |
+| `motor borewell`  | Manual: run borewell motor.              |
+| `motor sump`      | Manual: run sump motor.                  |
+| `motor stop`      | Stop active motor.                       |
+| `borewell`        | Auto preference: borewell.               |
+| `sump`            | Auto preference: sump.                   |
+| `estop`           | Emergency stop motors.                   |
+| `resume`          | Clear emergency stop.                    |
+| `unlock borewell` | Clear borewell dry-run lock.             |
+| `unlock sump`     | Clear sump dry-run lock.                 |
+| `reset`           | Reboot controller.                       |
+| `reset state`     | Reset persisted state defaults.          |
+| `status`          | Force serial status print.               |
+| `help`            | Print command list on serial.            |
 
 ## PWA Setup
 

@@ -47,7 +47,7 @@
 		waterSystem.sendCommand('reset');
 		restarting = true;
 		restartProgress = 0;
-		const DURATION = 15000;
+		const DURATION = 10000;
 		const TICK = 100;
 		restartInterval = setInterval(() => {
 			restartProgress += (TICK / DURATION) * 100;
