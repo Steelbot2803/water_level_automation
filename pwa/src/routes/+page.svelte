@@ -26,6 +26,7 @@
 
 	const MIN_SPLASH_TIME = 3000; // ms
 	const MAX_SPLASH_TIME = 100000; // ms
+	const VIEW_FADE_MS = 300;
 
 	let splashVisible = $state(true);
 	let splashDone = $state(false); // trails splashVisible by the fade-out duration
@@ -37,6 +38,9 @@
 	let openBadge = $state<string | null>(null);
 
 	const showLogin = $derived(!$hasCredentials);
+	let activeView = $state<'login' | 'app'>('login');
+	let fadingOutView = $state<'login' | 'app' | null>(null);
+	let viewFadeTimer: ReturnType<typeof setTimeout> | null = null;
 	const eStopped = $derived($waterSystem.device?.alarms?.emergencyStop ?? false);
 	const borewellStatus = $derived($waterSystem.device?.motors?.borewell?.status);
 	const sumpStatus = $derived($waterSystem.device?.motors?.sump?.status);
@@ -250,6 +254,20 @@
 		}, 300);
 	});
 
+	$effect(() => {
+		const nextView: 'login' | 'app' = showLogin ? 'login' : 'app';
+		if (nextView === activeView) return;
+
+		fadingOutView = activeView;
+		activeView = nextView;
+
+		if (viewFadeTimer !== null) clearTimeout(viewFadeTimer);
+		viewFadeTimer = setTimeout(() => {
+			fadingOutView = null;
+			viewFadeTimer = null;
+		}, VIEW_FADE_MS);
+	});
+
 	const modePillColors: Record<'auto' | 'manual', string> = {
 		auto: 'bg-emerald-50 shadow-sm border border-emerald-200',
 		manual: 'bg-rose-50 shadow-sm border border-rose-200'
@@ -303,6 +321,7 @@
 	onMount(() => {
 		waterSystem.initialize();
 		const cleanupTheme = theme.initialize();
+		activeView = showLogin ? 'login' : 'app';
 
 		const handleOutsideClick = () => {
 			openBadge = null;
@@ -330,6 +349,7 @@
 		return () => {
 			clearTimeout(splashMinTime);
 			clearTimeout(splashTimeout);
+			if (viewFadeTimer !== null) clearTimeout(viewFadeTimer);
 			cleanupTheme?.();
 			document.removeEventListener('click', handleOutsideClick);
 		};
@@ -348,15 +368,26 @@
 <!-- Splash covers the app until the store has resolved credentials from localStorage -->
 <SplashScreen visible={splashVisible} />
 
-<div class:overflow-hidden={!splashDone}>
-	{#if showLogin}
-		<LoginScreen />
-	{:else}
-		<div
-			class="bg-gradient-to-b from-cyan-50 via-white to-slate-100 text-slate-950"
-			class:min-h-dvh={splashDone}
-			class:h-dvh={!splashDone}
-		>
+<div class="bg-gradient-to-b from-cyan-50 via-white to-slate-100" class:overflow-hidden={!splashDone}>
+	<div class="relative min-h-dvh">
+		{#if activeView === 'login' || fadingOutView === 'login'}
+			<div
+				class="absolute inset-0 overflow-y-auto transition-opacity duration-300"
+				class:opacity-0={activeView !== 'login'}
+				class:pointer-events-none={activeView !== 'login'}
+				aria-hidden={activeView !== 'login'}
+			>
+				<LoginScreen />
+			</div>
+		{/if}
+		{#if activeView === 'app' || fadingOutView === 'app'}
+			<div
+				class="absolute inset-0 overflow-y-auto transition-opacity duration-300"
+				class:opacity-0={activeView !== 'app'}
+				class:pointer-events-none={activeView !== 'app'}
+				aria-hidden={activeView !== 'app'}
+			>
+				<div class="text-slate-950" class:min-h-dvh={splashDone} class:h-dvh={!splashDone}>
 			<div class="mx-auto flex max-w-5xl flex-col gap-4 px-4 pt-4 pb-4 sm:px-6">
 				<header
 					class="overflow-hidden rounded-[2rem] p-5 shadow-sm backdrop-blur-sm"
@@ -583,8 +614,10 @@
 					{/each}
 				</footer>
 
-				<MenuDrawer bind:open={menuOpen} />
+					<MenuDrawer bind:open={menuOpen} />
+				</div>
+				</div>
 			</div>
+			{/if}
 		</div>
-	{/if}
-</div>
+	</div>

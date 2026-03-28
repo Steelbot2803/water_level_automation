@@ -20,8 +20,8 @@ import type {
 
 const COMMAND_HISTORY_LIMIT = 8;
 const CONNECTION_TIMEOUT_MS = 15000;
-const MAX_RECONNECT_ATTEMPTS = 10;
-const RECONNECT_PERIOD_MS = 5000;
+const MAX_RECONNECT_ATTEMPTS = 3;
+const RECONNECT_PERIOD_MS = 2000;
 
 const CREDENTIALS_STORAGE_KEY = 'broker_credentials';
 
@@ -62,6 +62,17 @@ function appendCommandLog(history: CommandLogEntry[], entry: CommandLogEntry) {
 function sameCredentials(a: BrokerSettings | null, b: BrokerSettings) {
 	if (!a) return false;
 	return a.username === b.username && a.password === b.password;
+}
+
+function isAuthenticationError(message: string) {
+	const normalized = message.toLowerCase();
+	return (
+		normalized.includes('not authorized') ||
+		normalized.includes('bad username or password') ||
+		normalized.includes('bad user name or password') ||
+		normalized.includes('connection refused: 4') ||
+		normalized.includes('connection refused: 5')
+	);
 }
 
 // Read credentials synchronously at module evaluation time (browser only).
@@ -296,6 +307,12 @@ function createWaterSystemStore() {
 
 			nextClient.on('error', (error) => {
 				if (client !== nextClient || retriesExhausted) return;
+				const message = error.message || 'MQTT client error';
+				if (isAuthenticationError(message)) {
+					retriesExhausted = true;
+					clearCredentialsForReauth(message);
+					return;
+				}
 				update((state) => ({
 					...state,
 					mqttConnection: {
@@ -305,7 +322,7 @@ function createWaterSystemStore() {
 							reconnectAttempts > 0
 								? `Retry ${reconnectAttempts} of ${MAX_RECONNECT_ATTEMPTS} failed.`
 								: 'Connection failed. Retrying automatically.',
-						lastError: error.message || 'MQTT client error'
+						lastError: message
 					}
 				}));
 			});
@@ -439,6 +456,24 @@ function createWaterSystemStore() {
 				mqttPhase: 'idle',
 				detail: 'Credentials cleared.',
 				lastError: undefined
+			}
+		}));
+	}
+
+	function clearCredentialsForReauth(errorMessage: string) {
+		closeClient();
+		clearStoredCredentials();
+		update((state) => ({
+			...state,
+			device: null,
+			telemetryReady: false,
+			statusTopicSubscribed: false,
+			settings: createDefaultBrokerSettings({ username: '', password: '' }),
+			mqttConnection: {
+				...state.mqttConnection,
+				mqttPhase: 'error',
+				detail: 'Broker authentication failed. Enter credentials again.',
+				lastError: errorMessage
 			}
 		}));
 	}
