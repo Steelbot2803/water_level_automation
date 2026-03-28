@@ -140,41 +140,45 @@ function createWaterSystemStore() {
 		].join('|');
 	}
 
+	function applyTelemetrySnapshot(settings: BrokerSettings) {
+		if (!latestDevicePayload) return;
+		perf.add('ui_apply_frames');
+		const device = latestDevicePayload;
+		const nextFingerprint = telemetryFingerprint(device);
+		const sameFingerprint =
+			latestPayloadFingerprint !== null && nextFingerprint === latestPayloadFingerprint;
+		if (sameFingerprint && Date.now() - lastAppliedTelemetryAt < 1000) {
+			perf.add('ui_apply_dropped');
+			return;
+		}
+		latestPayloadFingerprint = nextFingerprint;
+		lastAppliedTelemetryAt = Date.now();
+		const startedAt = perf.enabled ? performance.now() : 0;
+		update((state) => ({
+			...state,
+			device,
+			telemetryReady: true,
+			wifiConnection: device.wifi_status
+				? { ...state.wifiConnection, wifiPhase: device.wifi_status }
+				: state.wifiConnection,
+			arduinoMQTTConnection: { mqttPhase: device.mqtt_status ?? 'unknown' },
+			mqttConnection: {
+				...state.mqttConnection,
+				mqttPhase: 'connected',
+				detail: `Receiving status from ${settings.statusTopic}.`,
+				lastMessageAt: device.receivedAt,
+				lastError: undefined
+			}
+		}));
+		if (perf.enabled) perf.add('store_update_ms', performance.now() - startedAt);
+		perf.add('store_updates');
+	}
+
 	function scheduleTelemetryApply(settings: BrokerSettings) {
 		if (applyRafId !== null) return;
 		applyRafId = requestAnimationFrame(() => {
 			applyRafId = null;
-			if (!latestDevicePayload) return;
-			perf.add('ui_apply_frames');
-			const device = latestDevicePayload;
-			const sameFingerprint =
-				latestPayloadFingerprint !== null &&
-				telemetryFingerprint(device) === latestPayloadFingerprint;
-			if (sameFingerprint && Date.now() - lastAppliedTelemetryAt < 1000) {
-				perf.add('ui_apply_dropped');
-				return;
-			}
-			latestPayloadFingerprint = telemetryFingerprint(device);
-			lastAppliedTelemetryAt = Date.now();
-			const startedAt = perf.enabled ? performance.now() : 0;
-			update((state) => ({
-				...state,
-				device,
-				telemetryReady: true,
-				wifiConnection: device.wifi_status
-					? { ...state.wifiConnection, wifiPhase: device.wifi_status }
-					: state.wifiConnection,
-				arduinoMQTTConnection: { mqttPhase: device.mqtt_status ?? 'unknown' },
-				mqttConnection: {
-					...state.mqttConnection,
-					mqttPhase: 'connected',
-					detail: `Receiving status from ${settings.statusTopic}.`,
-					lastMessageAt: device.receivedAt,
-					lastError: undefined
-				}
-			}));
-			if (perf.enabled) perf.add('store_update_ms', performance.now() - startedAt);
-			perf.add('store_updates');
+			applyTelemetrySnapshot(settings);
 		});
 	}
 
@@ -407,7 +411,7 @@ function createWaterSystemStore() {
 					if (document.visibilityState === 'visible') {
 						scheduleTelemetryApply(settings);
 					} else {
-						queueMicrotask(() => scheduleTelemetryApply(settings));
+						queueMicrotask(() => applyTelemetrySnapshot(settings));
 					}
 				} catch (error) {
 					const message = error instanceof Error ? error.message : 'Unknown payload parse failure';
