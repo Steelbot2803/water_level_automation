@@ -24,11 +24,17 @@
 	import LoginScreen from '$lib/components/LoginScreen.svelte';
 	import SplashScreen from '$lib/components/SplashScreen.svelte';
 
-	const MIN_SPLASH_TIME = 3000; // ms
-	const MAX_SPLASH_TIME = 100000; // ms
+	const MIN_SPLASH_DURATION_MS = 3000; // ms
+	const MAX_SPLASH_DURATION_MS = 100000; // ms
+	const VIEW_FADE_DURATION_MS = 300; // ms
+
+	type AppView = 'login' | 'app';
 
 	let splashVisible = $state(true);
 	let splashDone = $state(false); // trails splashVisible by the fade-out duration
+	let activeView = $state<AppView>('login');
+	let fadingOutView = $state<AppView | null>(null);
+	let viewFadeTimer: ReturnType<typeof setTimeout> | null = null;
 	let modeValue: 'auto' | 'manual' = $state('auto');
 	let pumpValue: 'borewell' | 'sump' = $state('borewell');
 	let overrideSending = $state(false);
@@ -250,6 +256,20 @@
 		}, 300);
 	});
 
+	$effect(() => {
+		const nextView: 'login' | 'app' = showLogin ? 'login' : 'app';
+		if (nextView === activeView) return;
+
+		fadingOutView = activeView;
+		activeView = nextView;
+
+		if (viewFadeTimer !== null) clearTimeout(viewFadeTimer);
+		viewFadeTimer = setTimeout(() => {
+			fadingOutView = null;
+			viewFadeTimer = null;
+		}, VIEW_FADE_DURATION_MS);
+	});
+
 	const modePillColors: Record<'auto' | 'manual', string> = {
 		auto: 'bg-emerald-50 shadow-sm border border-emerald-200',
 		manual: 'bg-rose-50 shadow-sm border border-rose-200'
@@ -303,6 +323,7 @@
 	onMount(() => {
 		waterSystem.initialize();
 		const cleanupTheme = theme.initialize();
+		activeView = showLogin ? 'login' : 'app';
 
 		const handleOutsideClick = () => {
 			openBadge = null;
@@ -314,7 +335,7 @@
 			setTimeout(() => {
 				splashDone = true;
 			}, 300);
-		}, MIN_SPLASH_TIME);
+		}, MIN_SPLASH_DURATION_MS);
 
 		// Hard fallback in case initialization stalls.
 		const splashTimeout = setTimeout(() => {
@@ -325,11 +346,12 @@
 					splashDone = true;
 				}, 300);
 			}
-		}, MAX_SPLASH_TIME);
+		}, MAX_SPLASH_DURATION_MS);
 
 		return () => {
 			clearTimeout(splashMinTime);
 			clearTimeout(splashTimeout);
+			if (viewFadeTimer !== null) clearTimeout(viewFadeTimer);
 			cleanupTheme?.();
 			document.removeEventListener('click', handleOutsideClick);
 		};
@@ -348,243 +370,275 @@
 <!-- Splash covers the app until the store has resolved credentials from localStorage -->
 <SplashScreen visible={splashVisible} />
 
-<div class:overflow-hidden={!splashDone}>
-	{#if showLogin}
-		<LoginScreen />
-	{:else}
-		<div
-			class="bg-gradient-to-b from-cyan-50 via-white to-slate-100 text-slate-950"
-			class:min-h-dvh={splashDone}
-			class:h-dvh={!splashDone}
-		>
-			<div class="mx-auto flex max-w-5xl flex-col gap-4 px-4 pt-4 pb-4 sm:px-6">
-				<header
-					class="overflow-hidden rounded-[2rem] p-5 shadow-sm backdrop-blur-sm"
-					style={combinedShellStyle}
-				>
-					<div class="flex flex-col">
-						<div class="flex max-w-full items-center justify-between gap-3">
-							<p class="text-[0.65rem] font-semibold tracking-[0.28em] text-cyan-900 uppercase">
-								Water Flow Automation
-							</p>
-							<div class="flex items-center gap-1.5">
-								{#each badgeConfigs as { key, phase, Icon, iconClass, label } (key)}
-									<div class="relative">
-										<button
-											type="button"
-											onclick={(e) => {
-												e.stopPropagation();
-												openBadge = openBadge === key ? null : key;
-											}}
-											class="flex h-11 w-11 items-center justify-center rounded-full transition active:scale-[0.95]"
-											style={key === 'wifi'
-												? wifiConnectionBadges[phase as WifiConnectionPhase]
-												: key === 'arduinoMqtt'
-													? arduinoMQTTConnectionBadges[phase as ArduinoMQTTConnectionPhase]
-													: mqttConnectionBadges[phase as MQTTConnectionPhase]}
-											aria-label="{label}: {phaseLabels[phase] ?? phase}"
-										>
-											<Icon size={20} class={iconClass} />
-										</button>
-										{#if openBadge === key}
-											<div
-												class="absolute top-full left-1/2 z-50 mt-2 min-w-max -translate-x-1/2 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-lg"
-												role="tooltip"
-											>
-												<p class="text-sm font-semibold tracking-[0.15em] text-slate-500 uppercase">
-													{label}
-												</p>
-												<p class="mt-0.5 text-sm font-semibold text-slate-800 capitalize uppercase">
-													{phaseLabels[phase] ?? phase}
-												</p>
-											</div>
-										{/if}
-									</div>
-								{/each}
-								<button
-									onclick={() => (menuOpen = true)}
-									class="ml-1 flex h-11 w-11 items-center justify-center rounded-full border border-white/80 bg-white/70 text-cyan-900/70 shadow-sm transition hover:bg-white hover:text-cyan-900 active:scale-[0.98]"
-									aria-label="Open settings"
-								>
-									<Menu size={18} />
-								</button>
-							</div>
-						</div>
-						<div class="mt-4 flex max-w-full items-center justify-between gap-3">
-							<h1 class="text-3xl font-semibold tracking-tight uppercase sm:text-5xl">Neptune</h1>
-							{#if $waterSystem.device}
-								{#if eStopped}
-									<button
-										class="text-l inline-flex items-center justify-center gap-2 rounded-full border border-emerald-300 bg-emerald-50 px-4 py-2 font-semibold tracking-[0.14em] text-emerald-700 uppercase shadow-sm transition hover:bg-emerald-100 active:scale-[0.98]"
-										onclick={() => eStop(false)}
-									>
-										<RotateCcw size={24} />
-										{commandLabels['resume']}
-									</button>
-								{:else if (borewellStatus && borewellStatus !== 'stopped') || (sumpStatus && sumpStatus !== 'stopped')}
-									<button
-										class="text-l inline-flex items-center justify-center gap-2 rounded-full border border-rose-300 bg-rose-50 px-4 py-2 font-semibold tracking-[0.14em] text-rose-700 uppercase shadow-sm transition hover:bg-rose-100 active:scale-[0.98]"
-										onclick={() => eStop(true)}
-									>
-										<CircleX size={24} />
-										{commandLabels['estop']}
-									</button>
-								{/if}
-							{/if}
-						</div>
-					</div>
-				</header>
-
-				<main class="grid gap-4">
-					<section class="rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm">
-						<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-							<h2 class="text-xl font-semibold uppercase">Overview</h2>
-							{#if lastUpdateLabel}
-								<p class="text-xs text-slate-500">Last update {lastUpdateLabel}</p>
-							{/if}
-						</div>
-
-						{#if !$waterSystem.telemetryReady}
-							<p class="mt-4 text-base font-semibold tracking-[0.2em] text-slate-400 uppercase">
-								Tanks
-							</p>
-							<div class="mt-2 grid grid-cols-2 gap-3">
-								<TankCard variant="overhead" level={$waterSystem.device?.overhead} />
-								<TankCard variant="sump" level={$waterSystem.device?.sump} />
-							</div>
-
-							<div class="mt-6 h-1 rounded-full bg-slate-200"></div>
-
-							<p class="mt-4 text-base font-semibold tracking-[0.2em] text-slate-400 uppercase">
-								Pumps
-							</p>
-							<div class="mt-2 grid grid-cols-2 gap-3">
-								<PumpCard
-									label="Borewell"
-									status={$waterSystem.device?.motors?.borewell?.status}
-									onUnlock={() => unlockPump('borewell')}
-									unlockDisabled={!isConnected}
-								/>
-								<PumpCard
-									label="Sump"
-									status={$waterSystem.device?.motors?.sump?.status}
-									onUnlock={() => unlockPump('sump')}
-									unlockDisabled={!isConnected}
-								/>
-							</div>
-						{:else}
-							<p class="mt-4 text-base font-semibold tracking-[0.2em] text-slate-400 uppercase">
-								Tanks
-							</p>
-							<div class="mt-2 grid grid-cols-2 gap-3">
-								<div class="relative inline-block">
-									<TankCard variant="overhead" level={$waterSystem.device?.overhead} />
-								</div>
-								<div class="relative inline-block">
-									<TankCard variant="sump" level={$waterSystem.device?.sump} />
-								</div>
-							</div>
-
-							<div class="mt-6 h-1 rounded-full bg-slate-200"></div>
-
-							<p class="mt-4 text-base font-semibold tracking-[0.2em] text-slate-400 uppercase">
-								Pumps
-							</p>
-							<div class="mt-2 grid grid-cols-2 gap-3">
-								<div class="relative inline-block">
-									<PumpCard
-										label="Borewell"
-										status={$waterSystem.device?.motors?.borewell?.status}
-										onUnlock={() => unlockPump('borewell')}
-										unlockDisabled={!isConnected}
-									/>
-								</div>
-								<div class="relative inline-block">
-									<PumpCard
-										label="Sump"
-										status={$waterSystem.device?.motors?.sump?.status}
-										onUnlock={() => unlockPump('sump')}
-										unlockDisabled={!isConnected}
-									/>
-								</div>
-							</div>
-						{/if}
-					</section>
-
-					<section class="rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm">
-						<h2 class="text-xl font-semibold uppercase">Commands</h2>
-						<div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-							<div
-								class="col-span-2 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 shadow-sm sm:col-span-1"
-							>
-								<p class="mb-3 text-base font-semibold tracking-[0.15em] text-slate-500 uppercase">
-									Mode
-								</p>
-								<SwipeToggle
-									options={modeOptions}
-									value={modeValue}
-									color={modePillColors[modeValue]}
-									textColor={modeTextColors[modeValue]}
-									disabled={!isConnected}
-									change={handleModeChange}
-								/>
-							</div>
-							<div
-								class="col-span-2 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 shadow-sm sm:col-span-1"
-							>
-								<p class="mb-3 text-base font-semibold tracking-[0.15em] text-slate-500 uppercase">
-									Pump
-								</p>
-								<SwipeToggle
-									options={pumpOptions}
-									value={pumpValue}
-									color={pumpPillColors[pumpValue]}
-									textColor={pumpTextColors[pumpValue]}
-									disabled={!isConnected}
-									change={handlePumpChange}
-								/>
-							</div>
-							<div
-								class="col-span-2 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 shadow-sm sm:col-span-1"
-							>
-								<p class="mb-3 text-base font-semibold tracking-[0.15em] text-slate-500 uppercase">
-									Override
-								</p>
-								<button
-									aria-label="Override"
-									class={`text-l flex min-h-11 w-full items-center justify-center rounded-full border p-3 text-center font-semibold tracking-[0.14em] uppercase shadow-sm transition active:scale-[0.985] disabled:pointer-events-none disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none ${
-										($waterSystem.device?.override ?? false)
-											? 'border-orange-300 bg-orange-50 text-orange-700'
-											: overrideSending
-												? 'animate-pulse border-amber-400 bg-amber-50 text-amber-600'
-												: 'border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100'
-									}`}
-									disabled={!isConnected || ($waterSystem.device?.override ?? false)}
-									onclick={handleOverride}
-								>
-									{($waterSystem.device?.override ?? false)
-										? 'Override Active'
-										: 'Activate Override'}
-								</button>
-							</div>
-						</div>
-					</section>
-				</main>
-
-				<footer class="flex flex-wrap items-center justify-center gap-2 px-2 pt-1">
-					{#each appBadges as badge (badge.label)}
-						<button
-							type="button"
-							onclick={() => window.open(badge.href, '_blank', 'noopener,noreferrer')}
-							class={`flex items-center justify-center rounded-full border px-2 py-1 text-[0.68rem] font-semibold tracking-[0.18em] uppercase shadow-sm transition hover:-translate-y-0.5 hover:shadow active:scale-[0.98] ${badge.tone}`}
-						>
-							{badge.label}
-						</button>
-					{/each}
-				</footer>
-
-				<MenuDrawer bind:open={menuOpen} />
+<div
+	class="bg-gradient-to-b from-cyan-50 via-white to-slate-100"
+	class:overflow-hidden={!splashDone}
+>
+	<div class="relative min-h-dvh">
+		{#if activeView === 'login' || fadingOutView === 'login'}
+			<div
+				class="absolute inset-0 overflow-y-auto transition-opacity duration-300"
+				class:opacity-0={fadingOutView === 'login'}
+				class:pointer-events-none={activeView !== 'login'}
+				aria-hidden={activeView !== 'login'}
+			>
+				<LoginScreen />
 			</div>
-		</div>
-	{/if}
+		{/if}
+		{#if activeView === 'app' || fadingOutView === 'app'}
+			<div
+				class="absolute inset-0 overflow-y-auto transition-opacity duration-300"
+				class:opacity-0={fadingOutView === 'app'}
+				class:pointer-events-none={activeView !== 'app'}
+				aria-hidden={activeView !== 'app'}
+			>
+				<div class="text-slate-950" class:min-h-dvh={splashDone} class:h-dvh={!splashDone}>
+					<div class="mx-auto flex max-w-5xl flex-col gap-4 px-4 pt-4 pb-4 sm:px-6">
+						<header
+							class="overflow-hidden rounded-[2rem] p-5 shadow-sm backdrop-blur-sm"
+							style={combinedShellStyle}
+						>
+							<div class="flex flex-col">
+								<div class="flex max-w-full items-center justify-between gap-3">
+									<p class="text-[0.65rem] font-semibold tracking-[0.28em] text-cyan-900 uppercase">
+										Water Flow Automation
+									</p>
+									<div class="flex items-center gap-1.5">
+										{#each badgeConfigs as { key, phase, Icon, iconClass, label } (key)}
+											<div class="relative">
+												<button
+													type="button"
+													onclick={(e) => {
+														e.stopPropagation();
+														openBadge = openBadge === key ? null : key;
+													}}
+													class="flex h-11 w-11 items-center justify-center rounded-full transition active:scale-[0.95]"
+													style={key === 'wifi'
+														? wifiConnectionBadges[phase as WifiConnectionPhase]
+														: key === 'arduinoMqtt'
+															? arduinoMQTTConnectionBadges[phase as ArduinoMQTTConnectionPhase]
+															: mqttConnectionBadges[phase as MQTTConnectionPhase]}
+													aria-label="{label}: {phaseLabels[phase] ?? phase}"
+												>
+													<Icon size={20} class={iconClass} />
+												</button>
+												{#if openBadge === key}
+													<div
+														class="absolute top-full left-1/2 z-50 mt-2 min-w-max -translate-x-1/2 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-lg"
+														role="tooltip"
+													>
+														<p
+															class="text-sm font-semibold tracking-[0.15em] text-slate-500 uppercase"
+														>
+															{label}
+														</p>
+														<p
+															class="mt-0.5 text-sm font-semibold text-slate-800 capitalize uppercase"
+														>
+															{phaseLabels[phase] ?? phase}
+														</p>
+													</div>
+												{/if}
+											</div>
+										{/each}
+										<button
+											onclick={() => (menuOpen = true)}
+											class="ml-1 flex h-11 w-11 items-center justify-center rounded-full border border-white/80 bg-white/70 text-cyan-900/70 shadow-sm transition hover:bg-white hover:text-cyan-900 active:scale-[0.98]"
+											aria-label="Open settings"
+										>
+											<Menu size={18} />
+										</button>
+									</div>
+								</div>
+								<div class="mt-4 flex max-w-full items-center justify-between gap-3">
+									<h1 class="text-3xl font-semibold tracking-tight uppercase sm:text-5xl">
+										Neptune
+									</h1>
+									{#if $waterSystem.device}
+										{#if eStopped}
+											<button
+												class="text-l inline-flex items-center justify-center gap-2 rounded-full border border-emerald-300 bg-emerald-50 px-4 py-2 font-semibold tracking-[0.14em] text-emerald-700 uppercase shadow-sm transition hover:bg-emerald-100 active:scale-[0.98]"
+												onclick={() => eStop(false)}
+											>
+												<RotateCcw size={24} />
+												{commandLabels['resume']}
+											</button>
+										{:else if (borewellStatus && borewellStatus !== 'stopped') || (sumpStatus && sumpStatus !== 'stopped')}
+											<button
+												class="text-l inline-flex items-center justify-center gap-2 rounded-full border border-rose-300 bg-rose-50 px-4 py-2 font-semibold tracking-[0.14em] text-rose-700 uppercase shadow-sm transition hover:bg-rose-100 active:scale-[0.98]"
+												onclick={() => eStop(true)}
+											>
+												<CircleX size={24} />
+												{commandLabels['estop']}
+											</button>
+										{/if}
+									{/if}
+								</div>
+							</div>
+						</header>
+
+						<main class="grid gap-4">
+							<section class="rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm">
+								<div class="flex flex-row items-center items-start justify-between gap-2">
+									<h2 class="text-xl font-semibold uppercase">Overview</h2>
+									{#if lastUpdateLabel}
+										<div
+											class="flex items-center self-start rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-500 uppercase"
+										>
+											<p class="text-xs text-slate-500">Last update: <br /> {lastUpdateLabel}</p>
+										</div>
+									{/if}
+								</div>
+
+								{#if !$waterSystem.telemetryReady}
+									<p class="mt-4 text-base font-semibold tracking-[0.2em] text-slate-400 uppercase">
+										Tanks
+									</p>
+									<div class="mt-2 grid grid-cols-2 gap-3">
+										<TankCard variant="overhead" level={$waterSystem.device?.overhead} />
+										<TankCard variant="sump" level={$waterSystem.device?.sump} />
+									</div>
+
+									<div class="mt-6 h-1 rounded-full bg-slate-200"></div>
+
+									<p class="mt-4 text-base font-semibold tracking-[0.2em] text-slate-400 uppercase">
+										Pumps
+									</p>
+									<div class="mt-2 grid grid-cols-2 gap-3">
+										<PumpCard
+											label="Borewell"
+											status={$waterSystem.device?.motors?.borewell?.status}
+											onUnlock={() => unlockPump('borewell')}
+											unlockDisabled={!isConnected}
+										/>
+										<PumpCard
+											label="Sump"
+											status={$waterSystem.device?.motors?.sump?.status}
+											onUnlock={() => unlockPump('sump')}
+											unlockDisabled={!isConnected}
+										/>
+									</div>
+								{:else}
+									<p class="mt-4 text-base font-semibold tracking-[0.2em] text-slate-400 uppercase">
+										Tanks
+									</p>
+									<div class="mt-2 grid grid-cols-2 gap-3">
+										<div class="relative inline-block">
+											<TankCard variant="overhead" level={$waterSystem.device?.overhead} />
+										</div>
+										<div class="relative inline-block">
+											<TankCard variant="sump" level={$waterSystem.device?.sump} />
+										</div>
+									</div>
+
+									<div class="mt-6 h-1 rounded-full bg-slate-200"></div>
+
+									<p class="mt-4 text-base font-semibold tracking-[0.2em] text-slate-400 uppercase">
+										Pumps
+									</p>
+									<div class="mt-2 grid grid-cols-2 gap-3">
+										<div class="relative inline-block">
+											<PumpCard
+												label="Borewell"
+												status={$waterSystem.device?.motors?.borewell?.status}
+												onUnlock={() => unlockPump('borewell')}
+												unlockDisabled={!isConnected}
+											/>
+										</div>
+										<div class="relative inline-block">
+											<PumpCard
+												label="Sump"
+												status={$waterSystem.device?.motors?.sump?.status}
+												onUnlock={() => unlockPump('sump')}
+												unlockDisabled={!isConnected}
+											/>
+										</div>
+									</div>
+								{/if}
+							</section>
+
+							<section class="rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm">
+								<h2 class="text-xl font-semibold uppercase">Commands</h2>
+								<div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+									<div
+										class="col-span-2 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 shadow-sm sm:col-span-1"
+									>
+										<p
+											class="mb-3 text-base font-semibold tracking-[0.15em] text-slate-500 uppercase"
+										>
+											Mode
+										</p>
+										<SwipeToggle
+											options={modeOptions}
+											value={modeValue}
+											color={modePillColors[modeValue]}
+											textColor={modeTextColors[modeValue]}
+											disabled={!isConnected}
+											change={handleModeChange}
+										/>
+									</div>
+									<div
+										class="col-span-2 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 shadow-sm sm:col-span-1"
+									>
+										<p
+											class="mb-3 text-base font-semibold tracking-[0.15em] text-slate-500 uppercase"
+										>
+											Pump
+										</p>
+										<SwipeToggle
+											options={pumpOptions}
+											value={pumpValue}
+											color={pumpPillColors[pumpValue]}
+											textColor={pumpTextColors[pumpValue]}
+											disabled={!isConnected}
+											change={handlePumpChange}
+										/>
+									</div>
+									<div
+										class="col-span-2 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 shadow-sm sm:col-span-1"
+									>
+										<p
+											class="mb-3 text-base font-semibold tracking-[0.15em] text-slate-500 uppercase"
+										>
+											Override
+										</p>
+										<button
+											aria-label="Override"
+											class={`text-l flex min-h-11 w-full items-center justify-center rounded-full border p-3 text-center font-semibold tracking-[0.14em] uppercase shadow-sm transition active:scale-[0.985] disabled:pointer-events-none disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none ${
+												($waterSystem.device?.override ?? false)
+													? 'border-orange-300 bg-orange-50 text-orange-700'
+													: overrideSending
+														? 'animate-pulse border-amber-400 bg-amber-50 text-amber-600'
+														: 'border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100'
+											}`}
+											disabled={!isConnected || ($waterSystem.device?.override ?? false)}
+											onclick={handleOverride}
+										>
+											{($waterSystem.device?.override ?? false)
+												? 'Override Active'
+												: 'Activate Override'}
+										</button>
+									</div>
+								</div>
+							</section>
+						</main>
+
+						<footer class="flex flex-wrap items-center justify-center gap-2 px-2 pt-1">
+							{#each appBadges as badge (badge.label)}
+								<button
+									type="button"
+									onclick={() => window.open(badge.href, '_blank', 'noopener,noreferrer')}
+									class={`flex items-center justify-center rounded-full border px-2 py-1 text-[0.68rem] font-semibold tracking-[0.18em] uppercase shadow-sm transition hover:-translate-y-0.5 hover:shadow active:scale-[0.98] ${badge.tone}`}
+								>
+									{badge.label}
+								</button>
+							{/each}
+						</footer>
+
+						<MenuDrawer bind:open={menuOpen} />
+					</div>
+				</div>
+			</div>
+		{/if}
+	</div>
 </div>

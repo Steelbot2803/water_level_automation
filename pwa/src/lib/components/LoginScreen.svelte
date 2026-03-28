@@ -83,7 +83,10 @@
 			</div>
 		{:else}
 			<form
-				onsubmit={handleSubmit}
+				onsubmit={(event) => {
+					event.preventDefault();
+					handleSubmit();
+				}}
 				id="connection-credentials"
 				name="Connection Credentials"
 				class="space-y-3"
@@ -144,7 +147,7 @@
 					>
 						{#if isConnecting}
 							<LoaderCircle size={16} class="animate-spin" />
-							Connecting…
+							Connecting...
 						{:else}
 							<Wifi size={16} />
 							Connect
