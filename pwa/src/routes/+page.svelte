@@ -373,7 +373,7 @@
 		{#if activeView === 'login' || fadingOutView === 'login'}
 			<div
 				class="absolute inset-0 overflow-y-auto transition-opacity duration-300"
-				class:opacity-0={activeView !== 'login'}
+				class:opacity-0={fadingOutView === 'login'}
 				class:pointer-events-none={activeView !== 'login'}
 				aria-hidden={activeView !== 'login'}
 			>
@@ -383,7 +383,7 @@
 		{#if activeView === 'app' || fadingOutView === 'app'}
 			<div
 				class="absolute inset-0 overflow-y-auto transition-opacity duration-300"
-				class:opacity-0={activeView !== 'app'}
+				class:opacity-0={fadingOutView === 'app'}
 				class:pointer-events-none={activeView !== 'app'}
 				aria-hidden={activeView !== 'app'}
 			>
