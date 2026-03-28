@@ -119,8 +119,26 @@ function createWaterSystemStore() {
 	let activeSettings: BrokerSettings | null = null;
 	let initialized = false;
 	let latestDevicePayload: ReturnType<typeof toDeviceTelemetry> | null = null;
+	let latestPayloadFingerprint: string | null = null;
 	let latestRawPayload: string | null = null;
 	let applyRafId: number | null = null;
+	let lastAppliedTelemetryAt = 0;
+
+	function telemetryFingerprint(device: ReturnType<typeof toDeviceTelemetry>) {
+		return [
+			device.mode,
+			device.override ? '1' : '0',
+			device.overhead,
+			device.sump,
+			device.motors.borewell.status,
+			device.motors.sump.status,
+			device.alarms.emergencyStop ? '1' : '0',
+			device.alarms.overheadCritical ? '1' : '0',
+			device.alarms.sumpCritical ? '1' : '0',
+			device.wifi_status ?? 'unknown',
+			device.mqtt_status ?? 'unknown'
+		].join('|');
+	}
 
 	function scheduleTelemetryApply(settings: BrokerSettings) {
 		if (applyRafId !== null) return;
@@ -129,6 +147,15 @@ function createWaterSystemStore() {
 			if (!latestDevicePayload) return;
 			perf.add('ui_apply_frames');
 			const device = latestDevicePayload;
+			const sameFingerprint =
+				latestPayloadFingerprint !== null &&
+				telemetryFingerprint(device) === latestPayloadFingerprint;
+			if (sameFingerprint && Date.now() - lastAppliedTelemetryAt < 1000) {
+				perf.add('ui_apply_dropped');
+				return;
+			}
+			latestPayloadFingerprint = telemetryFingerprint(device);
+			lastAppliedTelemetryAt = Date.now();
 			const startedAt = perf.enabled ? performance.now() : 0;
 			update((state) => ({
 				...state,
@@ -377,7 +404,11 @@ function createWaterSystemStore() {
 				try {
 					latestDevicePayload = perf.time(() => toDeviceTelemetry(rawPayload), 'mqtt_parse_ms');
 					if (applyRafId !== null) perf.add('ui_apply_dropped');
-					scheduleTelemetryApply(settings);
+					if (document.visibilityState === 'visible') {
+						scheduleTelemetryApply(settings);
+					} else {
+						queueMicrotask(() => scheduleTelemetryApply(settings));
+					}
 				} catch (error) {
 					const message = error instanceof Error ? error.message : 'Unknown payload parse failure';
 					console.warn('[system] MQTT payload parse failure:', message, rawPayload);

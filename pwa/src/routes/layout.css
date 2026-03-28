@@ -102,13 +102,3 @@ textarea,
 .animate-pulse {
 	animation: pulse 1.2s ease-in-out infinite;
 }
-
-/* Mobile devices pay a high cost for broad blur/filter animation. */
-@media (pointer: coarse) {
-	.wave-swell {
-		filter: blur(2px) !important;
-	}
-	.wave-foam {
-		filter: blur(1.5px) !important;
-	}
-}

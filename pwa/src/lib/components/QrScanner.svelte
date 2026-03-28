@@ -37,7 +37,11 @@
 	$effect(() => {
 		if (!videoEl) return;
 		const handleVisibility = () => {
-			if (document.visibilityState !== 'visible') stopAll();
+			if (document.visibilityState !== 'visible') {
+				stopAll();
+				return;
+			}
+			if (!stream) void startCamera();
 		};
 		document.addEventListener('visibilitychange', handleVisibility);
 		startCamera();

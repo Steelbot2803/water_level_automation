@@ -49,9 +49,9 @@ self.addEventListener('fetch', (event) => {
 					if (preload) return preload;
 					return await fetch(request);
 				} catch {
-					const cached = await caches.match('/');
+					const cached = await caches.match(request);
 					if (cached) return cached;
-					throw new Error('Navigation network error and no cache fallback available.');
+					return Response.error();
 				}
 			})()
 		);
@@ -81,7 +81,7 @@ self.addEventListener('fetch', (event) => {
 
 			const network = await fetchAndUpdate;
 			if (network) return network;
-			throw new Error('Static asset unavailable from cache and network.');
+			return Response.error();
 		})()
 	);
 });

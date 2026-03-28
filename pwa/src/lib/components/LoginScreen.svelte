@@ -2,7 +2,7 @@
 
 <script lang="ts">
 	import { LoaderCircle, Wifi, WifiOff, ScanQrCode, Eye, EyeOff } from 'lucide-svelte';
-	import { waterSystem } from '$lib/stores/system.js';
+	import { mqttConnectionState, waterSystem } from '$lib/stores/system.js';
 	import type { BrokerSettings } from '$lib/types.js';
 	import QrScanner from '$lib/components/QrScanner.svelte';
 	import logo from '$lib/img/neptune_icon.png';
@@ -12,8 +12,8 @@
 	let showPassword = $state(false);
 	let scannerOpen = $state(false);
 
-	const phase = $derived($waterSystem.mqttConnection.mqttPhase);
-	const lastError = $derived($waterSystem.mqttConnection.lastError);
+	const phase = $derived($mqttConnectionState.mqttPhase);
+	const lastError = $derived($mqttConnectionState.lastError);
 
 	const isConnecting = $derived(phase === 'connecting' || phase === 'reconnecting');
 	const isError = $derived(phase === 'error');

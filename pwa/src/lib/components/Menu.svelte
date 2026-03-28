@@ -5,23 +5,28 @@
 	import { X, RotateCw, RotateCcw, LogOut, QrCode } from 'lucide-svelte';
 	import { theme, themeIcons, type ThemePreference } from '$lib/stores/theme.js';
 	import { notificationPrefs, notificationLabels } from '$lib/stores/notifications.js';
-	import { waterSystem } from '$lib/stores/system.js';
+	import {
+		arduinoMqttConnectionState,
+		deviceTelemetry,
+		waterSystem,
+		wifiConnectionState
+	} from '$lib/stores/system.js';
 	import { encodeBrokerSettingsAsQR } from '$lib/control.js';
 	import QRCode from 'qrcode';
 
 	let { open = $bindable(false) }: { open: boolean } = $props();
 
 	let status = $derived({
-		Mode: $waterSystem.device?.mode,
-		'Overhead Tank': $waterSystem.device?.overhead,
-		'Sump Tank': $waterSystem.device?.sump,
-		Motor: $waterSystem.device?.motor,
-		'Borewell Pump': $waterSystem.device?.borewell_status,
-		'Sump Pump': $waterSystem.device?.sump_status,
-		Override: $waterSystem.device?.override,
-		'Emergency Stop': $waterSystem.device?.emergency_stop ?? false,
-		'Arduino WiFi': $waterSystem.wifiConnection.wifiPhase,
-		'Arduino MQTT': $waterSystem.arduinoMQTTConnection.mqttPhase
+		Mode: $deviceTelemetry?.mode,
+		'Overhead Tank': $deviceTelemetry?.overhead,
+		'Sump Tank': $deviceTelemetry?.sump,
+		Motor: $deviceTelemetry?.motor,
+		'Borewell Pump': $deviceTelemetry?.borewell_status,
+		'Sump Pump': $deviceTelemetry?.sump_status,
+		Override: $deviceTelemetry?.override,
+		'Emergency Stop': $deviceTelemetry?.emergency_stop ?? false,
+		'Arduino WiFi': $wifiConnectionState.wifiPhase,
+		'Arduino MQTT': $arduinoMqttConnectionState.mqttPhase
 	});
 
 	let restarting = $state(false);
@@ -249,7 +254,7 @@
 			<p class="mb-3 text-xs font-semibold tracking-[0.2em] text-slate-400 uppercase">
 				Device Status
 			</p>
-			{#if $waterSystem.device}
+			{#if $deviceTelemetry}
 				<div
 					class="space-y-1.5 rounded-2xl border border-slate-200 bg-slate-50 p-4 font-mono text-xs text-slate-600"
 				>
