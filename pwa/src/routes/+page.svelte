@@ -34,6 +34,7 @@
 	let splashDone = $state(false); // trails splashVisible by the fade-out duration
 	let activeView = $state<AppView>('login');
 	let fadingOutView = $state<AppView | null>(null);
+	let incomingView = $state<AppView | null>(null);
 	let viewFadeTimer: ReturnType<typeof setTimeout> | null = null;
 	let modeValue: 'auto' | 'manual' = $state('auto');
 	let pumpValue: 'borewell' | 'sump' = $state('borewell');
@@ -261,7 +262,14 @@
 		if (nextView === activeView) return;
 
 		fadingOutView = activeView;
+		incomingView = nextView;
 		activeView = nextView;
+
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				incomingView = null;
+			});
+		});
 
 		if (viewFadeTimer !== null) clearTimeout(viewFadeTimer);
 		viewFadeTimer = setTimeout(() => {
@@ -378,7 +386,7 @@
 		{#if activeView === 'login' || fadingOutView === 'login'}
 			<div
 				class="absolute inset-0 overflow-y-auto transition-opacity duration-300"
-				class:opacity-0={fadingOutView === 'login'}
+				class:opacity-0={fadingOutView === 'login' || incomingView === 'login'}
 				class:pointer-events-none={activeView !== 'login'}
 				aria-hidden={activeView !== 'login'}
 			>
@@ -388,7 +396,7 @@
 		{#if activeView === 'app' || fadingOutView === 'app'}
 			<div
 				class="absolute inset-0 overflow-y-auto transition-opacity duration-300"
-				class:opacity-0={fadingOutView === 'app'}
+				class:opacity-0={fadingOutView === 'app' || incomingView === 'app'}
 				class:pointer-events-none={activeView !== 'app'}
 				aria-hidden={activeView !== 'app'}
 			>
