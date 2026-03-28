@@ -34,28 +34,25 @@
 		warning: TriangleAlert
 	} as const;
 
-	// rAF-based ticker — only runs when there are visible toasts, automatically
-	// aligned with the browser paint cycle so it never runs between frames.
+	// Low-frequency timer for progress bars. 120ms keeps smooth visual motion
+	// while cutting idle wakeups and CPU compared to per-frame updates.
 	let now = $state(Date.now());
-	let rafId: number | null = null;
-
-	function tick() {
-		now = Date.now();
-		if ($alerts.length > 0) {
-			rafId = requestAnimationFrame(tick);
-		} else {
-			rafId = null;
-		}
-	}
+	let tickTimer: ReturnType<typeof setInterval> | null = null;
 
 	$effect(() => {
-		if ($alerts.length > 0 && rafId === null) {
-			rafId = requestAnimationFrame(tick);
+		if ($alerts.length > 0 && tickTimer === null) {
+			tickTimer = setInterval(() => {
+				now = Date.now();
+			}, 120);
+		}
+		if ($alerts.length === 0 && tickTimer !== null) {
+			clearInterval(tickTimer);
+			tickTimer = null;
 		}
 	});
 
 	onDestroy(() => {
-		if (rafId !== null) cancelAnimationFrame(rafId);
+		if (tickTimer !== null) clearInterval(tickTimer);
 	});
 
 	function progressPercent(alert: (typeof $alerts)[number]) {

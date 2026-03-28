@@ -2,12 +2,14 @@
 
 declare const self: ServiceWorkerGlobalScope;
 
-const CACHE = 'neptune-v2';
+const CACHE_VERSION = 'v3';
+const CACHE = `neptune-${CACHE_VERSION}`;
 
 // Only precache truly static assets — never the HTML shell.
 // The HTML shell must always come from the network so SvelteKit's
 // hydration data is fresh and the MQTT store initialises correctly.
 const PRECACHE = ['/manifest.json'];
+const STATIC_ASSET_RE = /\.(js|css|png|svg|ico|woff2?)(\?|$)/;
 
 self.addEventListener('install', (event) => {
 	event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)));
@@ -16,10 +18,14 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
 	event.waitUntil(
-		caches
-			.keys()
-			.then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
-			.then(() => self.clients.claim())
+		(async () => {
+			const keys = await caches.keys();
+			await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
+			if ('navigationPreload' in self.registration) {
+				await self.registration.navigationPreload.enable();
+			}
+			await self.clients.claim();
+		})()
 	);
 });
 
@@ -35,25 +41,48 @@ self.addEventListener('fetch', (event) => {
 
 	// Never cache navigation requests — always go to the network so the app
 	// shell is fresh and credentials/store state initialise correctly.
-	if (request.mode === 'navigate') return;
-
-	// For same-origin static assets (JS, CSS, images): cache-first.
-	// SvelteKit content-hashes its bundles so stale hits are impossible.
-	event.respondWith(
-		caches.match(request).then((cached) => {
-			if (cached) return cached;
-			return fetch(request).then((response) => {
-				// Only cache successful opaque-safe responses for static assets.
-				if (!response.ok || !url.pathname.match(/\.(js|css|png|svg|ico|woff2?)(\?|$)/)) {
-					return response;
+	if (request.mode === 'navigate') {
+		event.respondWith(
+			(async () => {
+				try {
+					const preload = await event.preloadResponse;
+					if (preload) return preload;
+					return await fetch(request);
+				} catch {
+					const cached = await caches.match('/');
+					if (cached) return cached;
+					throw new Error('Navigation network error and no cache fallback available.');
 				}
-				const responseClone = response.clone();
-				return caches.open(CACHE).then((cache) => {
-					cache.put(request, responseClone);
+			})()
+		);
+		return;
+	}
+
+	if (!STATIC_ASSET_RE.test(url.pathname)) return;
+
+	// Stale-while-revalidate for static assets: fast first paint with background refresh.
+	event.respondWith(
+		(async () => {
+			const cache = await caches.open(CACHE);
+			const cached = await cache.match(request);
+			const fetchAndUpdate = fetch(request)
+				.then((response) => {
+					if (response.ok) {
+						void cache.put(request, response.clone());
+					}
 					return response;
-				});
-			});
-		})
+				})
+				.catch(() => null);
+
+			if (cached) {
+				void fetchAndUpdate;
+				return cached;
+			}
+
+			const network = await fetchAndUpdate;
+			if (network) return network;
+			throw new Error('Static asset unavailable from cache and network.');
+		})()
 	);
 });
 

@@ -7,76 +7,57 @@
 	--breakpoint-sm: 1000px;
 }
 
-/* ── Default: Light mode ─────────────────────────────────── */
 :root {
 	color-scheme: light;
+	--app-bg: #f8fafc;
+	--app-fg: #0f172a;
+	--surface-bg: #ffffff;
+}
+
+:root.dark {
+	color-scheme: dark;
+	--app-bg: #020617;
+	--app-fg: #e2e8f0;
+	--surface-bg: #0f172a;
 }
 
 html,
 body {
 	overflow-x: clip;
-	/* Smooth scrolling on iOS */
 	-webkit-overflow-scrolling: touch;
+	background: var(--app-bg);
+	color: var(--app-fg);
 }
 
-/* ── Dark mode: invert the entire body ───────────────────── */
-:root.dark body {
-	filter: invert(1) hue-rotate(180deg);
-	background: #f8fafc;
-}
-
-:root.dark img,
-:root.dark video,
-:root.dark canvas,
-:root.dark [data-no-theme-invert='true'] {
-	filter: invert(1) hue-rotate(180deg);
-	will-change: transform;
-}
-
-/* ── Smooth transitions when switching theme ─────────────── */
 body {
 	transition:
-		background-color 220ms ease,
-		color 220ms ease,
-		filter 220ms ease;
+		background-color 160ms ease,
+		color 160ms ease;
 }
 
-:root body,
-:root main,
-:root section,
-:root article,
-:root aside,
-:root nav,
-:root form,
-:root button,
-:root input,
-:root select,
-:root textarea,
-:root a,
-:root svg {
+/* Keep transitions scoped to truly interactive controls only. */
+button,
+a,
+input,
+select,
+textarea,
+[role='button'] {
 	transition:
-		background-color 180ms ease,
-		border-color 180ms ease,
-		color 180ms ease,
-		box-shadow 180ms ease,
-		filter 180ms ease;
+		background-color 140ms ease,
+		border-color 140ms ease,
+		color 140ms ease,
+		box-shadow 140ms ease,
+		transform 120ms ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
 	body,
-	:root body,
-	:root main,
-	:root section,
-	:root article,
-	:root aside,
-	:root nav,
-	:root form,
-	:root button,
-	:root input,
-	:root select,
-	:root textarea,
-	:root a,
-	:root svg {
+	button,
+	a,
+	input,
+	select,
+	textarea,
+	[role='button'] {
 		transition: none !important;
 	}
 }
@@ -120,4 +101,14 @@ body {
 
 .animate-pulse {
 	animation: pulse 1.2s ease-in-out infinite;
+}
+
+/* Mobile devices pay a high cost for broad blur/filter animation. */
+@media (pointer: coarse) {
+	.wave-swell {
+		filter: blur(2px) !important;
+	}
+	.wave-foam {
+		filter: blur(1.5px) !important;
+	}
 }

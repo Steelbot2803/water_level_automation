@@ -215,8 +215,8 @@
 			radial-gradient(ellipse 50% 35% at 75% 45%, var(--wave-blob) 0%, transparent 65%),
 			radial-gradient(ellipse 40% 30% at 50% 60%, var(--wave-blob) 0%, transparent 60%);
 		background-size: 200% 200%;
-		animation: wave-drift 14s linear infinite;
-		filter: blur(4px);
+		animation: wave-drift 16s linear infinite;
+		filter: blur(3px);
 	}
 
 	.wave-ripple {
@@ -228,14 +228,27 @@
 			transparent 16px
 		);
 		background-size: 200% 100%;
-		animation: wave-drift 7s linear infinite;
-		filter: blur(0.6px);
+		animation: wave-drift 8s linear infinite;
+		filter: blur(0.4px);
 		opacity: 0.6;
 	}
 
 	.wave-foam {
 		background: linear-gradient(to bottom, var(--wave-foam) 0%, transparent 100%);
-		filter: blur(3px);
-		animation: wave-pulse 3s ease-in-out infinite;
+		filter: blur(2px);
+		animation: wave-pulse 3.4s ease-in-out infinite;
+	}
+
+	@media (pointer: coarse) {
+		.wave-swell {
+			filter: blur(2px);
+		}
+		.wave-ripple {
+			filter: none;
+			opacity: 0.5;
+		}
+		.wave-foam {
+			filter: blur(1.2px);
+		}
 	}
 </style>

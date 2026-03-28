@@ -15,7 +15,9 @@
 >
 	<div class="flex flex-col items-center gap-5">
 		<div class="relative h-36 w-36">
-			<div class="absolute inset-0 animate-pulse rounded-[1.4rem] shadow-lg shadow-blue-500"></div>
+			<div
+				class="splash-glow absolute inset-0 animate-pulse rounded-[1.4rem] shadow-lg shadow-blue-500"
+			></div>
 			<img src={logo} alt="Neptune logo" class="absolute inset-0 h-36 w-36" />
 		</div>
 
@@ -25,3 +27,12 @@
 		</div>
 	</div>
 </div>
+
+<style>
+	@media (pointer: coarse) {
+		.splash-glow {
+			animation-duration: 1.8s;
+			opacity: 0.85;
+		}
+	}
+</style>

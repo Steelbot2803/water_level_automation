@@ -1,6 +1,7 @@
 import { browser } from '$app/environment';
 import mqtt, { type MqttClient } from 'mqtt';
 import { derived, get, writable } from 'svelte/store';
+import { perf } from '../perf.js';
 
 import {
 	buildBrokerUrl,
@@ -117,6 +118,38 @@ function createWaterSystemStore() {
 	let client: MqttClient | null = null;
 	let activeSettings: BrokerSettings | null = null;
 	let initialized = false;
+	let latestDevicePayload: ReturnType<typeof toDeviceTelemetry> | null = null;
+	let latestRawPayload: string | null = null;
+	let applyRafId: number | null = null;
+
+	function scheduleTelemetryApply(settings: BrokerSettings) {
+		if (applyRafId !== null) return;
+		applyRafId = requestAnimationFrame(() => {
+			applyRafId = null;
+			if (!latestDevicePayload) return;
+			perf.add('ui_apply_frames');
+			const device = latestDevicePayload;
+			const startedAt = perf.enabled ? performance.now() : 0;
+			update((state) => ({
+				...state,
+				device,
+				telemetryReady: true,
+				wifiConnection: device.wifi_status
+					? { ...state.wifiConnection, wifiPhase: device.wifi_status }
+					: state.wifiConnection,
+				arduinoMQTTConnection: { mqttPhase: device.mqtt_status ?? 'unknown' },
+				mqttConnection: {
+					...state.mqttConnection,
+					mqttPhase: 'connected',
+					detail: `Receiving status from ${settings.statusTopic}.`,
+					lastMessageAt: device.receivedAt,
+					lastError: undefined
+				}
+			}));
+			if (perf.enabled) perf.add('store_update_ms', performance.now() - startedAt);
+			perf.add('store_updates');
+		});
+	}
 
 	function closeClient() {
 		if (!client) return;
@@ -125,6 +158,10 @@ function createWaterSystemStore() {
 		activeSettings = null;
 		activeClient.removeAllListeners();
 		activeClient.end(true);
+		if (applyRafId !== null) {
+			cancelAnimationFrame(applyRafId);
+			applyRafId = null;
+		}
 	}
 
 	async function connect() {
@@ -331,24 +368,16 @@ function createWaterSystemStore() {
 				if (client !== nextClient || topic !== settings.statusTopic) return;
 				const rawPayload =
 					typeof payload === 'string' ? payload : new TextDecoder().decode(payload);
+				perf.add('mqtt_messages');
+				if (latestRawPayload === rawPayload) {
+					perf.add('ui_apply_dropped');
+					return;
+				}
+				latestRawPayload = rawPayload;
 				try {
-					const device = toDeviceTelemetry(rawPayload);
-					update((state) => ({
-						...state,
-						device,
-						telemetryReady: true,
-						wifiConnection: device.wifi_status
-							? { ...state.wifiConnection, wifiPhase: device.wifi_status }
-							: state.wifiConnection,
-						arduinoMQTTConnection: { mqttPhase: device.mqtt_status ?? 'unknown' },
-						mqttConnection: {
-							...state.mqttConnection,
-							mqttPhase: 'connected',
-							detail: `Receiving status from ${settings.statusTopic}.`,
-							lastMessageAt: device.receivedAt,
-							lastError: undefined
-						}
-					}));
+					latestDevicePayload = perf.time(() => toDeviceTelemetry(rawPayload), 'mqtt_parse_ms');
+					if (applyRafId !== null) perf.add('ui_apply_dropped');
+					scheduleTelemetryApply(settings);
 				} catch (error) {
 					const message = error instanceof Error ? error.message : 'Unknown payload parse failure';
 					console.warn('[system] MQTT payload parse failure:', message, rawPayload);
@@ -418,6 +447,7 @@ function createWaterSystemStore() {
 			return;
 		}
 		initialized = true;
+		perf.start();
 
 		// INITIAL_CREDENTIALS was already read at module load time, so settings
 		// are already correct in the store. We just flip the flag and connect.
@@ -489,3 +519,8 @@ export const hasCredentials = derived(
 	waterSystem,
 	($s) => !!($s.settings.username || $s.settings.password)
 );
+
+export const deviceTelemetry = derived(waterSystem, ($s) => $s.device);
+export const mqttConnectionState = derived(waterSystem, ($s) => $s.mqttConnection);
+export const wifiConnectionState = derived(waterSystem, ($s) => $s.wifiConnection);
+export const arduinoMqttConnectionState = derived(waterSystem, ($s) => $s.arduinoMQTTConnection);

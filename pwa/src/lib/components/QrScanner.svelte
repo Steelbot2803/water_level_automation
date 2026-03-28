@@ -30,10 +30,21 @@
 	let timeoutId: ReturnType<typeof setTimeout> | null = null;
 	let flashResetId: ReturnType<typeof setTimeout> | null = null;
 
+	const SCAN_INTERVAL_MS = 120;
+	const MAX_SCAN_EDGE = 720;
+	let lastScanAt = 0;
+
 	$effect(() => {
 		if (!videoEl) return;
+		const handleVisibility = () => {
+			if (document.visibilityState !== 'visible') stopAll();
+		};
+		document.addEventListener('visibilitychange', handleVisibility);
 		startCamera();
-		return () => stopAll();
+		return () => {
+			document.removeEventListener('visibilitychange', handleVisibility);
+			stopAll();
+		};
 	});
 
 	async function startCamera() {
@@ -45,6 +56,7 @@
 			videoEl!.srcObject = stream;
 			await videoEl!.play();
 			scanning = true;
+			lastScanAt = 0;
 			scheduleFrame();
 			armTimeout();
 		} catch (e) {
@@ -90,7 +102,7 @@
 		rafId = requestAnimationFrame(scanFrame);
 	}
 
-	function scanFrame() {
+	function scanFrame(now: number) {
 		const video = videoEl;
 		const canvas = canvasEl;
 		if (!video || !canvas || video.readyState < video.HAVE_ENOUGH_DATA) {
@@ -98,17 +110,29 @@
 			return;
 		}
 
+		if (now - lastScanAt < SCAN_INTERVAL_MS) {
+			scheduleFrame();
+			return;
+		}
+		lastScanAt = now;
+
 		const ctx = canvas.getContext('2d', { willReadFrequently: true });
 		if (!ctx) {
 			scheduleFrame();
 			return;
 		}
 
-		canvas.width = video.videoWidth;
-		canvas.height = video.videoHeight;
-		ctx.drawImage(video, 0, 0);
+		const srcWidth = video.videoWidth;
+		const srcHeight = video.videoHeight;
+		const scale = Math.min(1, MAX_SCAN_EDGE / Math.max(srcWidth, srcHeight));
+		const targetWidth = Math.max(1, Math.round(srcWidth * scale));
+		const targetHeight = Math.max(1, Math.round(srcHeight * scale));
 
-		const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+		canvas.width = targetWidth;
+		canvas.height = targetHeight;
+		ctx.drawImage(video, 0, 0, targetWidth, targetHeight);
+
+		const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
 		const result = jsQR(imageData.data, imageData.width, imageData.height);
 
 		if (result) {
