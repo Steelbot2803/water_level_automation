@@ -4,7 +4,7 @@ declare const self: ServiceWorkerGlobalScope;
 
 const CACHE_VERSION = 'v3';
 const CACHE = `neptune-${CACHE_VERSION}`;
-const OFFLINE_NAV_FALLBACK = '/';
+const OFFLINE_NAV_FALLBACK = '/offline.html';
 
 // Keep a minimal offline document fallback so navigations can recover when
 // preload/network fail. We still prefer fresh network HTML for navigations.
@@ -47,17 +47,8 @@ self.addEventListener('fetch', (event) => {
 				const cache = await caches.open(CACHE);
 				try {
 					const preload = await event.preloadResponse;
-					if (preload) {
-						if (preload.ok) {
-							void cache.put(OFFLINE_NAV_FALLBACK, preload.clone());
-						}
-						return preload;
-					}
-					const network = await fetch(request);
-					if (network.ok) {
-						void cache.put(OFFLINE_NAV_FALLBACK, network.clone());
-					}
-					return network;
+					if (preload) return preload;
+					return await fetch(request);
 				} catch {
 					const fallback = await cache.match(OFFLINE_NAV_FALLBACK);
 					if (fallback) return fallback;
