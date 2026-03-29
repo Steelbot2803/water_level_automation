@@ -4,11 +4,11 @@ declare const self: ServiceWorkerGlobalScope;
 
 const CACHE_VERSION = 'v3';
 const CACHE = `neptune-${CACHE_VERSION}`;
+const OFFLINE_NAV_FALLBACK = '/';
 
-// Only precache truly static assets — never the HTML shell.
-// The HTML shell must always come from the network so SvelteKit's
-// hydration data is fresh and the MQTT store initialises correctly.
-const PRECACHE = ['/manifest.json'];
+// Keep a minimal offline document fallback so navigations can recover when
+// preload/network fail. We still prefer fresh network HTML for navigations.
+const PRECACHE = ['/manifest.json', OFFLINE_NAV_FALLBACK];
 const STATIC_ASSET_RE = /\.(js|css|png|svg|ico|woff2?)(\?|$)/;
 
 self.addEventListener('install', (event) => {
@@ -44,13 +44,23 @@ self.addEventListener('fetch', (event) => {
 	if (request.mode === 'navigate') {
 		event.respondWith(
 			(async () => {
+				const cache = await caches.open(CACHE);
 				try {
 					const preload = await event.preloadResponse;
-					if (preload) return preload;
-					return await fetch(request);
+					if (preload) {
+						if (preload.ok) {
+							void cache.put(OFFLINE_NAV_FALLBACK, preload.clone());
+						}
+						return preload;
+					}
+					const network = await fetch(request);
+					if (network.ok) {
+						void cache.put(OFFLINE_NAV_FALLBACK, network.clone());
+					}
+					return network;
 				} catch {
-					const cached = await caches.match(request);
-					if (cached) return cached;
+					const fallback = await cache.match(OFFLINE_NAV_FALLBACK);
+					if (fallback) return fallback;
 					return Response.error();
 				}
 			})()
