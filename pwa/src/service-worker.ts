@@ -4,10 +4,10 @@ declare const self: ServiceWorkerGlobalScope;
 
 const CACHE_VERSION = 'v3';
 const CACHE = `neptune-${CACHE_VERSION}`;
-const OFFLINE_NAV_FALLBACK = '/offline.html';
+const OFFLINE_NAV_FALLBACK = '/';
 
-// Keep a minimal offline document fallback so navigations can recover when
-// preload/network fail. We still prefer fresh network HTML for navigations.
+// Cache the app shell entry so offline navigations can still boot the app
+// and show in-app connectivity badges/state.
 const PRECACHE = ['/manifest.json', OFFLINE_NAV_FALLBACK];
 const STATIC_ASSET_RE = /\.(js|css|png|svg|ico|woff2?)(\?|$)/;
 
