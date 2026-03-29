@@ -183,12 +183,17 @@ function createWaterSystemStore() {
 	}
 
 	function closeClient() {
-		if (!client) return;
+		latestRawPayload = null;
+		latestDevicePayload = null;
+		latestPayloadFingerprint = null;
+		lastAppliedTelemetryAt = 0;
 		const activeClient = client;
 		client = null;
 		activeSettings = null;
-		activeClient.removeAllListeners();
-		activeClient.end(true);
+		if (activeClient) {
+			activeClient.removeAllListeners();
+			activeClient.end(true);
+		}
 		if (applyRafId !== null) {
 			cancelAnimationFrame(applyRafId);
 			applyRafId = null;
