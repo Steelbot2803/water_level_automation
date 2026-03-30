@@ -1,6 +1,7 @@
 #include "led_matrix.h"
 
 #include <Arduino_LED_Matrix.h>
+#include <avr/pgmspace.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -42,46 +43,49 @@ ArduinoLEDMatrix matrix;
 LedMatrixRuntime runtime;
 uint8_t canvas[MATRIX_HEIGHT][MATRIX_WIDTH];
 
-constexpr uint8_t GLYPH_SPACE[FONT_HEIGHT] = { 0b000, 0b000, 0b000, 0b000, 0b000 };
-constexpr uint8_t GLYPH_DASH[FONT_HEIGHT] = { 0b000, 0b000, 0b111, 0b000, 0b000 };
-constexpr uint8_t GLYPH_COLON[FONT_HEIGHT] = { 0b000, 0b010, 0b000, 0b010, 0b000 };
-constexpr uint8_t GLYPH_0[FONT_HEIGHT] = { 0b111, 0b101, 0b101, 0b101, 0b111 };
-constexpr uint8_t GLYPH_1[FONT_HEIGHT] = { 0b010, 0b110, 0b010, 0b010, 0b111 };
-constexpr uint8_t GLYPH_2[FONT_HEIGHT] = { 0b111, 0b001, 0b111, 0b100, 0b111 };
-constexpr uint8_t GLYPH_3[FONT_HEIGHT] = { 0b111, 0b001, 0b111, 0b001, 0b111 };
-constexpr uint8_t GLYPH_4[FONT_HEIGHT] = { 0b101, 0b101, 0b111, 0b001, 0b001 };
-constexpr uint8_t GLYPH_5[FONT_HEIGHT] = { 0b111, 0b100, 0b111, 0b001, 0b111 };
-constexpr uint8_t GLYPH_6[FONT_HEIGHT] = { 0b111, 0b100, 0b111, 0b101, 0b111 };
-constexpr uint8_t GLYPH_7[FONT_HEIGHT] = { 0b111, 0b001, 0b001, 0b001, 0b001 };
-constexpr uint8_t GLYPH_8[FONT_HEIGHT] = { 0b111, 0b101, 0b111, 0b101, 0b111 };
-constexpr uint8_t GLYPH_9[FONT_HEIGHT] = { 0b111, 0b101, 0b111, 0b001, 0b111 };
-constexpr uint8_t GLYPH_A[FONT_HEIGHT] = { 0b111, 0b101, 0b111, 0b101, 0b101 };
-constexpr uint8_t GLYPH_B[FONT_HEIGHT] = { 0b110, 0b101, 0b110, 0b101, 0b110 };
-constexpr uint8_t GLYPH_C[FONT_HEIGHT] = { 0b111, 0b100, 0b100, 0b100, 0b111 };
-constexpr uint8_t GLYPH_D[FONT_HEIGHT] = { 0b110, 0b101, 0b101, 0b101, 0b110 };
-constexpr uint8_t GLYPH_E[FONT_HEIGHT] = { 0b111, 0b100, 0b111, 0b100, 0b111 };
-constexpr uint8_t GLYPH_F[FONT_HEIGHT] = { 0b111, 0b100, 0b111, 0b100, 0b100 };
-constexpr uint8_t GLYPH_G[FONT_HEIGHT] = { 0b111, 0b100, 0b101, 0b101, 0b111 };
-constexpr uint8_t GLYPH_H[FONT_HEIGHT] = { 0b101, 0b101, 0b111, 0b101, 0b101 };
-constexpr uint8_t GLYPH_I[FONT_HEIGHT] = { 0b111, 0b010, 0b010, 0b010, 0b111 };
-constexpr uint8_t GLYPH_J[FONT_HEIGHT] = { 0b111, 0b001, 0b001, 0b101, 0b111 };
-constexpr uint8_t GLYPH_K[FONT_HEIGHT] = { 0b101, 0b101, 0b110, 0b101, 0b101 };
-constexpr uint8_t GLYPH_L[FONT_HEIGHT] = { 0b100, 0b100, 0b100, 0b100, 0b111 };
-constexpr uint8_t GLYPH_M[FONT_HEIGHT] = { 0b101, 0b111, 0b111, 0b101, 0b101 };
-constexpr uint8_t GLYPH_N[FONT_HEIGHT] = { 0b101, 0b111, 0b111, 0b111, 0b101 };
-constexpr uint8_t GLYPH_O[FONT_HEIGHT] = { 0b111, 0b101, 0b101, 0b101, 0b111 };
-constexpr uint8_t GLYPH_P[FONT_HEIGHT] = { 0b111, 0b101, 0b111, 0b100, 0b100 };
-constexpr uint8_t GLYPH_Q[FONT_HEIGHT] = { 0b111, 0b101, 0b101, 0b111, 0b001 };
-constexpr uint8_t GLYPH_R[FONT_HEIGHT] = { 0b110, 0b101, 0b110, 0b101, 0b101 };
-constexpr uint8_t GLYPH_S[FONT_HEIGHT] = { 0b111, 0b100, 0b111, 0b001, 0b111 };
-constexpr uint8_t GLYPH_T[FONT_HEIGHT] = { 0b111, 0b010, 0b010, 0b010, 0b010 };
-constexpr uint8_t GLYPH_U[FONT_HEIGHT] = { 0b101, 0b101, 0b101, 0b101, 0b111 };
-constexpr uint8_t GLYPH_V[FONT_HEIGHT] = { 0b101, 0b101, 0b101, 0b101, 0b010 };
-constexpr uint8_t GLYPH_W[FONT_HEIGHT] = { 0b101, 0b101, 0b111, 0b111, 0b101 };
-constexpr uint8_t GLYPH_X[FONT_HEIGHT] = { 0b101, 0b101, 0b010, 0b101, 0b101 };
-constexpr uint8_t GLYPH_Y[FONT_HEIGHT] = { 0b101, 0b101, 0b010, 0b010, 0b010 };
-constexpr uint8_t GLYPH_Z[FONT_HEIGHT] = { 0b111, 0b001, 0b010, 0b100, 0b111 };
+// Glyphs stored in flash (PROGMEM) instead of SRAM — saves ~195 bytes.
+// Read back with pgm_read_byte() in glyphFor().
+const uint8_t GLYPH_SPACE[FONT_HEIGHT] PROGMEM = { 0b000, 0b000, 0b000, 0b000, 0b000 };
+const uint8_t GLYPH_DASH[FONT_HEIGHT] PROGMEM = { 0b000, 0b000, 0b111, 0b000, 0b000 };
+const uint8_t GLYPH_COLON[FONT_HEIGHT] PROGMEM = { 0b000, 0b010, 0b000, 0b010, 0b000 };
+const uint8_t GLYPH_0[FONT_HEIGHT] PROGMEM = { 0b111, 0b101, 0b101, 0b101, 0b111 };
+const uint8_t GLYPH_1[FONT_HEIGHT] PROGMEM = { 0b010, 0b110, 0b010, 0b010, 0b111 };
+const uint8_t GLYPH_2[FONT_HEIGHT] PROGMEM = { 0b111, 0b001, 0b111, 0b100, 0b111 };
+const uint8_t GLYPH_3[FONT_HEIGHT] PROGMEM = { 0b111, 0b001, 0b111, 0b001, 0b111 };
+const uint8_t GLYPH_4[FONT_HEIGHT] PROGMEM = { 0b101, 0b101, 0b111, 0b001, 0b001 };
+const uint8_t GLYPH_5[FONT_HEIGHT] PROGMEM = { 0b111, 0b100, 0b111, 0b001, 0b111 };
+const uint8_t GLYPH_6[FONT_HEIGHT] PROGMEM = { 0b111, 0b100, 0b111, 0b101, 0b111 };
+const uint8_t GLYPH_7[FONT_HEIGHT] PROGMEM = { 0b111, 0b001, 0b001, 0b001, 0b001 };
+const uint8_t GLYPH_8[FONT_HEIGHT] PROGMEM = { 0b111, 0b101, 0b111, 0b101, 0b111 };
+const uint8_t GLYPH_9[FONT_HEIGHT] PROGMEM = { 0b111, 0b101, 0b111, 0b001, 0b111 };
+const uint8_t GLYPH_A[FONT_HEIGHT] PROGMEM = { 0b111, 0b101, 0b111, 0b101, 0b101 };
+const uint8_t GLYPH_B[FONT_HEIGHT] PROGMEM = { 0b110, 0b101, 0b110, 0b101, 0b110 };
+const uint8_t GLYPH_C[FONT_HEIGHT] PROGMEM = { 0b111, 0b100, 0b100, 0b100, 0b111 };
+const uint8_t GLYPH_D[FONT_HEIGHT] PROGMEM = { 0b110, 0b101, 0b101, 0b101, 0b110 };
+const uint8_t GLYPH_E[FONT_HEIGHT] PROGMEM = { 0b111, 0b100, 0b111, 0b100, 0b111 };
+const uint8_t GLYPH_F[FONT_HEIGHT] PROGMEM = { 0b111, 0b100, 0b111, 0b100, 0b100 };
+const uint8_t GLYPH_G[FONT_HEIGHT] PROGMEM = { 0b111, 0b100, 0b101, 0b101, 0b111 };
+const uint8_t GLYPH_H[FONT_HEIGHT] PROGMEM = { 0b101, 0b101, 0b111, 0b101, 0b101 };
+const uint8_t GLYPH_I[FONT_HEIGHT] PROGMEM = { 0b111, 0b010, 0b010, 0b010, 0b111 };
+const uint8_t GLYPH_J[FONT_HEIGHT] PROGMEM = { 0b111, 0b001, 0b001, 0b101, 0b111 };
+const uint8_t GLYPH_K[FONT_HEIGHT] PROGMEM = { 0b101, 0b101, 0b110, 0b101, 0b101 };
+const uint8_t GLYPH_L[FONT_HEIGHT] PROGMEM = { 0b100, 0b100, 0b100, 0b100, 0b111 };
+const uint8_t GLYPH_M[FONT_HEIGHT] PROGMEM = { 0b101, 0b111, 0b111, 0b101, 0b101 };
+const uint8_t GLYPH_N[FONT_HEIGHT] PROGMEM = { 0b101, 0b111, 0b111, 0b111, 0b101 };
+const uint8_t GLYPH_O[FONT_HEIGHT] PROGMEM = { 0b111, 0b101, 0b101, 0b101, 0b111 };
+const uint8_t GLYPH_P[FONT_HEIGHT] PROGMEM = { 0b111, 0b101, 0b111, 0b100, 0b100 };
+const uint8_t GLYPH_Q[FONT_HEIGHT] PROGMEM = { 0b111, 0b101, 0b101, 0b111, 0b001 };
+const uint8_t GLYPH_R[FONT_HEIGHT] PROGMEM = { 0b110, 0b101, 0b110, 0b101, 0b101 };
+const uint8_t GLYPH_S[FONT_HEIGHT] PROGMEM = { 0b111, 0b100, 0b111, 0b001, 0b111 };
+const uint8_t GLYPH_T[FONT_HEIGHT] PROGMEM = { 0b111, 0b010, 0b010, 0b010, 0b010 };
+const uint8_t GLYPH_U[FONT_HEIGHT] PROGMEM = { 0b101, 0b101, 0b101, 0b101, 0b111 };
+const uint8_t GLYPH_V[FONT_HEIGHT] PROGMEM = { 0b101, 0b101, 0b101, 0b101, 0b010 };
+const uint8_t GLYPH_W[FONT_HEIGHT] PROGMEM = { 0b101, 0b101, 0b111, 0b111, 0b101 };
+const uint8_t GLYPH_X[FONT_HEIGHT] PROGMEM = { 0b101, 0b101, 0b010, 0b101, 0b101 };
+const uint8_t GLYPH_Y[FONT_HEIGHT] PROGMEM = { 0b101, 0b101, 0b010, 0b010, 0b010 };
+const uint8_t GLYPH_Z[FONT_HEIGHT] PROGMEM = { 0b111, 0b001, 0b010, 0b100, 0b111 };
 
+// Returns a PROGMEM pointer — caller must use pgm_read_byte() to dereference.
 const uint8_t* glyphFor(char c) {
   if (c >= 'a' && c <= 'z') c = static_cast<char>(c - 'a' + 'A');
 
@@ -154,11 +158,9 @@ void drawRect(int x, int y, int width, int height) {
 }
 
 void fillRect(int x, int y, int width, int height) {
-  for (int dy = 0; dy < height; ++dy) {
-    for (int dx = 0; dx < width; ++dx) {
+  for (int dy = 0; dy < height; ++dy)
+    for (int dx = 0; dx < width; ++dx)
       setPixel(x + dx, y + dy);
-    }
-  }
 }
 
 uint8_t textWidth(const char* text) {
@@ -170,10 +172,11 @@ uint8_t textWidth(const char* text) {
 void drawGlyph(char c, int originX, int originY) {
   const uint8_t* glyph = glyphFor(c);
   for (uint8_t row = 0; row < FONT_HEIGHT; ++row) {
+    // pgm_read_byte fetches one byte from flash at the given address.
+    const uint8_t rowBits = pgm_read_byte(&glyph[row]);
     for (uint8_t col = 0; col < FONT_WIDTH; ++col) {
-      if (glyph[row] & (1 << (FONT_WIDTH - 1 - col))) {
+      if (rowBits & (1 << (FONT_WIDTH - 1 - col)))
         setPixel(originX + col, originY + row);
-      }
     }
   }
 }
@@ -210,7 +213,7 @@ const char* motorShort(MotorType motor) {
   switch (motor) {
     case MotorType::BOREWELL: return "B";
     case MotorType::SUMP: return "S";
-    case MotorType::NONE: return "IDLE";
+    case MotorType::NONE: return "I";
   }
   return "?";
 }
@@ -237,11 +240,14 @@ void addTextSlot(DisplaySlot* slots, size_t& count, const char* text) {
   ++count;
 }
 
-void addFormattedTextSlot(DisplaySlot* slots, size_t& count, const char* format, const char* valueA, const char* valueB = nullptr) {
+void addFormattedTextSlot(DisplaySlot* slots, size_t& count, const char* format,
+                          const char* valueA, const char* valueB = nullptr) {
   if (count >= MAX_SLOTS) return;
   slots[count].kind = DisplaySlotKind::TEXT;
-  if (valueB == nullptr) snprintf(slots[count].text, sizeof(slots[count].text), format, valueA);
-  else snprintf(slots[count].text, sizeof(slots[count].text), format, valueA, valueB);
+  if (valueB == nullptr)
+    snprintf(slots[count].text, sizeof(slots[count].text), format, valueA);
+  else
+    snprintf(slots[count].text, sizeof(slots[count].text), format, valueA, valueB);
   ++count;
 }
 
@@ -255,28 +261,30 @@ void addTanksSlot(DisplaySlot* slots, size_t& count) {
 size_t buildSlots(const SystemState& state, DisplaySlot* slots) {
   size_t count = 0;
 
-  if (state.command.emergencyStop) addTextSlot(slots, count, "ESTOP");
-  if (state.command.overrideFillToHigh) addTextSlot(slots, count, "OVERRIDE");
-  if (state.overheadLevel == OverheadLevel::CRITICAL) addTextSlot(slots, count, "OH CRIT");
-  if (state.sumpLevel == SumpLevel::CRITICAL || state.sumpCriticalWarningLatched) addTextSlot(slots, count, "SUMP CRIT");
-  if (state.borewell.status == MotorStatus::DRY_RUN_LOCK) addTextSlot(slots, count, "BW LOCK");
-  if (state.sump.status == MotorStatus::DRY_RUN_LOCK) addTextSlot(slots, count, "SU LOCK");
-  if (state.sump.status == MotorStatus::SUMP_CRITICAL) addTextSlot(slots, count, "SU BLOCK");
+  if (state.command.emergencyStop) addTextSlot(slots, count, "E-S");
+  if (state.command.overrideFillToHigh) addTextSlot(slots, count, "OR");
+  if (state.overheadLevel == OverheadLevel::CRITICAL) addTextSlot(slots, count, "OT:C");
+  if (state.sumpLevel == SumpLevel::CRITICAL
+      || state.sumpCriticalWarningLatched) addTextSlot(slots, count, "ST:C");
+  if (state.borewell.status == MotorStatus::DRY_RUN_LOCK) addTextSlot(slots, count, "B:LOCK");
+  if (state.sump.status == MotorStatus::DRY_RUN_LOCK) addTextSlot(slots, count, "S:LOCK");
+  if (state.sump.status == MotorStatus::SUMP_CRITICAL) addTextSlot(slots, count, "S:C");
   if (!isWifiConnected()) addTextSlot(slots, count, "WIFI OFF");
   if (!isMqttConnected()) addTextSlot(slots, count, "MQTT OFF");
 
-  addFormattedTextSlot(slots, count, "MODE %s", state.command.manualMode ? "MAN" : "AUTO");
-  addFormattedTextSlot(slots, count, "PREF %s", state.command.autoPreferSump ? "SU" : "BW");
+  addFormattedTextSlot(slots, count, "MODE:%s", state.command.manualMode ? "M" : "A");
+  addFormattedTextSlot(slots, count, "PREF:%s", state.command.autoPreferSump ? "S" : "B");
 
   if (state.activeMotor == MotorType::NONE) {
-    addTextSlot(slots, count, "PUMP IDLE");
+    addTextSlot(slots, count, "PUMP:I");
   } else {
-    const char* motor = motorShort(state.activeMotor);
-    const char* status = statusShort(runtimeFor(state, state.activeMotor).status);
-    addFormattedTextSlot(slots, count, "PUMP %s %s", motor, status);
+    addFormattedTextSlot(slots, count, "PUMP:%s %s",
+                         motorShort(state.activeMotor),
+                         statusShort(runtimeFor(state, state.activeMotor).status));
   }
 
-  addFormattedTextSlot(slots, count, "OH %s SU %s", levelShort(state.overheadLevel), levelShort(state.sumpLevel));
+  addFormattedTextSlot(slots, count, "OT:%s ST:%s",
+                       levelShort(state.overheadLevel), levelShort(state.sumpLevel));
   addTanksSlot(slots, count);
 
   return count;
@@ -301,10 +309,8 @@ void renderTextSlot(const char* text, unsigned long nowMs, size_t slotCount) {
     const int centeredX = (MATRIX_WIDTH - width) / 2;
     drawText(text, centeredX, TEXT_TOP);
     flushCanvas();
-
-    if (nowMs - runtime.slotStartedAtMs >= STATIC_HOLD_MS) {
+    if (nowMs - runtime.slotStartedAtMs >= STATIC_HOLD_MS)
       advanceSlot(slotCount, nowMs);
-    }
     return;
   }
 
@@ -313,14 +319,14 @@ void renderTextSlot(const char* text, unsigned long nowMs, size_t slotCount) {
     ++runtime.scrollOffset;
   }
 
-  const int originX = static_cast<int>(SCROLL_PADDING) - static_cast<int>(runtime.scrollOffset);
-  drawText(text, originX, TEXT_TOP);
+  drawText(text,
+           static_cast<int>(SCROLL_PADDING) - static_cast<int>(runtime.scrollOffset),
+           TEXT_TOP);
   flushCanvas();
 
   const uint16_t travel = static_cast<uint16_t>(width + (SCROLL_PADDING * 2) - MATRIX_WIDTH);
-  if (runtime.scrollOffset > travel) {
+  if (runtime.scrollOffset > travel)
     advanceSlot(slotCount, nowMs);
-  }
 }
 
 uint8_t overheadFillRows(OverheadLevel level) {
@@ -346,11 +352,8 @@ void drawTank(int x, int fillRows, bool alert) {
   drawRect(x, 1, 4, 6);
   setPixel(x + 1, 0);
   setPixel(x + 2, 0);
-
-  for (int row = 0; row < fillRows; ++row) {
+  for (int row = 0; row < fillRows; ++row)
     fillRect(x + 1, 5 - row, 2, 1);
-  }
-
   if (alert) {
     setPixel(x + 1, 2);
     setPixel(x + 2, 2);
@@ -373,13 +376,11 @@ void renderTankSlot(const SystemState& state, unsigned long nowMs, size_t slotCo
   }
 
   flushCanvas();
-
-  if (nowMs - runtime.slotStartedAtMs >= STATIC_HOLD_MS) {
+  if (nowMs - runtime.slotStartedAtMs >= STATIC_HOLD_MS)
     advanceSlot(slotCount, nowMs);
-  }
 }
 
-}
+}  // namespace
 
 void initLedMatrix() {
   runtime.ready = matrix.begin();
@@ -398,8 +399,11 @@ void initLedMatrix() {
 void updateLedMatrix(const SystemState& state) {
   if (!runtime.ready) return;
 
-  DisplaySlot slots[MAX_SLOTS];
+  // Static so the 300-byte buffer is allocated once at program start,
+  // not pushed onto the stack on every 200ms loop iteration.
+  static DisplaySlot slots[MAX_SLOTS];
   const size_t slotCount = buildSlots(state, slots);
+
   if (slotCount == 0) {
     matrix.clear();
     return;
@@ -413,10 +417,8 @@ void updateLedMatrix(const SystemState& state) {
   const unsigned long nowMs = millis();
   const DisplaySlot& slot = slots[runtime.slotIndex];
 
-  if (slot.kind == DisplaySlotKind::TANKS) {
+  if (slot.kind == DisplaySlotKind::TANKS)
     renderTankSlot(state, nowMs, slotCount);
-    return;
-  }
-
-  renderTextSlot(slot.text, nowMs, slotCount);
+  else
+    renderTextSlot(slot.text, nowMs, slotCount);
 }

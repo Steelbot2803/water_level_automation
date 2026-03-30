@@ -13,7 +13,7 @@ namespace {
 WiFiSSLClient wifiClient;
 PubSubClient mqttClient(wifiClient);
 
-unsigned long lastMqttPublishMs = 0;  // when we last actually sent a packet
+unsigned long lastMqttPublishMs = 0;
 unsigned long lastWifiAttemptMs = 0;
 unsigned long lastMqttAttemptMs = 0;
 unsigned long lastSuccessfulPublishMs = 0;
@@ -21,30 +21,32 @@ unsigned long lastSuccessfulPublishMs = 0;
 uint8_t lastWifiStatus = WL_NO_MODULE;
 bool lastMqttConnected = false;
 
-// Snapshot only payload fields to detect publish changes.
-struct PublishedSnapshot {
-  // mode / command
+// Fields ordered largest → smallest so the compiler inserts no padding,
+// making memcmp safe to use for change detection.
+struct __attribute__((packed)) PublishedSnapshot {
+  // uint8_t fields first
+  uint8_t overheadLevel;
+  uint8_t sumpLevel;
+  uint8_t activeMotor;
+  uint8_t borewellStatus;
+  uint8_t sumpStatus;
+  uint8_t forcedMotor;
+  // bool fields last (1 byte each, no gap needed after the uint8_ts)
   bool manualMode;
   bool overrideFillToHigh;
   bool emergencyStop;
   bool autoPreferSump;
-  uint8_t forcedMotor;  // cast of MotorType
-  // sensor levels
-  uint8_t overheadLevel;  // cast of OverheadLevel
-  uint8_t sumpLevel;      // cast of SumpLevel
-  // motor runtime
-  uint8_t activeMotor;     // cast of MotorType
-  uint8_t borewellStatus;  // cast of MotorStatus
-  uint8_t sumpStatus;      // cast of MotorStatus
-  // alarms / warnings
   bool sumpWarning;
-  // connectivity (reported from the Arduino side)
   bool wifiConnected;
   bool mqttConnected;
 };
 
 PublishedSnapshot lastSnapshot = {};
 bool haveSnapshot = false;
+
+// Static so it lives in BSS rather than being pushed/popped on the stack
+// every 500ms. Same size (640 bytes), zero per-call cost.
+static char publishPayload[640];
 
 PublishedSnapshot snapshotOf(const SystemState& state) {
   PublishedSnapshot s;
@@ -67,8 +69,6 @@ PublishedSnapshot snapshotOf(const SystemState& state) {
 bool snapshotChanged(const PublishedSnapshot& a, const PublishedSnapshot& b) {
   return memcmp(&a, &b, sizeof(PublishedSnapshot)) != 0;
 }
-
-// ── WiFi / MQTT status helpers ────────────────────────────────────────────────
 
 const __FlashStringHelper* wifiStatusText(uint8_t status) {
   switch (status) {
@@ -180,11 +180,10 @@ const char* manualTargetText(const SystemState& state) {
   return toStr(state.command.forcedMotor);
 }
 
-// Build and send JSON payload.
 bool doPublish(const SystemState& state) {
-  char payload[640];
+  // publishPayload is a static file-scope buffer — no stack allocation here.
   const int written = snprintf(
-    payload, sizeof(payload),
+    publishPayload, sizeof(publishPayload),
     "{\"mode\":\"%s\",\"override\":%s,\"manual_target\":\"%s\","
     "\"overhead\":\"%s\",\"sump\":\"%s\",\"motor\":\"%s\","
     "\"borewell_status\":\"%s\",\"sump_status\":\"%s\","
@@ -204,19 +203,17 @@ bool doPublish(const SystemState& state) {
     wifiStatusCStr(lastWifiStatus),
     mqttClient.connected() ? "true" : "false");
 
-  if (written < 0 || written >= static_cast<int>(sizeof(payload))) {
+  if (written < 0 || written >= static_cast<int>(sizeof(publishPayload))) {
     Serial.print(F("mqtt: payload truncated (needed "));
     Serial.print(written);
     Serial.println(F(" bytes), skipping publish"));
     return false;
   }
 
-  return mqttClient.publish(MQTT_STATUS_TOPIC, payload, false);
+  return mqttClient.publish(MQTT_STATUS_TOPIC, publishPayload, false);
 }
 
 }  // namespace
-
-// ── Public API ────────────────────────────────────────────────────────────────
 
 void initMqttLink() {
   mqttClient.setBufferSize(768);
@@ -240,20 +237,15 @@ void publishStateToMqtt(const SystemState& state) {
   const unsigned long nowMs = millis();
   const PublishedSnapshot current = snapshotOf(state);
 
-  // Keep a minimum gap between publishes.
   if (lastMqttPublishMs != 0 && nowMs - lastMqttPublishMs < MQTT_PUBLISH_PERIOD_MS) return;
 
-  // Publish on state change or heartbeat.
   const bool changed = !haveSnapshot || snapshotChanged(lastSnapshot, current);
   const bool heartbeat = (lastMqttPublishMs == 0) || (nowMs - lastMqttPublishMs >= MQTT_HEARTBEAT_PERIOD_MS);
 
   if (!changed && !heartbeat) return;
 
-  if (changed) {
-    Serial.println(F("mqtt: state changed, publishing"));
-  } else {
-    Serial.println(F("mqtt: heartbeat publish"));
-  }
+  if (changed) Serial.println(F("mqtt: state changed, publishing"));
+  else Serial.println(F("mqtt: heartbeat publish"));
 
   if (doPublish(state)) {
     lastSuccessfulPublishMs = nowMs;

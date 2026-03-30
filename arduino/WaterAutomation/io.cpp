@@ -6,27 +6,39 @@ namespace {
 SystemState* gState = nullptr;
 constexpr size_t MAX_COMMAND_LEN = 96;
 
+// Fixed char buffer replaces Arduino String — no heap allocation,
+// no fragmentation. Index tracks how many bytes have been written.
 String readLine() {
-  static String line;
+  static char line[MAX_COMMAND_LEN + 1];
+  static size_t idx = 0;
+
   while (Serial.available()) {
     const char c = static_cast<char>(Serial.read());
+
     if (c == '\n' || c == '\r') {
-      if (line.length() == 0) continue;
-      String out = line;
-      line = "";
-      out.trim();
-      out.toLowerCase();
-      return out;
+      if (idx == 0) continue;
+      line[idx] = '\0';
+      idx = 0;
+
+      // Trim trailing whitespace in-place.
+      size_t len = strlen(line);
+      while (len > 0 && (line[len - 1] == ' ' || line[len - 1] == '\t')) line[--len] = '\0';
+
+      // Lower-case in-place.
+      for (size_t i = 0; i < len; ++i)
+        if (line[i] >= 'A' && line[i] <= 'Z') line[i] += 32;
+
+      return String(line);  // one heap alloc at dispatch time, not during accumulation
     }
-    if (line.length() < MAX_COMMAND_LEN) {
-      line += c;
+
+    if (idx < MAX_COMMAND_LEN) {
+      line[idx++] = c;
     } else {
-      // Drop oversized input to avoid unbounded String growth.
-      line = "";
+      idx = 0;
       Serial.println(F("Command too long. Input discarded."));
     }
   }
-  return "";
+  return String();
 }
 
 void printHelp() {
@@ -37,8 +49,8 @@ void printHelp() {
   Serial.println(F("  motor borewell        -> manual: run borewell motor"));
   Serial.println(F("  motor sump            -> manual: run sump motor"));
   Serial.println(F("  motor stop            -> stop active motor (any mode)"));
-  Serial.println(F("  borewell        -> auto: prefer borewell (default)"));
-  Serial.println(F("  sump            -> auto: prefer sump over borewell"));
+  Serial.println(F("  borewell              -> auto: prefer borewell (default)"));
+  Serial.println(F("  sump                  -> auto: prefer sump over borewell"));
   Serial.println(F("  estop                 -> emergency stop all motors"));
   Serial.println(F("  status                -> print current status"));
   Serial.println(F("  help                  -> show commands"));
@@ -49,7 +61,6 @@ void printHelp() {
 void setSystemStateRef(SystemState* state) {
   gState = state;
 }
-
 SystemState* getSystemStateRef() {
   return gState;
 }
@@ -112,8 +123,6 @@ bool applyCommand(SystemState& state, const String& line) {
     return true;
   }
 
-  // Motor stop: works in any mode — clears forced motor and override,
-  // but does NOT change mode so the user stays where they are.
   if (line == "motor stop") {
     state.command.forcedMotor = MotorType::NONE;
     state.command.overrideFillToHigh = false;
@@ -122,7 +131,6 @@ bool applyCommand(SystemState& state, const String& line) {
     return true;
   }
 
-  // Force switch: sets preferred motor for auto selection without leaving auto mode.
   if (line == "borewell") {
     state.command.autoPreferSump = false;
     persistStateIfChanged(state);
@@ -137,7 +145,6 @@ bool applyCommand(SystemState& state, const String& line) {
     return true;
   }
 
-  // Emergency stop: stops everything immediately, any mode.
   if (line == "estop") {
     state.command.emergencyStop = true;
     persistStateIfChanged(state);
@@ -153,7 +160,7 @@ bool applyCommand(SystemState& state, const String& line) {
   }
 
   if (line == "status") {
-    state.lastStatusPrintMs = 0;  // force status print in next cycle
+    state.lastStatusPrintMs = 0;
     return true;
   }
 
@@ -209,7 +216,6 @@ bool applyCommand(SystemState& state, const String& line) {
 void readCommandFromSerial(SystemState& state) {
   const String line = readLine();
   if (line.isEmpty()) return;
-
   if (!applyCommand(state, line)) {
     Serial.print(F("Unknown command: "));
     Serial.println(line);

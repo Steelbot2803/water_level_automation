@@ -13,11 +13,13 @@
 		warning: 'border-amber-200 bg-white/96 text-slate-950'
 	} as const;
 
-	const progressStyles = {
-		success: 'bg-emerald-500',
-		error: 'bg-rose-500',
-		info: 'bg-sky-500',
-		warning: 'bg-amber-500'
+	// Progress bar color per severity — used as a CSS custom property so the
+	// bar animates purely in CSS with no JS involvement.
+	const progressColors = {
+		success: '#10b981',
+		error: '#f43f5e',
+		info: '#0ea5e9',
+		warning: '#f59e0b'
 	} as const;
 
 	const iconStyles = {
@@ -34,37 +36,15 @@
 		warning: TriangleAlert
 	} as const;
 
-	// rAF-based ticker — only runs when there are visible toasts, automatically
-	// aligned with the browser paint cycle so it never runs between frames.
-	let now = $state(Date.now());
-	let rafId: number | null = null;
-
-	function tick() {
-		now = Date.now();
-		if ($alerts.length > 0) {
-			rafId = requestAnimationFrame(tick);
-		} else {
-			rafId = null;
-		}
-	}
-
-	$effect(() => {
-		if ($alerts.length > 0 && rafId === null) {
-			rafId = requestAnimationFrame(tick);
-		}
-	});
-
-	onDestroy(() => {
-		if (rafId !== null) cancelAnimationFrame(rafId);
-	});
-
-	function progressPercent(alert: (typeof $alerts)[number]) {
-		if (!alert.duration) return 0;
-		const remaining =
-			alert.timer && alert.startedAt
-				? Math.max(0, alert.remaining - (now - alert.startedAt))
-				: alert.remaining;
-		return Math.max(0, Math.min(100, (remaining / alert.duration) * 100));
+	// No rAF loop needed. Each bar is a <div> whose width animates from 100%
+	// to 0% over `duration` ms using a CSS linear transition. Pausing is done
+	// by toggling animation-play-state via a data attribute — zero JS per frame.
+	function progressStyle(alert: (typeof $alerts)[number]) {
+		return [
+			`--dur: ${alert.duration}ms`,
+			`--remaining: ${alert.remaining}ms`,
+			`background: ${progressColors[alert.severity]}`
+		].join(';');
 	}
 </script>
 
@@ -77,9 +57,10 @@
 		{@const Icon = severityIcons[alert.severity]}
 		<div
 			role="status"
-			class={`pointer-events-auto relative overflow-hidden rounded-[1.6rem] border px-4 pt-4 pb-3 shadow-[0_18px_40px_-18px_rgba(15,23,42,0.35)] backdrop-blur-sm ${severityStyles[alert.severity]}`}
+			class={`pointer-events-auto relative overflow-hidden rounded-[1.6rem] border px-4 pt-4 pb-3 shadow-[0_18px_40px_-18px_rgba(15,23,42,0.35)] ${severityStyles[alert.severity]}`}
 			onmouseenter={() => alerts.pause(alert.id)}
 			onmouseleave={() => alerts.resume(alert.id)}
+			data-paused={alert.timer ? undefined : ''}
 			in:fly={{ y: -16, duration: 180 }}
 			out:fade={{ duration: 180 }}
 		>
@@ -95,7 +76,6 @@
 						<p class="mt-1 text-sm leading-5 text-slate-600">{alert.message}</p>
 					</div>
 				</div>
-
 				<button
 					class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 shadow-sm transition hover:bg-slate-100 hover:text-slate-700 active:scale-[0.98]"
 					onclick={() => alerts.dismiss(alert.id)}
@@ -105,12 +85,38 @@
 				</button>
 			</div>
 
+			<!--
+				Progress bar driven entirely by CSS.
+				`animation-duration` is set to the full toast duration.
+				`animation-delay` is negative: -（duration - remaining) rewinds
+				the animation to exactly where it left off after a pause/resume.
+				`animation-play-state` is toggled via the parent's data-paused attribute.
+			-->
 			<div class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-200/80">
-				<div
-					class={`linear h-full rounded-full transition-[width] duration-100 ${progressStyles[alert.severity]}`}
-					style={`width: ${progressPercent(alert)}%;`}
-				></div>
+				<div class="progress-bar h-full rounded-full" style={progressStyle(alert)}></div>
 			</div>
 		</div>
 	{/each}
 </div>
+
+<style>
+	@keyframes shrink {
+		from {
+			width: 100%;
+		}
+		to {
+			width: 0%;
+		}
+	}
+
+	.progress-bar {
+		animation: shrink var(--dur) linear forwards;
+		/* Negative delay rewinds the animation to match remaining time after resume. */
+		animation-delay: calc(-1 * (var(--dur) - var(--remaining)));
+	}
+
+	/* Pause the bar when the parent toast has data-paused set. */
+	[data-paused] .progress-bar {
+		animation-play-state: paused;
+	}
+</style>

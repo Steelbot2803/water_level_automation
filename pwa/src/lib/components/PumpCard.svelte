@@ -25,7 +25,7 @@
 	const isLocked = $derived(
 		resolvedStatus === 'dry_run_lock' || resolvedStatus === 'sump_critical'
 	);
-	const isNull = $derived(status == null || status === undefined);
+	const isNull = $derived(status == null);
 
 	const StatusIcon = $derived(
 		resolvedStatus === 'dry_run_lock'
@@ -44,7 +44,6 @@
 					? 'border-rose-300'
 					: 'border-slate-300'
 	);
-
 	const hubClass = $derived(
 		isRunning
 			? 'bg-emerald-100'
@@ -54,7 +53,6 @@
 					? 'bg-rose-100'
 					: 'bg-white'
 	);
-
 	const bladeClass = $derived(
 		isRunning
 			? 'text-emerald-950/70'
@@ -64,7 +62,6 @@
 					? 'text-rose-950/65'
 					: 'text-slate-950/55'
 	);
-
 	const labelClass = $derived(
 		isRunning
 			? 'text-emerald-600'
@@ -74,39 +71,31 @@
 					? 'text-rose-600'
 					: 'text-slate-950'
 	);
-
 	const iconClass = $derived(
 		StatusIcon === Lock || StatusIcon === TriangleAlert ? 'text-rose-700' : 'text-slate-300'
 	);
 
 	const discGradient = $derived(
 		isRunning
-			? 'linear-gradient(145deg, #059669, #34d399)'
+			? 'linear-gradient(145deg,#059669,#34d399)'
 			: isStarting
-				? 'linear-gradient(145deg, #d97706, #fbbf24)'
+				? 'linear-gradient(145deg,#d97706,#fbbf24)'
 				: isLocked
-					? 'linear-gradient(145deg, #e11d48, #fb7185)'
-					: 'linear-gradient(145deg, #94a3b8, #cbd5e1)'
+					? 'linear-gradient(145deg,#e11d48,#fb7185)'
+					: 'linear-gradient(145deg,#94a3b8,#cbd5e1)'
 	);
 
 	const discSheen = $derived(
 		isRunning
-			? 'radial-gradient(circle at 35% 30%, rgba(167,243,208,0.35) 0%, transparent 65%)'
+			? 'radial-gradient(circle at 35% 30%,rgba(167,243,208,0.35) 0%,transparent 65%)'
 			: isStarting
-				? 'radial-gradient(circle at 35% 30%, rgba(253,230,138,0.35) 0%, transparent 65%)'
+				? 'radial-gradient(circle at 35% 30%,rgba(253,230,138,0.35) 0%,transparent 65%)'
 				: isLocked
-					? 'radial-gradient(circle at 35% 30%, rgba(254,205,211,0.30) 0%, transparent 65%)'
-					: 'radial-gradient(circle at 35% 30%, rgba(255,255,255,0.28) 0%, transparent 65%)'
+					? 'radial-gradient(circle at 35% 30%,rgba(254,205,211,0.30) 0%,transparent 65%)'
+					: 'radial-gradient(circle at 35% 30%,rgba(255,255,255,0.28) 0%,transparent 65%)'
 	);
 
-	// ── WAAPI spin control ─────────────────────────────────────────────────────
-	//
-	// One persistent Animation object lives for the lifetime of the component.
-	// We never recreate it — only its playbackRate changes, so the disc angle
-	// never resets to 0° between state transitions.
-	//
-	// updatePlaybackRate() sounds like it interpolates but in practice it snaps.
-	// We drive the ramp ourselves with requestAnimationFrame instead.
+	// ── WAAPI spin control ────────────────────────────────────────────────────
 
 	let discEl = $state<HTMLElement | null>(null);
 	let spinAnim: Animation | null = null;
@@ -114,20 +103,15 @@
 
 	function getAnim(): Animation {
 		if (spinAnim) return spinAnim;
-		spinAnim = discEl!.animate(
-			[{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }],
-			// duration 250 ms at rate 1 = 1 rev/s. easing is linear so the
-			// playbackRate is the sole driver of perceived speed.
-			{ duration: 250, iterations: Infinity, easing: 'linear' }
-		);
+		spinAnim = discEl!.animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }], {
+			duration: 250,
+			iterations: Infinity,
+			easing: 'linear'
+		});
 		spinAnim.pause();
 		return spinAnim;
 	}
 
-	// Interpolates playbackRate from its current value to `target` over `durationMs`.
-	// easingFn defaults to ease-out on ramp-up (rate climbs fast, settles slowly)
-	// and ease-in on ramp-down (rate drops slowly at first, fast at the end).
-	// Both feel physically correct — inertia resists starting and stopping.
 	function rampRate(anim: Animation, target: number, durationMs: number, onDone?: () => void) {
 		if (rampRafId !== null) {
 			cancelAnimationFrame(rampRafId);
@@ -143,10 +127,7 @@
 			return;
 		}
 
-		// ease-out for spin-up (delta > 0): t² flipped — fast start, slow finish.
-		// ease-in for spin-down (delta < 0): t² — slow start, fast finish.
 		const ease = delta > 0 ? (t: number) => 1 - (1 - t) * (1 - t) : (t: number) => t * t;
-
 		let startTime: number | null = null;
 
 		function step(now: number) {
@@ -160,12 +141,22 @@
 				onDone?.();
 			}
 		}
-
 		rampRafId = requestAnimationFrame(step);
 	}
 
+	// Cache the last status the effect acted on so we only call rampRate
+	// when the motor state genuinely transitions, not on every re-render.
+	let lastActedStatus: MotorRuntimeStatus | undefined;
+
 	$effect(() => {
 		if (!discEl) return;
+
+		const currentStatus = resolvedStatus;
+
+		// Skip if nothing changed — guards against re-renders triggered by
+		// unrelated parent state (MQTT ticks, connection phase updates, etc.).
+		if (currentStatus === lastActedStatus) return;
+		lastActedStatus = currentStatus;
 
 		const anim = getAnim();
 
@@ -177,10 +168,10 @@
 			rampRate(anim, 1, 600);
 		} else if (isSpinningDown) {
 			rampRate(anim, 0, 1500, () => anim.pause());
-		} else if (resolvedStatus === 'stopped') {
+		} else if (currentStatus === 'stopped') {
 			rampRate(anim, 0, 800, () => anim.pause());
 		} else {
-			// dry_run_lock — hard snap, no ramp.
+			// dry_run_lock — hard snap
 			if (rampRafId !== null) {
 				cancelAnimationFrame(rampRafId);
 				rampRafId = null;
@@ -203,18 +194,14 @@
 			<div
 				class="absolute inset-0 rounded-full border-[6px] bg-white shadow-inner transition-colors duration-500 {ringClass}"
 			>
-				<!--
-					bind:this wires the DOM element to discEl so the $effect above
-					can call .animate() on it directly via WAAPI.
-				-->
 				<div
 					bind:this={discEl}
 					class="absolute inset-[0.62rem] rounded-full border border-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]"
-					style="background: {discGradient}; transition: background 500ms ease;"
+					style="background:{discGradient};transition:background 500ms ease;will-change:transform"
 				>
 					<div
 						class="absolute inset-0 rounded-full transition-[background] duration-500"
-						style="background: {discSheen};"
+						style="background:{discSheen}"
 					></div>
 
 					<Aperture
@@ -226,7 +213,6 @@
 					<div
 						class="absolute top-1/2 left-1/2 h-[2.5rem] w-[2.5rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/60 shadow-[0_2px_7px_rgba(15,23,42,0.18)] transition-colors duration-500 {hubClass}"
 					></div>
-
 					<div
 						class="absolute top-1/2 left-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-950/10 bg-slate-950"
 					></div>
