@@ -2,7 +2,22 @@
 
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { waterSystem, hasCredentials } from '$lib/stores/system.js';
+	import {
+		waterSystem,
+		hasCredentials,
+		mqttPhase,
+		wifiPhase,
+		arduinoMqttPhase,
+		overhead,
+		sumpLevel,
+		borewellMotor,
+		sumpMotor,
+		emergencyStop,
+		telemetryReady,
+		lastMessageAt,
+		deviceControls,
+		brokerSettings
+	} from '$lib/stores/system.js';
 	import { commandLabels } from '$lib/control.js';
 	import type {
 		WifiConnectionPhase,
@@ -44,13 +59,13 @@
 	let openBadge = $state<string | null>(null);
 
 	const showLogin = $derived(!$hasCredentials);
-	const eStopped = $derived($waterSystem.device?.alarms?.emergencyStop ?? false);
-	const borewellStatus = $derived($waterSystem.device?.motors?.borewell?.status);
-	const sumpStatus = $derived($waterSystem.device?.motors?.sump?.status);
-	const isConnected = $derived($waterSystem.mqttConnection.mqttPhase === 'connected');
-	const mqttConnectionPhase = $derived($waterSystem.mqttConnection.mqttPhase);
-	const wifiConnectionPhase = $derived($waterSystem.wifiConnection.wifiPhase);
-	const arduinoMQTTConnectionPhase = $derived($waterSystem.arduinoMQTTConnection.mqttPhase);
+	const eStopped = $derived($emergencyStop ?? false);
+	const borewellStatus = $derived($borewellMotor);
+	const sumpStatus = $derived($sumpMotor);
+	const isConnected = $derived($mqttPhase === 'connected');
+	const mqttConnectionPhase = $derived($mqttPhase);
+	const wifiConnectionPhase = $derived($wifiPhase);
+	const arduinoMQTTConnectionPhase = $derived($arduinoMqttPhase);
 
 	const wifiIcon = $derived(wifiConnectionIconsMap[wifiConnectionPhase]);
 	const mqttIcon = $derived(mqttConnectionIconsMap[mqttConnectionPhase]);
@@ -226,32 +241,33 @@
 
 	// Pre-computed so it doesn't reformat on every MQTT tick.
 	const lastUpdateLabel = $derived(
-		$waterSystem.device?.receivedAt
+		$lastMessageAt
 			? new Intl.DateTimeFormat(undefined, {
 					dateStyle: 'medium',
 					timeStyle: 'short'
-				}).format($waterSystem.device.receivedAt)
+				}).format($lastMessageAt)
 			: null
 	);
 
 	// Debounce device → UI sync so rapid MQTT messages don't thrash reactive
 	// state and trigger unnecessary layout passes on mobile.
 	let syncTimer: ReturnType<typeof setTimeout> | null = null;
+
 	$effect(() => {
-		const device = $waterSystem.device;
-		if (!device) return;
+		const controls = $deviceControls;
+		if (!controls.mode) return;
 		if (Date.now() < ignoreDeviceSyncUntil) return;
 
 		if (syncTimer !== null) clearTimeout(syncTimer);
 		syncTimer = setTimeout(() => {
 			syncTimer = null;
-			modeValue = device.mode === 'manual' ? 'manual' : 'auto';
+			modeValue = controls.mode === 'manual' ? 'manual' : 'auto';
 			pumpValue =
-				device.mode === 'manual'
-					? device.manual_target === 'sump'
+				controls.mode === 'manual'
+					? controls.manualTarget === 'sump'
 						? 'sump'
 						: 'borewell'
-					: device.auto_prefer_sump
+					: controls.autoPreferSump
 						? 'sump'
 						: 'borewell';
 		}, 300);
@@ -498,13 +514,13 @@
 									{/if}
 								</div>
 
-								{#if !$waterSystem.telemetryReady}
+								{#if !$telemetryReady}
 									<p class="mt-4 text-base font-semibold tracking-[0.2em] text-slate-400 uppercase">
 										Tanks
 									</p>
 									<div class="mt-2 grid grid-cols-2 gap-3">
-										<TankCard variant="overhead" level={$waterSystem.device?.overhead} />
-										<TankCard variant="sump" level={$waterSystem.device?.sump} />
+										<TankCard variant="overhead" level={$overhead} />
+										<TankCard variant="sump" level={$sumpLevel} />
 									</div>
 
 									<div class="mt-6 h-1 rounded-full bg-slate-200"></div>
@@ -515,13 +531,13 @@
 									<div class="mt-2 grid grid-cols-2 gap-3">
 										<PumpCard
 											label="Borewell"
-											status={$waterSystem.device?.motors?.borewell?.status}
+											status={$borewellMotor}
 											onUnlock={() => unlockPump('borewell')}
 											unlockDisabled={!isConnected}
 										/>
 										<PumpCard
 											label="Sump"
-											status={$waterSystem.device?.motors?.sump?.status}
+											status={$sumpMotor}
 											onUnlock={() => unlockPump('sump')}
 											unlockDisabled={!isConnected}
 										/>
@@ -532,10 +548,10 @@
 									</p>
 									<div class="mt-2 grid grid-cols-2 gap-3">
 										<div class="relative inline-block">
-											<TankCard variant="overhead" level={$waterSystem.device?.overhead} />
+											<TankCard variant="overhead" level={$overhead} />
 										</div>
 										<div class="relative inline-block">
-											<TankCard variant="sump" level={$waterSystem.device?.sump} />
+											<TankCard variant="sump" level={$sumpLevel} />
 										</div>
 									</div>
 
@@ -548,7 +564,7 @@
 										<div class="relative inline-block">
 											<PumpCard
 												label="Borewell"
-												status={$waterSystem.device?.motors?.borewell?.status}
+												status={$borewellMotor}
 												onUnlock={() => unlockPump('borewell')}
 												unlockDisabled={!isConnected}
 											/>
@@ -556,7 +572,7 @@
 										<div class="relative inline-block">
 											<PumpCard
 												label="Sump"
-												status={$waterSystem.device?.motors?.sump?.status}
+												status={$sumpMotor}
 												onUnlock={() => unlockPump('sump')}
 												unlockDisabled={!isConnected}
 											/>
@@ -613,16 +629,16 @@
 										<button
 											aria-label="Override"
 											class={`text-l flex min-h-11 w-full items-center justify-center rounded-full border p-3 text-center font-semibold tracking-[0.14em] uppercase shadow-sm transition active:scale-[0.985] disabled:pointer-events-none disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none ${
-												($waterSystem.device?.override ?? false)
+												($deviceControls.override ?? false)
 													? 'border-orange-300 bg-orange-50 text-orange-700'
 													: overrideSending
 														? 'animate-pulse border-amber-400 bg-amber-50 text-amber-600'
 														: 'border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100'
 											}`}
-											disabled={!isConnected || ($waterSystem.device?.override ?? false)}
+											disabled={!isConnected || ($deviceControls.override ?? false)}
 											onclick={handleOverride}
 										>
-											{($waterSystem.device?.override ?? false)
+											{($deviceControls.override ?? false)
 												? 'Override Active'
 												: 'Activate Override'}
 										</button>

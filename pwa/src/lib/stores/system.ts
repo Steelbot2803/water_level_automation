@@ -489,3 +489,51 @@ export const hasCredentials = derived(
 	waterSystem,
 	($s) => !!($s.settings.username || $s.settings.password)
 );
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Narrow derived stores
+//
+// Each store extracts one slice of WaterAutomationState. Svelte's derived()
+// only notifies subscribers when the returned value changes reference/equality,
+// so components subscribed here skip re-renders from unrelated MQTT ticks.
+//
+// Import these instead of $waterSystem wherever a component only needs a slice.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Connection phases — update only on phase transitions, not on every message.
+export const mqttPhase = derived(waterSystem, (s) => s.mqttConnection.mqttPhase);
+export const wifiPhase = derived(waterSystem, (s) => s.wifiConnection.wifiPhase);
+export const arduinoMqttPhase = derived(waterSystem, (s) => s.arduinoMQTTConnection.mqttPhase);
+export const connectionError = derived(waterSystem, (s) => s.mqttConnection.lastError);
+
+// Telemetry readiness flag.
+export const telemetryReady = derived(waterSystem, (s) => s.telemetryReady);
+
+// Individual sensor/motor fields — each updates only when its value changes.
+export const overhead = derived(waterSystem, (s) => s.device?.overhead);
+export const sumpLevel = derived(waterSystem, (s) => s.device?.sump);
+export const borewellMotor = derived(waterSystem, (s) => s.device?.motors?.borewell?.status);
+export const sumpMotor = derived(waterSystem, (s) => s.device?.motors?.sump?.status);
+export const emergencyStop = derived(waterSystem, (s) => s.device?.alarms?.emergencyStop ?? false);
+export const lastMessageAt = derived(waterSystem, (s) => s.device?.receivedAt);
+
+// Command toggle state — bundles the fields the Commands section needs.
+// One object so the derived only fires when any of these four change.
+export const deviceControls = derived(waterSystem, (s) => ({
+	mode: s.device?.mode,
+	override: s.device?.override ?? false,
+	manualTarget: s.device?.manual_target,
+	autoPreferSump: s.device?.auto_prefer_sump ?? false
+}));
+
+// Menu status table — the full device snapshot. Menu only renders when open
+// so this broad slice is acceptable there.
+export const deviceSnapshot = derived(waterSystem, (s) => s.device);
+
+// AlertMonitor needs the full state for diffing — it keeps its own subscribe().
+// recentCommands is split out so AlertMonitor can skip re-runs when other
+// fields change.
+export const recentCommands = derived(waterSystem, (s) => s.recentCommands);
+
+// Broker settings — only changes on user action, never on MQTT messages.
+export const brokerSettings = derived(waterSystem, (s) => s.settings);

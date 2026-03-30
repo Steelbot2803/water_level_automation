@@ -5,7 +5,7 @@
 	import { get } from 'svelte/store';
 	import { alerts } from '$lib/stores/alerts.js';
 	import { notificationPrefs } from '$lib/stores/notifications.js';
-	import { waterSystem } from '$lib/stores/system.js';
+	import { waterSystem, recentCommands } from '$lib/stores/system.js';
 	import type {
 		CommandLogEntry,
 		DeviceTelemetry,
@@ -76,13 +76,9 @@
 
 	function notifyCommandFailures(previous: CommandLogEntry[], next: CommandLogEntry[]) {
 		if (!next.length) return;
-
-		const previousIds = new Set(previous.map((entry) => entry.id));
-		const newEntries = next.filter((entry) => !previousIds.has(entry.id));
-
-		for (const entry of newEntries) {
+		const previousIds = new Set(previous.map((e) => e.id));
+		for (const entry of next.filter((e) => !previousIds.has(e.id))) {
 			if (entry.status !== 'failed') continue;
-
 			alerts.push({
 				title: 'Command failed',
 				message: entry.error
@@ -110,29 +106,25 @@
 		}
 
 		if (!previous || previous.alarms.overheadCritical !== next.alarms.overheadCritical) {
-			if (next.alarms.overheadCritical) {
-				if (get(notificationPrefs).overheadCritical)
-					alerts.push({
-						title: 'Overhead tank critical',
-						message: 'Overhead tank is empty. Filling started.',
-						severity: 'error',
-						tag: 'alarm-overhead-critical',
-						cooldownMs: 120000
-					});
-			}
+			if (next.alarms.overheadCritical && get(notificationPrefs).overheadCritical)
+				alerts.push({
+					title: 'Overhead tank critical',
+					message: 'Overhead tank is empty. Filling started.',
+					severity: 'error',
+					tag: 'alarm-overhead-critical',
+					cooldownMs: 120000
+				});
 		}
 
 		if (!previous || previous.alarms.sumpCritical !== next.alarms.sumpCritical) {
-			if (next.alarms.sumpCritical) {
-				if (get(notificationPrefs).sumpCritical)
-					alerts.push({
-						title: 'Sump tank critical',
-						message: 'Sump tank is critical. Sump motor is blocked.',
-						severity: 'error',
-						tag: 'alarm-sump-critical',
-						cooldownMs: 120000
-					});
-			}
+			if (next.alarms.sumpCritical && get(notificationPrefs).sumpCritical)
+				alerts.push({
+					title: 'Sump tank critical',
+					message: 'Sump tank is critical. Sump motor is blocked.',
+					severity: 'error',
+					tag: 'alarm-sump-critical',
+					cooldownMs: 120000
+				});
 		}
 
 		notifyMotorStatusChange(
@@ -158,50 +150,59 @@
 		nextStatus: MotorRuntimeStatus,
 		telemetry: DeviceTelemetry
 	) {
-		if (previousStatus === nextStatus) return;
+		if (previousStatus === nextStatus || nextStatus !== 'dry_run_lock') return;
 
-		if (nextStatus === 'dry_run_lock') {
-			if (motorKey === 'borewell') {
-				if (get(notificationPrefs).borewellDryRun) {
-					const sumpAvailable = telemetry.sump !== 'critical';
-					alerts.push({
-						title: 'Borewell dry-run protection',
-						message: sumpAvailable
-							? 'Borewell stopped — no flow detected. Switching to sump.'
-							: 'Borewell stopped — no flow detected. No alternate motor available.',
-						severity: 'error',
-						tag: 'borewell-dry-run-lock',
-						cooldownMs: 120000
-					});
-				}
-			} else {
-				if (get(notificationPrefs).sumpDryRun)
-					alerts.push({
-						title: 'Sump dry-run protection',
-						message: 'Sump motor stopped — no flow detected.',
-						severity: 'error',
-						tag: 'sump-dry-run-lock',
-						cooldownMs: 120000
-					});
+		if (motorKey === 'borewell') {
+			if (get(notificationPrefs).borewellDryRun) {
+				const sumpAvailable = telemetry.sump !== 'critical';
+				alerts.push({
+					title: 'Borewell dry-run protection',
+					message: sumpAvailable
+						? 'Borewell stopped — no flow detected. Switching to sump.'
+						: 'Borewell stopped — no flow detected. No alternate motor available.',
+					severity: 'error',
+					tag: 'borewell-dry-run-lock',
+					cooldownMs: 120000
+				});
 			}
+		} else {
+			if (get(notificationPrefs).sumpDryRun)
+				alerts.push({
+					title: 'Sump dry-run protection',
+					message: 'Sump motor stopped — no flow detected.',
+					severity: 'error',
+					tag: 'sump-dry-run-lock',
+					cooldownMs: 120000
+				});
 		}
 	}
 
 	onMount(() => {
 		const cleanupAlerts = alerts.initialize();
 		notificationPrefs.initialize();
+
 		let previousState: WaterAutomationState | null = null;
+		let previousCommands: CommandLogEntry[] = [];
 
-		const unsubscribe = waterSystem.subscribe((state) => {
+		// Full-state subscription for connection phase diffing — unavoidable here
+		// since AlertMonitor needs to compare previous vs next connection state.
+		// recentCommands is split into its own subscription so command failures
+		// don't force a full state diff on every MQTT message.
+		const unsubscribeState = waterSystem.subscribe((state) => {
 			notifyConnectionChanges(previousState, state);
-			notifyCommandFailures(previousState?.recentCommands ?? [], state.recentCommands);
 			notifyTelemetryChanges(previousState?.device ?? null, state.device);
-
 			previousState = state;
 		});
 
+		// Separate subscription for commands — fires only when the array changes.
+		const unsubscribeCommands = recentCommands.subscribe((cmds) => {
+			notifyCommandFailures(previousCommands, cmds);
+			previousCommands = cmds;
+		});
+
 		return () => {
-			unsubscribe();
+			unsubscribeState();
+			unsubscribeCommands();
 			cleanupAlerts();
 		};
 	});

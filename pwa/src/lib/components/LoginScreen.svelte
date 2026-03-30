@@ -2,7 +2,7 @@
 
 <script lang="ts">
 	import { LoaderCircle, Wifi, WifiOff, ScanQrCode, Eye, EyeOff } from 'lucide-svelte';
-	import { waterSystem } from '$lib/stores/system.js';
+	import { waterSystem, mqttPhase, connectionError } from '$lib/stores/system.js';
 	import type { BrokerSettings } from '$lib/types.js';
 	import QrScanner from '$lib/components/QrScanner.svelte';
 	import logo from '$lib/img/neptune_icon.png';
@@ -12,37 +12,30 @@
 	let showPassword = $state(false);
 	let scannerOpen = $state(false);
 
-	const phase = $derived($waterSystem.mqttConnection.mqttPhase);
-	const lastError = $derived($waterSystem.mqttConnection.lastError);
+	// Narrow stores — this component re-renders only on phase or error changes,
+	// not on every MQTT message or device telemetry update.
+	const phase = $derived($mqttPhase);
+	const lastError = $derived($connectionError);
 
 	const isConnecting = $derived(phase === 'connecting' || phase === 'reconnecting');
 	const isError = $derived(phase === 'error');
 
 	function handleSubmit() {
 		if (!username && !password) return;
-		waterSystem.updateSettings({
-			...$waterSystem.settings,
-			username,
-			password
-		});
+		waterSystem.updateSettings({ ...$waterSystem.settings, username, password });
 	}
 
 	function handleQrResult(partial: Partial<BrokerSettings>) {
 		if (partial.username !== undefined) username = partial.username;
 		if (partial.password !== undefined) password = partial.password;
 		scannerOpen = false;
-		waterSystem.updateSettings({
-			...$waterSystem.settings,
-			username,
-			password
-		});
+		waterSystem.updateSettings({ ...$waterSystem.settings, username, password });
 	}
 </script>
 
 <div
 	class="flex min-h-dvh flex-col items-center justify-center bg-gradient-to-b from-cyan-50 via-white to-slate-100 px-6"
 >
-	<!-- Brand mark -->
 	<div class="mb-10 flex flex-col items-center gap-3">
 		<div
 			class="flex h-20 w-20 items-center justify-center rounded-[1.4rem] shadow-lg shadow-blue-500"
@@ -55,7 +48,6 @@
 		</div>
 	</div>
 
-	<!-- Card -->
 	<div class="w-full max-w-sm rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
 		<div class="mb-5 flex items-center justify-between">
 			<p class="text-sm font-semibold tracking-[0.15em] text-slate-500 uppercase">
@@ -66,7 +58,6 @@
 					onclick={() => (scannerOpen = !scannerOpen)}
 					class="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 shadow-sm transition hover:bg-slate-100 active:scale-[0.98]"
 					aria-label="Scan QR code"
-					title="Scan QR"
 				>
 					<ScanQrCode size={15} />
 				</button>
@@ -74,21 +65,18 @@
 		</div>
 
 		{#if scannerOpen}
-			<!-- QR scanner replaces the form temporarily -->
 			<div
 				class="overflow-hidden rounded-2xl border-2 border-slate-200 bg-black"
-				style="height: 320px;"
+				style="height:320px"
 			>
 				<QrScanner inline onResult={handleQrResult} onClose={() => (scannerOpen = false)} />
 			</div>
 		{:else}
 			<form
-				onsubmit={(event) => {
-					event.preventDefault();
+				onsubmit={(e) => {
+					e.preventDefault();
 					handleSubmit();
 				}}
-				id="connection-credentials"
-				name="Connection Credentials"
 				class="space-y-3"
 			>
 				<div class="space-y-3">
@@ -99,7 +87,6 @@
 						autocomplete="username"
 						class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-cyan-300 focus:outline-none"
 					/>
-
 					<div class="relative">
 						{#if showPassword}
 							<input
@@ -128,7 +115,6 @@
 						</button>
 					</div>
 
-					<!-- Status feedback lives here instead of a separate toast -->
 					{#if isError && lastError}
 						<div
 							class="flex items-start gap-2.5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3"
@@ -146,11 +132,9 @@
 							: 'border-cyan-300 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400'}"
 					>
 						{#if isConnecting}
-							<LoaderCircle size={16} class="animate-spin" />
-							Connecting...
+							<LoaderCircle size={16} class="animate-spin" /> Connecting...
 						{:else}
-							<Wifi size={16} />
-							Connect
+							<Wifi size={16} /> Connect
 						{/if}
 					</button>
 				</div>
