@@ -13,6 +13,7 @@ import {
 } from '../control.js';
 import type {
 	ArduinoCommand,
+	ArduinoHeartbeat,
 	BrokerSettings,
 	CommandLogEntry,
 	WaterAutomationState
@@ -107,7 +108,9 @@ function createInitialState(): WaterAutomationState {
 			lastError: configurationError ?? undefined
 		},
 		device: null,
-		recentCommands: []
+		recentCommands: [],
+		lastHeartbeatSeq: null,
+		lastHeartbeatAt: null
 	};
 }
 
@@ -223,26 +226,39 @@ function createWaterSystemStore() {
 					mqttConnection: {
 						...state.mqttConnection,
 						mqttPhase: 'connected',
-						detail: `Connected. Subscribing to ${settings.statusTopic}.`,
+						detail: `Connected. Subscribing…`,
 						url,
 						lastConnectedAt: Date.now(),
 						lastError: undefined
 					}
 				}));
-				nextClient.subscribe(settings.statusTopic, (error) => {
-					if (client !== nextClient) return;
-					if (error) {
-						failAndStop('Connected, but subscription failed. Try again.', error.message);
-						return;
-					}
-					update((state) => ({
-						...state,
-						statusTopicSubscribed: true,
-						mqttConnection: {
-							...state.mqttConnection,
-							detail: `Receiving status from ${settings.statusTopic}.`
+
+				const topics = [settings.statusTopic, settings.heartbeatTopic];
+				let pending = topics.length;
+				let failed = false;
+
+				topics.forEach((topic) => {
+					nextClient.subscribe(topic, (error) => {
+						if (client !== nextClient || failed) return;
+						if (error) {
+							failed = true;
+							failAndStop('Connected, but subscription failed.', error.message);
+							return;
 						}
-					}));
+						pending--;
+						if (pending === 0) {
+							update((state) => ({
+								...state,
+								statusTopicSubscribed: true,
+								mqttConnection: {
+									...state.mqttConnection,
+									detail: `Subscribed. Requesting initial status…`
+								}
+							}));
+							// Asks Arduino for an immediate full status snapshot.
+							nextClient.publish(settings.commandTopic, 'sync');
+						}
+					});
 				});
 			});
 
@@ -328,30 +344,56 @@ function createWaterSystemStore() {
 			});
 
 			nextClient.on('message', (topic, payload) => {
-				if (client !== nextClient || topic !== settings.statusTopic) return;
-				const rawPayload =
-					typeof payload === 'string' ? payload : new TextDecoder().decode(payload);
-				try {
-					const device = toDeviceTelemetry(rawPayload);
-					update((state) => ({
-						...state,
-						device,
-						telemetryReady: true,
-						wifiConnection: device.wifi_status
-							? { ...state.wifiConnection, wifiPhase: device.wifi_status }
-							: state.wifiConnection,
-						arduinoMQTTConnection: { mqttPhase: device.mqtt_status ?? 'unknown' },
-						mqttConnection: {
-							...state.mqttConnection,
-							mqttPhase: 'connected',
-							detail: `Receiving status from ${settings.statusTopic}.`,
-							lastMessageAt: device.receivedAt,
-							lastError: undefined
-						}
-					}));
-				} catch (error) {
-					const message = error instanceof Error ? error.message : 'Unknown payload parse failure';
-					console.warn('[system] MQTT payload parse failure:', message, rawPayload);
+				if (client !== nextClient) return;
+				const raw = typeof payload === 'string' ? payload : new TextDecoder().decode(payload);
+
+				if (topic === settings.heartbeatTopic) {
+					try {
+						const hb = JSON.parse(raw) as ArduinoHeartbeat;
+						update((state) => {
+							// How many heartbeats did we miss? Each should arrive ~500ms apart.
+							const missed =
+								state.lastHeartbeatSeq !== null ? hb.seq - state.lastHeartbeatSeq - 1 : 0;
+							return {
+								...state,
+								lastHeartbeatSeq: hb.seq,
+								lastHeartbeatAt: Date.now(),
+								wifiConnection: { ...state.wifiConnection, wifiPhase: hb.wifi },
+								arduinoMQTTConnection: { mqttPhase: hb.mqtt ? 'connected' : 'disconnected' },
+								mqttConnection:
+									missed > 2
+										? {
+												...state.mqttConnection,
+												mqttPhase: 'reconnecting',
+												detail: `${missed} heartbeats missed — checking connection…`
+											}
+										: state.mqttConnection
+							};
+						});
+					} catch {
+						console.warn('[system] heartbeat parse failure', raw);
+					}
+					return;
+				}
+
+				if (topic === settings.statusTopic) {
+					try {
+						const device = toDeviceTelemetry(raw);
+						update((state) => ({
+							...state,
+							device,
+							telemetryReady: true,
+							mqttConnection: {
+								...state.mqttConnection,
+								mqttPhase: 'connected',
+								detail: `Receiving status from ${settings.statusTopic}.`,
+								lastMessageAt: device.receivedAt,
+								lastError: undefined
+							}
+						}));
+					} catch (error) {
+						console.warn('[system] status payload parse failure', error, raw);
+					}
 				}
 			});
 
@@ -537,3 +579,6 @@ export const recentCommands = derived(waterSystem, (s) => s.recentCommands);
 
 // Broker settings — only changes on user action, never on MQTT messages.
 export const brokerSettings = derived(waterSystem, (s) => s.settings);
+
+export const lastHeartbeatAt = derived(waterSystem, (s) => s.lastHeartbeatAt);
+export const heartbeatSeq = derived(waterSystem, (s) => s.lastHeartbeatSeq);

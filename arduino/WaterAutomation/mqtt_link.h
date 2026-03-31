@@ -4,7 +4,8 @@
 
 void initMqttLink();
 void runMqttLink();
-void publishStateToMqtt(const SystemState& state);
+void publishHeartbeatToMqtt();
+void publishStatusToMqtt(const SystemState& state, bool force);
 void checkMqttLiveness();
 bool isWifiConnected();
 bool isMqttConnected();

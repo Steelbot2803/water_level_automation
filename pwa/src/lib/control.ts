@@ -35,6 +35,8 @@ const HARDCODED_PATH = (() => {
 const HARDCODED_USE_SSL = readPublicEnv('PUBLIC_MQTT_USE_SSL').toLowerCase() !== 'false';
 const HARDCODED_COMMAND_TOPIC = readPublicEnv('PUBLIC_MQTT_COMMAND_TOPIC') || 'water-system/cmd';
 const HARDCODED_STATUS_TOPIC = readPublicEnv('PUBLIC_MQTT_STATUS_TOPIC') || 'water-system/status';
+const HARDCODED_HEARTBEAT_TOPIC =
+	readPublicEnv('PUBLIC_MQTT_HEARTBEAT_TOPIC') || 'water-system/heartbeat';
 const HARDCODED_CLIENT_ID_PREFIX = readPublicEnv('PUBLIC_MQTT_CLIENT_ID_PREFIX') || 'water-pwa';
 
 function isOneOf<T extends string>(value: unknown, values: readonly T[]): value is T {
@@ -70,6 +72,7 @@ export function createDefaultBrokerSettings(
 		useSSL: HARDCODED_USE_SSL,
 		commandTopic: HARDCODED_COMMAND_TOPIC,
 		statusTopic: HARDCODED_STATUS_TOPIC,
+		heartbeatTopic: HARDCODED_HEARTBEAT_TOPIC,
 		clientIdPrefix: HARDCODED_CLIENT_ID_PREFIX,
 		username: overrides.username,
 		password: overrides.password
@@ -86,6 +89,7 @@ export function sanitizeBrokerSettings(settings: BrokerSettings): BrokerSettings
 		useSSL: HARDCODED_USE_SSL,
 		commandTopic: HARDCODED_COMMAND_TOPIC,
 		statusTopic: HARDCODED_STATUS_TOPIC,
+		heartbeatTopic: HARDCODED_HEARTBEAT_TOPIC,
 		clientIdPrefix: HARDCODED_CLIENT_ID_PREFIX
 	};
 }

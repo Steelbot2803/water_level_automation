@@ -55,7 +55,8 @@ struct SystemState {
   MotorRuntimeState sump;
 
   bool sumpCriticalWarningLatched = false;
-  bool fillCycleActive = false;  // add this
+  bool fillCycleActive = false;
+  bool syncRequested = false;
   unsigned long lastStatusPrintMs = 0;
 };
 

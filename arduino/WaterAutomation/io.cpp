@@ -210,6 +210,12 @@ bool applyCommand(SystemState& state, const String& line) {
     return true;
   }
 
+  if (line == "sync") {
+    state.syncRequested = true;
+    Serial.println(F("sync requested"));
+    return true;
+  }
+
   return false;
 }
 

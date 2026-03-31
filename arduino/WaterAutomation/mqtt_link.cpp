@@ -13,7 +13,8 @@ namespace {
 WiFiSSLClient wifiClient;
 PubSubClient mqttClient(wifiClient);
 
-unsigned long lastMqttPublishMs = 0;
+unsigned long lastHeartbeatPublishMs = 0;
+unsigned long lastStatusPublishMs = 0;
 unsigned long lastWifiAttemptMs = 0;
 unsigned long lastMqttAttemptMs = 0;
 unsigned long lastSuccessfulPublishMs = 0;
@@ -47,6 +48,8 @@ bool haveSnapshot = false;
 // Static so it lives in BSS rather than being pushed/popped on the stack
 // every 500ms. Same size (640 bytes), zero per-call cost.
 static char publishPayload[640];
+static char heartbeatPayload[96];
+static uint32_t heartbeatSeq = 0;
 
 PublishedSnapshot snapshotOf(const SystemState& state) {
   PublishedSnapshot s;
@@ -180,6 +183,18 @@ const char* manualTargetText(const SystemState& state) {
   return toStr(state.command.forcedMotor);
 }
 
+// Heartbeat payload — just enough to prove the device is alive and connected.
+// Tiny on purpose: fits in one TCP segment, cheap to parse on the PWA side.
+bool doPublishHeartbeat() {
+  const int n = snprintf(
+    heartbeatPayload, sizeof(heartbeatPayload),
+    "{\"seq\":%lu,\"wifi\":\"%s\",\"mqtt\":true}",
+    (unsigned long)heartbeatSeq++,
+    wifiStatusCStr(lastWifiStatus));
+  if (n < 0 || n >= (int)sizeof(heartbeatPayload)) return false;
+  return mqttClient.publish(MQTT_HEARTBEAT_TOPIC, heartbeatPayload, false);
+}
+
 bool doPublish(const SystemState& state) {
   // publishPayload is a static file-scope buffer — no stack allocation here.
   const int written = snprintf(
@@ -231,25 +246,30 @@ void runMqttLink() {
   mqttClient.loop();
 }
 
-void publishStateToMqtt(const SystemState& state) {
+void publishHeartbeatToMqtt() {
   if (!mqttClient.connected()) return;
-
   const unsigned long nowMs = millis();
+  if (lastHeartbeatPublishMs != 0 && nowMs - lastHeartbeatPublishMs < HEARTBEAT_PERIOD_MS) return;
+  lastHeartbeatPublishMs = nowMs;
+  doPublishHeartbeat();
+}
+
+void publishStatusToMqtt(const SystemState& state, bool force) {
+  if (!mqttClient.connected()) return;
+  const unsigned long nowMs = millis();
+
   const PublishedSnapshot current = snapshotOf(state);
-
-  if (lastMqttPublishMs != 0 && nowMs - lastMqttPublishMs < MQTT_PUBLISH_PERIOD_MS) return;
-
   const bool changed = !haveSnapshot || snapshotChanged(lastSnapshot, current);
-  const bool heartbeat = (lastMqttPublishMs == 0) || (nowMs - lastMqttPublishMs >= MQTT_HEARTBEAT_PERIOD_MS);
+  const bool fallback = haveSnapshot && (nowMs - lastStatusPublishMs >= STATUS_PUBLISH_PERIOD_MS);
 
-  if (!changed && !heartbeat) return;
+  if (!force && !changed && !fallback) return;
 
+  if (force) Serial.println(F("mqtt: sync requested, publishing full status"));
   if (changed) Serial.println(F("mqtt: state changed, publishing"));
-  else Serial.println(F("mqtt: heartbeat publish"));
+  else Serial.println(F("mqtt: fallback publish"));
 
   if (doPublish(state)) {
-    lastSuccessfulPublishMs = nowMs;
-    lastMqttPublishMs = nowMs;
+    lastStatusPublishMs = nowMs;
     lastSnapshot = current;
     haveSnapshot = true;
   } else {
@@ -258,8 +278,8 @@ void publishStateToMqtt(const SystemState& state) {
 }
 
 void checkMqttLiveness() {
-  if (lastSuccessfulPublishMs == 0) return;
-  if (millis() - lastSuccessfulPublishMs > MQTT_LIVENESS_TIMEOUT_MS) {
+  if (lastStatusPublishMs == 0) return;
+  if (millis() - lastStatusPublishMs > MQTT_LIVENESS_TIMEOUT_MS) {
     Serial.println(F("mqtt: no successful publish in timeout window — forcing reset"));
     delay(100);
     NVIC_SystemReset();

@@ -94,6 +94,12 @@ export interface ArduinoStatusPayload {
 	mqtt_status?: ArduinoMQTTConnectionPhase;
 }
 
+export interface ArduinoHeartbeat {
+	seq: number;
+	wifi: WifiConnectionPhase;
+	mqtt: boolean;
+}
+
 export interface WifiConnectionState {
 	wifiPhase: WifiConnectionPhase;
 	ssid?: string;
@@ -137,6 +143,7 @@ export interface BrokerSettings {
 	useSSL: boolean;
 	commandTopic: string;
 	statusTopic: string;
+	heartbeatTopic: string;
 	clientIdPrefix: string;
 }
 
@@ -217,4 +224,6 @@ export interface WaterAutomationState {
 	mqttConnection: BrokerConnectionState;
 	device: DeviceTelemetry | null;
 	recentCommands: CommandLogEntry[];
+	lastHeartbeatSeq: number | null;
+	lastHeartbeatAt: number | null;
 }

@@ -41,7 +41,9 @@ void loop() {
   writeMotorOutputs(state);
   updateLedMatrix(state);
   publishStatus(state);
-  publishStateToMqtt(state);
+  publishHeartbeatToMqtt();
+  publishStatusToMqtt(state, state.syncRequested);
+  if (state.syncRequested) state.syncRequested = false;
   checkMqttLiveness();
   delay(MAIN_LOOP_DELAY_MS);
 }
