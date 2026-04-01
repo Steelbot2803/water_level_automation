@@ -4,15 +4,28 @@ import adapterVercel from '@sveltejs/adapter-vercel';
 /** @type {import('@sveltejs/kit').Config} */
 
 function getAdapter() {
-	const adapter = process.env.ADAPTER || 'vercel';
-	switch (adapter) {
-		case 'netlify':
-			return adapterNetlify();
-		case 'vercel':
-			return adapterVercel();
-		default:
-			throw new Error(`Unknown adapter: ${adapter}`);
+	const explicitAdapter = process.env.ADAPTER;
+	if (explicitAdapter) {
+		switch (explicitAdapter) {
+			case 'netlify':
+				return adapterNetlify();
+			case 'vercel':
+				return adapterVercel();
+			default:
+				throw new Error(`Unknown adapter: ${explicitAdapter}`);
+		}
 	}
+
+	if (process.env.NETLIFY) {
+		return adapterNetlify();
+	}
+
+	if (process.env.VERCEL) {
+		return adapterVercel();
+	}
+
+	// Keep Vercel as a local/default fallback when no deployment platform is detected.
+	return adapterNetlify();
 }
 
 export default {
